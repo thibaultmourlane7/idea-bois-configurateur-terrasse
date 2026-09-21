@@ -251,7 +251,7 @@ export function computeGeometry(input: ProjectInput): GeometryResult {
   }
 
   const excludedAreaM2 = input.obstacles.reduce((sum, obstacle) => sum + obstacleAreaM2(obstacle), 0);
-  const obstaclePerimeterM = input.obstacles.reduce((sum, obstacle) => sum + obstaclePerimeterM(obstacle), 0);
+  const totalObstaclePerimeterM = input.obstacles.reduce((sum, obstacle) => sum + obstaclePerimeterM(obstacle), 0);
 
   return {
     areaM2: Math.max(0, grossAreaM2 - excludedAreaM2),
@@ -259,7 +259,7 @@ export function computeGeometry(input: ProjectInput): GeometryResult {
     grossAreaM2,
     excludedAreaM2,
     outerPerimeterM,
-    obstaclePerimeterM,
+    obstaclePerimeterM: totalObstaclePerimeterM,
     obstacleCount: input.obstacles.length,
   };
 }

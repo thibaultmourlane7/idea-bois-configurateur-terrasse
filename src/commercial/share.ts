@@ -19,11 +19,12 @@ export interface ShareSnapshotV1 {
 function bytesToBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/+/g, '-').replace(///g, '_').replace(/=+$/g, '');
+  return btoa(binary).split('+').join('-').split('/').join('_').replace(/=+$/g, '');
 }
 
 function base64UrlToBytes(value: string): Uint8Array {
-  const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (value.length % 4)) % 4);
+  const normalized = value.split('-').join('+').split('_').join('/');
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
   const binary = atob(padded);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }

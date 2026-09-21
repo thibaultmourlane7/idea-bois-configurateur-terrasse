@@ -1,52 +1,55 @@
 import type { Diagnostic, ProjectInput } from './types';
 
-export const VALIDATION_TAG = 'IB-TERR-VALID-001';
+export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
 export function validateProject(input: ProjectInput): Diagnostic[] {
-  const d: Diagnostic[] = [];
+  const diagnostics: Diagnostic[] = [];
   const { dimensions: g, board } = input;
 
   const positive = [
-    ['longueur terrasse', g.lengthM],
-    ['largeur terrasse', g.widthM],
-    ['largeur lame', board.widthMm],
-    ['longueur lame', board.lengthMm],
+    ['longueur de la terrasse', g.lengthM, 'dimensions.lengthM'],
+    ['largeur de la terrasse', g.widthM, 'dimensions.widthM'],
+    ['hauteur de la terrasse', input.heightCm, 'heightCm'],
+    ['largeur de lame', board.widthMm, 'board.widthMm'],
+    ['longueur de lame', board.lengthMm, 'board.lengthMm'],
+    ['épaisseur de lame', board.thicknessMm, 'board.thicknessMm'],
   ] as const;
 
-  for (const [label, value] of positive) {
+  for (const [label, value, field] of positive) {
     if (!Number.isFinite(value) || value <= 0) {
-      d.push({ tag: VALIDATION_TAG, severity: 'blocking', message: `${label} doit être strictement positive.` });
+      diagnostics.push({
+        tag: VALIDATION_TAG,
+        severity: 'blocking',
+        message: `La ${label} doit être renseignée avec une valeur positive.`,
+        field,
+      });
     }
-  }
-
-  if (!Number.isFinite(board.gapMm) || board.gapMm < 0) {
-    d.push({ tag: VALIDATION_TAG, severity: 'blocking', message: 'Le jeu entre lames doit être positif ou nul.' });
   }
 
   if (input.shape === 'l-shape') {
     if (g.notchLengthM <= 0 || g.notchWidthM <= 0) {
-      d.push({ tag: VALIDATION_TAG, severity: 'blocking', message: 'Les dimensions du décroché en L sont obligatoires.' });
+      diagnostics.push({
+        tag: 'SA-TERR-GEO-002',
+        severity: 'blocking',
+        message: 'Les dimensions du décroché en L sont nécessaires.',
+      });
     }
     if (g.notchLengthM >= g.lengthM || g.notchWidthM >= g.widthM) {
-      d.push({ tag: VALIDATION_TAG, severity: 'blocking', message: 'Le décroché doit rester inférieur aux dimensions de la terrasse.' });
+      diagnostics.push({
+        tag: 'SA-TERR-GEO-003',
+        severity: 'blocking',
+        message: 'Le décroché doit rester plus petit que la terrasse.',
+      });
     }
   }
 
   if (board.isDemo) {
-    d.push({
-      tag: VALIDATION_TAG,
-      severity: 'warning',
-      message: 'Produit DEMO : aucune donnée fabricant IDEA Bois n’est considérée comme validée.',
-    });
-  }
-
-  if (board.priceTtcPerM2 == null) {
-    d.push({
-      tag: VALIDATION_TAG,
+    diagnostics.push({
+      tag: 'SA-TERR-CATALOG-001',
       severity: 'info',
-      message: 'Prix absent : le quantitatif est calculé, mais aucun prix matériel n’est affiché.',
+      message: 'Produit de démonstration : il sera remplacé par le catalogue réel IDEA Bois.',
     });
   }
 
-  return d;
+  return diagnostics;
 }

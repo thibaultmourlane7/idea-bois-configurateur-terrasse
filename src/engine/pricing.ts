@@ -1,6 +1,6 @@
 import type { LayoutResult, PricingResult, ProjectInput } from '../domain/types';
 
-export const PRICE_TAG = 'IB-TERR-PRICE-001';
+export const PRICE_TAG = 'SA-TERR-PRICE-001';
 
 export function computePricing(input: ProjectInput, layout: LayoutResult): PricingResult {
   const unit = input.board.priceTtcPerM2;

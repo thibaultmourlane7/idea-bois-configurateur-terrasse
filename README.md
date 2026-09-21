@@ -1,55 +1,40 @@
-# IDEA Bois — Configurateur Terrasse — V0.5
+# IDEA Bois — Configurateur Terrasse V0.6
 
-Démo autonome React + TypeScript destinée au dépôt :
-`thibaultmourlane7/idea-bois-configurateur-terrasse`
+Démo indépendante préparée pour IDEA Bois et SpeedArti.
 
-## Présent dans cette version
-- rectangle et terrasse en L ;
-- plan 2D dynamique ;
-- aperçu 3D isométrique ;
-- calepinage dans 2 orientations ;
-- surface et périmètre ;
-- rangées, longueurs nécessaires et pièces ;
-- optimisation pratique de coupe et réemploi des chutes ;
-- quantité achetée, surface achetée, taux de chute ;
-- chiffrage matériel uniquement si un prix est fourni ;
-- journal de calcul et balises techniques ;
-- validation bloquante des données critiques ;
-- architecture catalogue / ERP / SpeedArti ;
-- sauvegarde locale ;
-- tests automatisés ;
-- GitHub Pages.
+## Principe V0.6
 
-## Règle ferme IDEA Bois
-Le configurateur ne calcule jamais : temps de pose, durée de chantier, nombre d'heures ou coût de main-d'œuvre.
+La première version publique est pensée pour un particulier : 4 étapes simples (dimensions, support, lames, résultat). La complexité technique reste invisible dans le parcours normal.
 
-## Données produits
-Le dépôt contient uniquement des références `DEMO-*`. Elles ne représentent pas le catalogue IDEA Bois.
-Aucun SKU, prix, stock ou règle fabricant IDEA Bois n'est inventé.
+Le moteur applique uniquement les règles pour lesquelles une donnée validée existe. En cas de donnée manquante, de système propriétaire ou de sortie du domaine couvert, il bloque ou demande une vérification au lieu d'inventer une valeur.
 
-## Lancer
+### Inclus
+
+- rectangle et forme en L ;
+- aperçu 2D et 3D ;
+- quantitatif lames et optimisation matière ;
+- premier chemin résidentiel NF DTU 51.4 / NF B54-040 version 2018 ;
+- calcul automatique de l'entraxe réel des lambourdes à partir d'une valeur admissible validée ;
+- calcul des longueurs de lambourdes et du nombre de points d’appui ;
+- contrôle de hauteur, drainage et systèmes hors DTU ;
+- blocage du composite tant que les règles fabricant ne sont pas intégrées ;
+- balises techniques stables `SA-TERR-*` ;
+- préparation ERP / PIM IDEA Bois et pont SpeedArti ;
+- aucun calcul de temps de pose, heures ou coût de main-d'œuvre.
+
+### Important
+
+Le catalogue est volontairement `DEMO-*`. Aucune référence, aucun prix et aucun stock IDEA Bois ne sont inventés.
+
+La V0.6 contient uniquement les lignes normatives réellement utilisées par le scénario de démonstration. Elle n'extrapole pas un tableau incomplet.
+
+Le plan matière peut contenir des aboutages. Tant que leur placement sur appui et le traitement des joints n'est pas finalisé, le moteur marque le quantitatif de fixations comme provisoire au lieu d'afficher un nombre définitif.
+
+## Commandes
+
 ```bash
 npm install
-npm run dev
-```
-
-## Tester / compiler
-```bash
 npm test
 npm run build
+npm run dev
 ```
-
-## GitHub Pages
-Le workflow `.github/workflows/pages.yml` publie la démo après un push sur `main`.
-Dans GitHub : `Settings > Pages > Build and deployment > Source = GitHub Actions`.
-
-## Balises
-- `IB-TERR-GEO-001` géométrie
-- `IB-TERR-LAYOUT-001` calepinage
-- `IB-TERR-CUT-001` optimisation de coupe
-- `IB-TERR-MAT-001` quantitatif
-- `IB-TERR-PRICE-001` chiffrage matériel
-- `IB-TERR-VALID-001` validation
-- `IB-TERR-ERP-001` contrat ERP
-- `IB-TERR-SA-001` pont SpeedArti
-- `IB-TERR-VERSION-001` sauvegarde / variantes

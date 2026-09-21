@@ -1,34 +1,29 @@
 import type { RequiredPiece, StockBoard } from '../domain/types';
 
-export const CUT_TAG = 'IB-TERR-CUT-001';
+export const CUT_TAG = 'SA-TERR-CUT-001';
 
 function splitOversizedPieces(pieces: RequiredPiece[], stockLengthMm: number): RequiredPiece[] {
   const out: RequiredPiece[] = [];
-  for (const p of pieces) {
-    let remaining = p.lengthMm;
+  for (const piece of pieces) {
+    let remaining = piece.lengthMm;
     let n = 1;
-    while (remaining > stockLengthMm) {
-      out.push({ ...p, id: `${p.id}.${n}`, lengthMm: stockLengthMm });
+    while (remaining > stockLengthMm + 0.0001) {
+      out.push({ ...piece, id: `${piece.id}.${n}`, lengthMm: stockLengthMm });
       remaining -= stockLengthMm;
       n += 1;
     }
-    if (remaining > 0.0001) out.push({ ...p, id: `${p.id}.${n}`, lengthMm: remaining });
+    if (remaining > 0.0001) out.push({ ...piece, id: `${piece.id}.${n}`, lengthMm: remaining });
   }
   return out;
 }
 
-/**
- * Best-fit decreasing déterministe.
- * Pour un très grand jeu de pièces, il s'agit d'une optimisation pratique,
- * pas d'une preuve mathématique d'optimalité globale du bin-packing.
- */
+/** Optimisation matière déterministe (best-fit decreasing). */
 export function optimizeCuts(pieces: RequiredPiece[], stockLengthMm: number): StockBoard[] {
   const normalized = splitOversizedPieces(pieces, stockLengthMm)
     .slice()
-    .sort((a, b) => b.lengthMm - a.lengthMm);
+    .sort((a, b) => b.lengthMm - a.lengthMm || a.id.localeCompare(b.id));
 
   const boards: StockBoard[] = [];
-
   for (const piece of normalized) {
     let bestIndex = -1;
     let bestRemainingAfter = Number.POSITIVE_INFINITY;
@@ -49,11 +44,10 @@ export function optimizeCuts(pieces: RequiredPiece[], stockLengthMm: number): St
         remainingMm: stockLengthMm - piece.lengthMm,
       });
     } else {
-      const b = boards[bestIndex];
-      b.cuts.push({ pieceId: piece.id, rowIndex: piece.rowIndex, lengthMm: piece.lengthMm });
-      b.remainingMm -= piece.lengthMm;
+      const board = boards[bestIndex];
+      board.cuts.push({ pieceId: piece.id, rowIndex: piece.rowIndex, lengthMm: piece.lengthMm });
+      board.remainingMm -= piece.lengthMm;
     }
   }
-
   return boards;
 }

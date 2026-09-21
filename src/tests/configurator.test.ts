@@ -1,33 +1,71 @@
 import { describe, expect, it } from 'vitest';
-import { demoBoards } from '../catalog/catalogue';
+import { demoBoards, demoJoist } from '../catalog/catalogue';
 import type { ProjectInput } from '../domain/types';
 import { runConfigurator } from '../engine/configurator';
 
 const base: ProjectInput = {
-  projectName: 'Test', shape: 'rectangle',
+  projectName: 'Test particulier',
+  shape: 'rectangle',
   dimensions: { lengthM: 6, widthM: 4, notchLengthM: 2, notchWidthM: 1 },
+  heightCm: 20,
+  supportType: 'existing-concrete-slab',
+  drainage: 'yes',
   orientation: 'length',
-  board: { ...demoBoards[0], widthMm: 145, lengthMm: 3000, gapMm: 5 },
+  board: demoBoards[0],
+  joist: demoJoist,
+  usage: 'residential',
 };
 
-describe('configurateur terrasse', () => {
+describe('Configurateur terrasse V0.6 particulier', () => {
   it('calcule exactement la surface d’un rectangle', () => {
-    const r = runConfigurator(base);
-    expect(r.valid).toBe(true); expect(r.geometry?.areaM2).toBe(24); expect(r.geometry?.perimeterM).toBe(20);
+    const result = runConfigurator(base);
+    expect(result.valid).toBe(true);
+    expect(result.geometry?.areaM2).toBe(24);
+    expect(result.geometry?.perimeterM).toBe(20);
   });
+
   it('calcule la surface d’une forme en L', () => {
-    const r = runConfigurator({ ...base, shape: 'l-shape' }); expect(r.geometry?.areaM2).toBe(22);
+    const result = runConfigurator({ ...base, shape: 'l-shape' });
+    expect(result.geometry?.areaM2).toBe(22);
   });
-  it('bloque les dimensions invalides', () => {
-    const r = runConfigurator({ ...base, dimensions: { ...base.dimensions, lengthM: 0 } });
-    expect(r.valid).toBe(false); expect(r.diagnostics.some((d) => d.severity === 'blocking')).toBe(true);
+
+  it('applique la ligne résidentielle validée au produit bois démo', () => {
+    const result = runConfigurator(base);
+    expect(result.structure?.joistMaxSpacingMm).toBe(670);
+    expect(result.structure?.joistActualSpacingMm).toBeLessThanOrEqual(670);
+    expect(result.structure?.joistSupportMaxSpacingMm).toBeGreaterThan(0);
+    expect(result.structure?.supportPointCount).toBeGreaterThan(0);
   });
-  it('n’expose aucun champ de main-d’œuvre', () => {
-    const r = runConfigurator(base) as unknown as Record<string, unknown>;
-    expect('labor' in r).toBe(false); expect('hours' in r).toBe(false); expect('laborCost' in r).toBe(false);
+
+  it('bloque un produit composite sans règles fabricant', () => {
+    const result = runConfigurator({ ...base, board: demoBoards[1] });
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-SYSTEM-001' && d.severity === 'blocking')).toBe(true);
   });
-  it('chiffre uniquement les fournitures quand un prix est fourni', () => {
-    const r = runConfigurator({ ...base, board: { ...base.board, priceTtcPerM2: 50, isDemo: false } });
-    expect(r.pricing?.materialTtc).toBeGreaterThan(0); expect(r.pricing?.unitPriceTtcPerM2).toBe(50);
+
+  it('bloque une hauteur hors domaine courant du NF DTU 51.4', () => {
+    const result = runConfigurator({ ...base, heightCm: 120 });
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-DTU-003')).toBe(true);
+  });
+
+  it('bloque une dalle déclarée sans évacuation d’eau', () => {
+    const result = runConfigurator({ ...base, drainage: 'no' });
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-WATER-001')).toBe(true);
+  });
+
+  it('n’expose aucun calcul de main-d’œuvre', () => {
+    const result = runConfigurator(base) as unknown as Record<string, unknown>;
+    expect('labor' in result).toBe(false);
+    expect('hours' in result).toBe(false);
+    expect('laborCost' in result).toBe(false);
+  });
+
+  it('ne produit pas un quantitatif de fixations définitif si des aboutages restent à calepiner', () => {
+    const result = runConfigurator(base);
+    expect(result.layout?.hasButtJoints).toBe(true);
+    expect(result.structure?.fixingStatus).toBe('pending-joint-layout');
+    expect(result.structure?.fixingCount).toBeUndefined();
   });
 });

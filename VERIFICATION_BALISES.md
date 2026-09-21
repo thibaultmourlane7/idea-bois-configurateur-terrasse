@@ -1,17 +1,20 @@
-# Vérification des balises techniques
+# Vérification des balises V0.6
 
-| Balise | Rôle |
-|---|---|
-| IB-TERR-GEO-001 | Surface / périmètre |
-| IB-TERR-VALID-001 | Validation des champs critiques |
-| IB-TERR-LAYOUT-001 | Génération des rangées |
-| IB-TERR-CUT-001 | Optimisation et réemploi des chutes |
-| IB-TERR-MAT-001 | Quantités matière |
-| IB-TERR-PRICE-001 | Chiffrage fournitures |
-| IB-TERR-UI-2D-001 | Vue plan 2D |
-| IB-TERR-UI-3D-001 | Aperçu isométrique 3D |
-| IB-TERR-ERP-001 | Contrat d'intégration ERP |
-| IB-TERR-SA-001 | Adaptateur futur SpeedArti |
-| IB-TERR-VERSION-001 | Sauvegarde / variantes |
+- `IB-TERR-VERSION-006` : version du configurateur
+- `SA-TERR-VALID-001` : validation des entrées
+- `SA-TERR-GEO-*` : géométrie
+- `SA-TERR-DTU-*` : domaine du NF DTU 51.4
+- `SA-TERR-LAME-*` : dimensionnement des lames
+- `SA-TERR-LAMB-*` : dimensionnement des lambourdes
+- `SA-TERR-PLOT-*` : supports / plots
+- `SA-TERR-WATER-*` : drainage
+- `SA-TERR-SYSTEM-*` : systèmes fabricant / hors DTU
+- `SA-TERR-FIX-*` : fixations
+- `SA-TERR-JOINT-*` : aboutages et joints de lames
+- `SA-TERR-LAYOUT-*` : calepinage
+- `SA-TERR-CUT-*` : optimisation des coupes
+- `SA-TERR-PRICE-*` : prix matière
+- `SA-TERR-ERP-*` : préparation ERP
+- `SA-TERR-SA-*` : pont SpeedArti
 
-Toute nouvelle règle métier doit ajouter une balise stable sans renommer les balises existantes.
+Chaque règle critique conserve un identifiant stable et doit être testable indépendamment de l'interface.

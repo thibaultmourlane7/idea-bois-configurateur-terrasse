@@ -193,3 +193,14 @@ export const SILVADEC_FINISH_SCREWS_BROWN: FinishMaterial = {
   sourceUrl: 'https://idea-bois.com/cat-vis-fixation-terrasse-274.htm',
   sourceDate: '2026-09-21',
 };
+
+
+export const HARDWOOD_SCREWS_5X60_200: CommercialMaterial = {
+  id: 'IDEA-WEB-VIS-BOIS-DUR-5X60-200',
+  productRef: '5410439474320',
+  label: 'Vis terrasse double filetage A2 inox 5 × 60 mm bois dur — boîte de 200',
+  unit: 'boîte',
+  unitPriceTtc: 28.99,
+  sourceUrl: 'https://idea-bois.com/art-vis-terrasse-double-filetage-a2-inox-5x60-mm-pour-bois-dur-bte-200-vis-3711.htm',
+  sourceDate: '2026-09-21',
+};

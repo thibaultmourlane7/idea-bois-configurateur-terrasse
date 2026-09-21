@@ -10,13 +10,13 @@ import { validateScope } from './scope';
 import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-011';
+export const VERSION_TAG = 'IB-TERR-VERSION-012';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + panier + PDF + parcours commercial V0.11.`];
+  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + catalogue étendu + comparateur V0.12.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

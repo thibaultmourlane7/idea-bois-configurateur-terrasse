@@ -172,3 +172,38 @@
 .topbar-actions{display:flex;align-items:center;gap:9px}
 .resume-button{border:1px solid #cfe0ed;background:#fff;color:#245b83;border-radius:999px;padding:9px 12px;font-weight:800;font-size:11px}
 @media(max-width:760px){.resume-button{display:none}.topbar-actions{gap:0}}
+
+
+/* V0.12 — catalogue étendu & comparateur */
+.catalog-secondary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.readiness-filters{flex:1}
+.catalog-sort{border:1px solid #d6e2ea;background:#fff;color:#526c80;border-radius:10px;padding:9px 10px;font-size:11px;font-weight:750}
+.product-card{display:flex;flex-direction:column}
+.product-select{border:0;background:transparent;text-align:left;padding:0;color:inherit;width:100%;position:relative}
+.product-select .product-copy{padding:15px 16px 14px}
+.product-select>i{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;color:var(--blue);font-style:normal;font-weight:900}
+.readiness-badge{display:inline-flex!important;width:max-content;border-radius:999px;padding:5px 8px;font-size:9px!important;font-weight:900!important;letter-spacing:.02em;margin:0 0 8px!important}
+.readiness-badge.complete{background:#e5f7ed;color:#167647}
+.readiness-badge.calculable{background:#e9f4ff;color:#206ba5}
+.readiness-badge.partial{background:#fff3dc;color:#916417}
+.readiness-badge.price-only{background:#eef1f3;color:#6d7e8b}
+.gap-info{display:block;margin-top:6px;color:#806b3c;font-size:10px}
+.compare-toggle{margin:0 14px 14px;border:1px solid #cfe0ec;background:#f8fbfd;color:#315e7d;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:850}
+.compare-toggle.active{background:#173b5f;color:#fff;border-color:#173b5f}
+.variant-comparator{margin-top:22px;border:1px solid #dce6ed;border-radius:16px;background:#f8fbfd;padding:16px}
+.variant-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin-bottom:12px}
+.variant-heading span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;color:#2e83c6}
+.variant-heading h3{margin:3px 0 0;color:#173b5f;font-size:17px}
+.variant-heading small{color:#718493;font-size:10px}
+.variant-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.variant-card{position:relative;background:#fff;border:1px solid #dce6ed;border-radius:13px;padding:14px}
+.variant-remove{position:absolute;top:8px;right:8px;width:25px;height:25px;border-radius:50%;border:1px solid #dce6ed;background:#fff;color:#778895}
+.variant-card h4{margin:4px 28px 4px 0;font-size:14px;color:#183a59}
+.variant-card>p{margin:0 0 12px;color:#7b8b97;font-size:10px;line-height:1.4}
+.variant-card dl{margin:0;display:grid;gap:7px}
+.variant-card dl div{display:grid;grid-template-columns:80px 1fr;gap:7px;border-top:1px solid #eef2f5;padding-top:7px}
+.variant-card dt{font-size:9px;color:#84929d}
+.variant-card dd{margin:0;text-align:right;font-size:10px;font-weight:800;color:#405d73}
+.choose-variant{width:100%;margin-top:13px;border:0;border-radius:9px;background:#1976d2;color:#fff;padding:9px 10px;font-size:10px;font-weight:850}
+@media(max-width:900px){.variant-grid{grid-template-columns:1fr}.variant-heading{align-items:flex-start;flex-direction:column}}
+@media(max-width:700px){.catalog-secondary{align-items:stretch;flex-direction:column}.catalog-sort{width:100%}}

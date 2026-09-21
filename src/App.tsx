@@ -5,6 +5,8 @@ import { Plan2D } from './components/Plan2D';
 import { Preview3D } from './components/Preview3D';
 import { Results } from './components/Results';
 import { CommercialActions } from './components/CommercialActions';
+import { VariantComparator } from './components/VariantComparator';
+import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 import { restoreProjectFromUrl } from './commercial/share';
@@ -39,6 +41,8 @@ const steps = [
 const euro = (value: number) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
 
 type ProductFilter = 'all' | 'resineux' | 'exotique' | 'bambou' | 'composite' | 'autre';
+type ProductReadinessFilter = 'all' | ProductReadiness;
+type ProductSort = 'readiness' | 'price-asc' | 'price-desc';
 
 function ChoiceCard({ active, title, subtitle, onClick }: { active: boolean; title: string; subtitle?: string; onClick: () => void }) {
   return (
@@ -65,19 +69,44 @@ export default function App() {
   const [preview, setPreview] = useState<'2d' | '3d'>('2d');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
+  const [readinessFilter, setReadinessFilter] = useState<ProductReadinessFilter>('all');
+  const [productSort, setProductSort] = useState<ProductSort>('readiness');
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [savedAvailable, setSavedAvailable] = useState(() => hasSavedProject());
   const result = useMemo(() => runConfigurator(project), [project]);
 
   const filteredBoards = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
-    return ideaBoisBoards.filter((board) => {
+    const list = ideaBoisBoards.filter((board) => {
       const filterOk = productFilter === 'all' || boardFilter(board) === productFilter;
+      const readiness = getProductReadiness(board).level;
+      const readinessOk = readinessFilter === 'all' || readiness === readinessFilter;
       const haystack = [board.label, board.subtitle, board.catalog?.material, board.catalog?.range, board.catalog?.color, board.catalog?.profile]
         .filter(Boolean).join(' ').toLowerCase();
-      return filterOk && (!query || haystack.includes(query));
+      return filterOk && readinessOk && (!query || haystack.includes(query));
     });
-  }, [productFilter, productSearch]);
+
+    return [...list].sort((a, b) => {
+      if (productSort === 'price-asc') return (a.priceTtcPerM2 ?? Number.POSITIVE_INFINITY) - (b.priceTtcPerM2 ?? Number.POSITIVE_INFINITY);
+      if (productSort === 'price-desc') return (b.priceTtcPerM2 ?? Number.NEGATIVE_INFINITY) - (a.priceTtcPerM2 ?? Number.NEGATIVE_INFINITY);
+      return readinessRank(getProductReadiness(a).level) - readinessRank(getProductReadiness(b).level)
+        || (a.priceTtcPerM2 ?? Number.POSITIVE_INFINITY) - (b.priceTtcPerM2 ?? Number.POSITIVE_INFINITY);
+    });
+  }, [productFilter, productSearch, readinessFilter, productSort]);
+
+  const compareBoards = useMemo(
+    () => compareIds.map((id) => ideaBoisBoards.find((board) => board.id === id)).filter(Boolean) as ProjectInput['board'][],
+    [compareIds],
+  );
+
+  const toggleCompare = (boardId: string) => {
+    setCompareIds((current) => {
+      if (current.includes(boardId)) return current.filter((id) => id !== boardId);
+      if (current.length >= 3) return [...current.slice(1), boardId];
+      return [...current, boardId];
+    });
+  };
 
   const patchDimensions = (key: keyof ProjectInput['dimensions'], value: number) => {
     setProject((current) => ({ ...current, dimensions: { ...current.dimensions, [key]: value } }));
@@ -136,7 +165,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Simple • catalogue réel • panier • partage • devis</div>
+          <div className="header-note">Catalogue réel • comparateur • panier • PDF • devis</div>
         </div>
       </header>
 
@@ -217,31 +246,61 @@ export default function App() {
               <div className="section-heading"><span className="section-number">3</span><div><h2>Choisissez le style de vos lames</h2><p>Les longueurs commerciales sont regroupées : le client choisit le produit, le moteur choisira les longueurs.</p></div></div>
 
               <div className="catalog-toolbar">
-                <input className="catalog-search" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Rechercher : Ipé, Pin, Padouk, Silvadec…" />
+                <input className="catalog-search" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Rechercher : Ipé, Pin, Padouk, Cumaru, Silvadec…" />
                 <div className="catalog-filters">
                   {([['all','Toutes'],['resineux','Résineux'],['exotique','Exotiques'],['bambou','Bambou'],['composite','Composite']] as const).map(([value,label]) => (
                     <button type="button" key={value} className={productFilter === value ? 'active' : ''} onClick={() => setProductFilter(value)}>{label}</button>
                   ))}
                 </div>
+                <div className="catalog-secondary">
+                  <div className="catalog-filters readiness-filters">
+                    {([['all','Tous niveaux'],['complete','Panier calculable'],['calculable','Calcul avancé'],['partial','Calcul partiel'],['price-only','Prix seul']] as const).map(([value,label]) => (
+                      <button type="button" key={value} className={readinessFilter === value ? 'active' : ''} onClick={() => setReadinessFilter(value as ProductReadinessFilter)}>{label}</button>
+                    ))}
+                  </div>
+                  <select className="catalog-sort" value={productSort} onChange={(e) => setProductSort(e.target.value as ProductSort)}>
+                    <option value="readiness">Les plus complets d'abord</option>
+                    <option value="price-asc">Prix croissant</option>
+                    <option value="price-desc">Prix décroissant</option>
+                  </select>
+                </div>
               </div>
 
               <div className="catalog-count">{filteredBoards.length} gamme{filteredBoards.length > 1 ? 's' : ''} affichée{filteredBoards.length > 1 ? 's' : ''} • relevé catalogue du 04/09/2026</div>
               <div className="product-grid real-catalog-grid">
-                {filteredBoards.map((board) => (
-                  <button type="button" key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`} onClick={() => setProject({ ...project, board })}>
-                    <div className={`product-swatch ${board.technical.materialFamily}`} />
-                    <div className="product-copy">
-                      <strong>{board.label}</strong>
-                      <span>{board.subtitle}</span>
-                      <div className="product-meta">
-                        <b>{board.priceTtcPerM2 != null ? `${euro(board.priceTtcPerM2)} / m²` : 'Prix à confirmer'}</b>
-                        <em>{board.catalog?.availabilitySnapshot ?? 'Disponibilité à confirmer'}</em>
-                      </div>
-                    </div>
-                    <i>{project.board.id === board.id ? '✓' : ''}</i>
-                  </button>
-                ))}
+                {filteredBoards.map((board) => {
+                  const readiness = getProductReadiness(board);
+                  const comparing = compareIds.includes(board.id);
+                  return (
+                    <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
+                      <button type="button" className="product-select" onClick={() => setProject({ ...project, board })}>
+                        <div className={`product-swatch ${board.technical.materialFamily}`} />
+                        <div className="product-copy">
+                          <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
+                          <strong>{board.label}</strong>
+                          <span>{board.subtitle}</span>
+                          {board.gapRangeMm && <small className="gap-info">Jeu publié : {board.gapRangeMm[0]}–{board.gapRangeMm[1]} mm</small>}
+                          <div className="product-meta">
+                            <b>{board.priceTtcPerM2 != null ? `${euro(board.priceTtcPerM2)} / m²` : 'Prix à confirmer'}</b>
+                            <em>{board.catalog?.availabilitySnapshot ?? 'Disponibilité à confirmer'}</em>
+                          </div>
+                        </div>
+                        <i>{project.board.id === board.id ? '✓' : ''}</i>
+                      </button>
+                      <button type="button" className={`compare-toggle ${comparing ? 'active' : ''}`} onClick={() => toggleCompare(board.id)}>
+                        {comparing ? 'Retirer du comparateur' : 'Comparer'}
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
+
+              <VariantComparator
+                project={project}
+                boards={compareBoards}
+                onChoose={(board) => setProject({ ...project, board })}
+                onRemove={(id) => setCompareIds((current) => current.filter((value) => value !== id))}
+              />
 
               <div className="orientation-block"><h3>Dans quel sens souhaitez-vous poser les lames ?</h3><div className="orientation-grid">
                 {([['length','Dans la longueur'],['width','Dans la largeur']] as const).map(([value,label]) => (

@@ -13,7 +13,11 @@ export const ideaBoisBoards: BoardSpec[] = RAW_IDEA_BOIS_BOARDS.map((row) => {
     family, range, material, profile, color, fixation, treatment, availabilitySnapshot,
     internalCodes, sourceUrl, materialFamily, useClass, technicalEngine] = row;
 
-  const isPinNord145x27 = id === 'IDEA-TERR-G027';
+  const isPinNord145x27 = ['IDEA-TERR-G027','IDEA-TERR-G028','IDEA-TERR-G030','IDEA-TERR-G031'].includes(id);
+  const isCumaru145x21 = ['IDEA-TERR-G003','IDEA-TERR-G004','IDEA-TERR-G005'].includes(id);
+  const isGarapa145x21 = ['IDEA-TERR-G006','IDEA-TERR-G007','IDEA-TERR-G008','IDEA-TERR-G009'].includes(id);
+  const isPadouk120x21 = ['IDEA-TERR-G014','IDEA-TERR-G015','IDEA-TERR-G016'].includes(id);
+  const isIpe140x20 = ['IDEA-TERR-G010','IDEA-TERR-G011'].includes(id);
   const isSilvadecAtmosphere = id === 'IDEA-TERR-G037' || id === 'IDEA-TERR-G038';
 
   return {
@@ -24,10 +28,23 @@ export const ideaBoisBoards: BoardSpec[] = RAW_IDEA_BOIS_BOARDS.map((row) => {
     lengthMm: Math.max(...availableLengthsMm),
     availableLengthsMm,
     thicknessMm,
-    gapMm: (isPinNord145x27 || isSilvadecAtmosphere) ? 5 : undefined,
+    gapMm: (isPinNord145x27 || isCumaru145x21 || isSilvadecAtmosphere) ? 5 : undefined,
+    gapRangeMm: isGarapa145x21 ? [8, 10] : undefined,
     priceTtcPerM2: priceTtcPerM2 ?? undefined,
     isDemo: false,
-    commercialRecipeId: isPinNord145x27 ? 'idea-pin-nord-145x27' : (isSilvadecAtmosphere ? 'silvadec-atmosphere-138x23' : undefined),
+    commercialRecipeId: isPinNord145x27
+      ? 'idea-pin-nord-145x27'
+      : isCumaru145x21
+        ? 'idea-cumaru-145x21'
+        : isGarapa145x21
+          ? 'idea-garapa-145x21'
+          : isPadouk120x21
+            ? 'idea-padouk-120x21'
+            : isIpe140x20
+              ? 'idea-ipe-140x20'
+              : isSilvadecAtmosphere
+                ? 'silvadec-atmosphere-138x23'
+                : undefined,
     catalog: {
       internalCodes,
       family,

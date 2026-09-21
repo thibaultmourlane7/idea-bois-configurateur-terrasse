@@ -1,36 +1,33 @@
-# IDEA Bois — Configurateur Terrasse V0.11
+# IDEA Bois — Configurateur Terrasse V0.12
 
-Démo B2C indépendante préparée pour IDEA Bois et SpeedArti.
+## Gros lot V0.12
+La V0.12 regroupe plusieurs évolutions majeures :
 
-## Lot V0.11 — parcours commercial complet
-Cette version regroupe plusieurs fonctions :
-- nom de projet personnalisable ;
-- sauvegarde locale + reprise du projet ;
-- lien partageable qui recharge réellement la configuration ;
-- formulaire client ;
-- « Recevoir mon projet » ;
-- « Demander un devis » ;
-- « Être rappelé » ;
-- préparation du futur panier IDEA Bois ;
-- contrôle de readiness du panier avant toute transmission ;
-- contrats de données pour le futur branchement CRM/ERP/e-commerce ;
-- contrat SpeedArti remis à niveau en V0.11.
+- catalogue classé par niveau de complétude ;
+- plusieurs variantes Pin du Nord 145x27 désormais rattachées à la recette commerciale documentée ;
+- Cumaru 145x21 calculable avec jeu publié de 5 mm ;
+- Garapa 145x21 documenté avec plage de jeu publiée 8–10 mm sans choisir silencieusement une valeur ;
+- Padouk 120x21 et Ipé 140x20 classés en calcul partiel selon les données disponibles ;
+- vis bois dur dédiée pour les recettes exotiques documentées ;
+- suppression des structures génériques automatiques pour les produits sans recette commerciale validée ;
+- filtres « panier calculable / calcul avancé / calcul partiel / prix seul » ;
+- tri par complétude ou prix ;
+- comparateur de 2 à 3 variantes sur la même géométrie ;
+- comparaison du prix lame, budget matériel, longueurs disponibles et disponibilité ;
+- choix direct d'une variante depuis le comparateur.
 
-## Mode démo
-Aucune connexion IDEA Bois n'est active avant vente du module.
-Les formulaires sont fonctionnels côté interface mais :
-- aucun e-mail n'est envoyé ;
-- aucun CRM/ERP n'est appelé ;
-- aucune donnée personnelle n'est stockée ;
-- le panier réel n'est pas créé.
+## Niveaux de produit
+- **Panier calculable** : données commerciales suffisantes pour chiffrer le panier de base.
+- **Calcul avancé** : plusieurs postes sont calculables mais une famille reste à finaliser.
+- **Calcul partiel** : composition documentée mais une règle de pose importante manque encore.
+- **Prix disponible** : prix catalogue connu, pas assez de règles pour calculer le panier.
 
-Le lien de partage ne contient aucune donnée client : uniquement la configuration technique/commerciale du projet.
+## Règle de sécurité
+Une plage fabricant n'est jamais remplacée par une valeur unique inventée.
+Exemple : le Garapa publie 8–10 mm ; la V0.12 conserve cette plage et n'exécute pas le calepinage final tant qu'une valeur n'est pas validée.
 
-## Panier
-Le bouton panier reste verrouillé si :
-- une ligne obligatoire n'est pas exacte ;
-- une référence produit manque ;
-- les longueurs de lames groupées ne sont pas encore mappées vers les SKU exacts.
+## Connexions
+ERP/PIM/stock/panier/devis réels restent désactivés avant vente du module.
 
 ## Règle ferme
-Aucun temps de pose, aucune durée de chantier, aucune heure ni aucun coût de main-d'œuvre.
+Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.

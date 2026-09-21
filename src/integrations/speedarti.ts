@@ -4,7 +4,7 @@ export const SPEEDARTI_TAG = 'SA-TERR-SA-002';
 
 export interface SpeedArtiTerracePayload {
   source: 'idea-bois-configurateur-terrasse';
-  version: '0.11.0';
+  version: '0.12.0';
   projectName: string;
   input: ProjectInput;
   materialSummary: {
@@ -31,7 +31,7 @@ export function toSpeedArtiPayload(input: ProjectInput, result: ConfiguratorResu
 
   return {
     source: 'idea-bois-configurateur-terrasse',
-    version: '0.11.0',
+    version: '0.12.0',
     projectName: input.projectName,
     input,
     materialSummary: {

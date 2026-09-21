@@ -1,6 +1,7 @@
 import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput } from '../domain/types';
 import {
   GEODECK_20M2,
+  HARDWOOD_SCREWS_5X60_200,
   PGB_SCREWS_5X60_200,
   PIN_JOIST_60X40_2400,
   PLOT_OPTIONS,
@@ -102,7 +103,9 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult): Bas
     },
   ];
 
-  if (input.board.thicknessMm >= 21 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
+  if (input.board.thicknessMm >= 20 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
+    const hardwoodRecipe = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21'].includes(input.board.commercialRecipeId ?? '');
+    const screwMaterial = hardwoodRecipe ? HARDWOOD_SCREWS_5X60_200 : PGB_SCREWS_5X60_200;
     const screwMin = Math.ceil(area * 35);
     const screwMax = Math.ceil(area * 40);
     const packMin = Math.ceil(screwMin / 200);
@@ -111,20 +114,20 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult): Bas
     lines.push({
       id: 'fixings',
       family: 'fixings',
-      label: PGB_SCREWS_5X60_200.label,
-      productRef: PGB_SCREWS_5X60_200.productRef,
+      label: screwMaterial.label,
+      productRef: screwMaterial.productRef,
       quantity: exact ? packMin : undefined,
       quantityMin: exact ? undefined : packMin,
       quantityMax: exact ? undefined : packMax,
       unit: 'boîte(s)',
-      unitPriceTtc: PGB_SCREWS_5X60_200.unitPriceTtc,
-      totalTtc: exact ? round2(packMin * PGB_SCREWS_5X60_200.unitPriceTtc) : undefined,
-      totalMinTtc: exact ? undefined : round2(packMin * PGB_SCREWS_5X60_200.unitPriceTtc),
-      totalMaxTtc: exact ? undefined : round2(packMax * PGB_SCREWS_5X60_200.unitPriceTtc),
+      unitPriceTtc: screwMaterial.unitPriceTtc,
+      totalTtc: exact ? round2(packMin * screwMaterial.unitPriceTtc) : undefined,
+      totalMinTtc: exact ? undefined : round2(packMin * screwMaterial.unitPriceTtc),
+      totalMaxTtc: exact ? undefined : round2(packMax * screwMaterial.unitPriceTtc),
       status: exact ? 'exact' : 'range',
       required: true,
       note: 'IDEA Bois indique 35 à 40 vis/m² ; conditionnement de 200.',
-      sourceUrl: PGB_SCREWS_5X60_200.sourceUrl,
+      sourceUrl: screwMaterial.sourceUrl,
     });
   } else {
     lines.push(pending('fixings', 'fixings', 'Fixations adaptées à la lame', 'La fixation doit être confirmée pour ce profil avant commande.'));
@@ -300,7 +303,7 @@ export function computeBasket(
 
   if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
     lines.push(...silvadecLines(input, geometry));
-  } else if (input.board.technical.materialFamily === 'solid-wood' && input.board.technical.technicalEngine !== 'manufacturer-rules') {
+  } else if (['idea-pin-nord-145x27','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21'].includes(input.board.commercialRecipeId ?? '')) {
     lines.push(...woodCommercialLines(input, geometry));
   } else {
     lines.push(

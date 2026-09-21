@@ -1,25 +1,29 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.11
-Parcours particulier complet : géométrie, support, catalogue réel, calepinage, panier matériaux, prix TTC, finitions, PDF, sauvegarde/reprise locale, partage de projet, formulaire client, demandes devis/rappel, préparation panier, contrats commerciaux et SpeedArti.
+## Présent V0.12
+Parcours B2C complet avec catalogue réel, géométrie, support, calepinage, panier, finitions, PDF, sauvegarde/reprise, partage, formulaires commerciaux, préparation panier et désormais comparateur multi-variantes + couverture produit élargie.
+
+## Couverture renforcée V0.12
+- Pin du Nord 145x27 : plusieurs variantes lisse/striée/marron ;
+- Cumaru 145x21 : recette commerciale exploitable ;
+- Garapa 145x21 : composition connue, jeu 8–10 mm conservé comme plage ;
+- Padouk 120x21 : composition commerciale documentée, jeu final à confirmer ;
+- Ipé 140x20 : support/fixation documentés, quantitatifs encore partiels ;
+- SILVADEC Atmosphère : jeu/clips calculables, structure à finaliser.
 
 ## Prochaine grosse version
-### V0.12 — couverture catalogue + ergonomie avancée
-- augmenter fortement le nombre de gammes réellement calculables ;
-- rattacher davantage de lambourdes, fixations, plots et accessoires ;
-- améliorer le choix produit pour le particulier ;
-- comparateur de variantes ;
-- affichage budget par variante ;
-- gestion plus fine des finitions compatibles.
+### V0.13 — géométrie et projet avancés
+- formes supplémentaires ;
+- obstacles/réservations ;
+- piscine, poteau, arbre, regard ;
+- zones exclues ;
+- cotations enrichies ;
+- calepinage autour des obstacles ;
+- impact automatique sur surfaces, quantités et budgets ;
+- préparation dessin libre.
 
-## Après vente / connexion
-CRM, e-mail transactionnel, ERP/PIM, prix/stock live, agence/dépôt, panier, devis et commande réels.
-
-## P1
-Dessin libre, obstacles, niveaux/pentes, partage QR, portail conseiller, versions.
-
-## P2
-Rendu photoréaliste, AR, LiDAR, import plan/photo assisté, multi-niveaux.
+## Après vente
+Connexions ERP/PIM/CRM/e-commerce, prix et stocks live, agences, devis et commandes réels.
 
 ## Règle permanente
-Aucun calcul de temps de pose, d'heures ou de coût de main-d'œuvre.
+Aucun calcul de main-d'œuvre.

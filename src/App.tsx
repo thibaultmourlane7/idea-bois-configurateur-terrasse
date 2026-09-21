@@ -4,8 +4,11 @@ import { Diagnostics } from './components/Diagnostics';
 import { Plan2D } from './components/Plan2D';
 import { Preview3D } from './components/Preview3D';
 import { Results } from './components/Results';
+import { CommercialActions } from './components/CommercialActions';
 import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
+import { restoreProjectFromUrl } from './commercial/share';
+import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
 
 const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027') ?? ideaBoisBoards[0];
 
@@ -57,12 +60,13 @@ function boardFilter(board: ProjectInput['board']): ProductFilter {
 }
 
 export default function App() {
-  const [project, setProject] = useState<ProjectInput>(initialProject);
+  const [project, setProject] = useState<ProjectInput>(() => restoreProjectFromUrl(initialProject, window.location.href));
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState<'2d' | '3d'>('2d');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [savedAvailable, setSavedAvailable] = useState(() => hasSavedProject());
   const result = useMemo(() => runConfigurator(project), [project]);
 
   const filteredBoards = useMemo(() => {
@@ -80,8 +84,20 @@ export default function App() {
   };
 
   const saveLocal = () => {
-    localStorage.setItem('idea-bois-terrasse-v010', JSON.stringify(project));
+    saveProjectLocally(project);
+    setSavedAvailable(true);
     alert('Votre projet a été enregistré sur cet appareil.');
+  };
+
+  const resumeLocal = () => {
+    const saved = loadProjectLocally(initialProject);
+    if (!saved) {
+      alert('Aucun projet enregistré compatible n’a été trouvé.');
+      setSavedAvailable(false);
+      return;
+    }
+    setProject(saved);
+    setStep(5);
   };
 
   const downloadPdf = async () => {
@@ -118,7 +134,10 @@ export default function App() {
             <h1>Imaginez votre terrasse</h1>
           </div>
         </div>
-        <div className="header-note">Simple • catalogue réel • panier • PDF client</div>
+        <div className="topbar-actions">
+          {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
+          <div className="header-note">Simple • catalogue réel • panier • partage • devis</div>
+        </div>
       </header>
 
       <div className="stepper-wrap">
@@ -136,6 +155,10 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="section-heading"><span className="section-number">1</span><div><h2>Quelle forme fait votre terrasse ?</h2><p>Indiquez simplement ses dimensions principales.</p></div></div>
+              <label className="single-field project-name-field">Nom du projet
+                <div className="input-unit"><input value={project.projectName} maxLength={80} onChange={(e) => setProject({ ...project, projectName: e.target.value })} /></div>
+                <small>Ce nom sera utilisé dans le PDF et le lien partagé.</small>
+              </label>
               <div className="choice-grid two-choice">
                 <ChoiceCard active={project.shape === 'rectangle'} title="Rectangle" subtitle="La forme la plus courante" onClick={() => setProject({ ...project, shape: 'rectangle' })} />
                 <ChoiceCard active={project.shape === 'l-shape'} title="Forme en L" subtitle="Avec un décroché" onClick={() => setProject({ ...project, shape: 'l-shape' })} />
@@ -309,6 +332,7 @@ export default function App() {
                 </div>
               </div>
               <Results input={project} result={result} />
+              <CommercialActions project={project} result={result} version={VERSION_TAG} />
               <div className="preview-toolbar"><div className="segmented small-segmented"><button type="button" className={preview === '2d' ? 'active' : ''} onClick={() => setPreview('2d')}>Vue 2D</button><button type="button" className={preview === '3d' ? 'active' : ''} onClick={() => setPreview('3d')}>Vue 3D</button></div><span>Produit : <strong>{project.board.label}</strong></span></div>
               {preview === '2d' ? <Plan2D input={project} /> : <Preview3D input={project} />}
               <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
@@ -323,7 +347,7 @@ export default function App() {
           <span className="live-label">Votre terrasse</span>
           <div className="live-preview"><Plan2D input={project} /></div>
           <div className="live-stats"><div><span>Surface</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Forme</span><strong>{project.shape === 'rectangle' ? 'Rectangle' : 'En L'}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
-          <div className="speedarti-note"><span>✓</span><p>Le panier affiche lames, structure, appuis, fixations et protections. Les lignes non validées restent clairement à confirmer.</p></div>
+          <div className="speedarti-note"><span>✓</span><p>Le projet peut être partagé, repris par un conseiller et préparé pour devis/panier. Les connexions réelles restent désactivées dans la démo.</p></div>
           <code className="version-code">{VERSION_TAG}</code>
         </aside>
       </main>

@@ -121,3 +121,54 @@
   .result-actions{width:100%;margin-left:48px;flex-wrap:wrap}
   .result-actions .ghost-button{margin-left:0}
 }
+
+
+/* V0.11 — parcours commercial complet */
+.project-name-field{margin:0 0 22px}
+.project-name-field .input-unit{max-width:520px}
+.commercial-panel{margin-top:20px;border:1px solid #dce6ed;border-radius:17px;background:#fff;overflow:hidden}
+.commercial-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:18px;background:linear-gradient(135deg,#f6fbff,#fbfdff);border-bottom:1px solid #e6edf2}
+.commercial-kicker{display:block;font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#2c80c4;margin-bottom:4px}
+.commercial-heading h3,.commercial-modal h3{margin:0;color:#173b5f;font-size:19px}
+.commercial-heading p,.commercial-modal>p{margin:5px 0 0;color:#708393;font-size:12px;line-height:1.45}
+.connection-pill{font-size:10px;font-weight:800;padding:7px 10px;border-radius:999px;background:#fff4dc;color:#85611c;border:1px solid #f0daa7;white-space:nowrap}
+.commercial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+.commercial-card{border:1px solid #dce6ed;background:#fff;border-radius:14px;padding:15px;text-align:left;color:#17324d;min-height:125px;transition:.18s ease}
+.commercial-card:hover{border-color:#9bc7e8;transform:translateY(-1px);box-shadow:0 7px 18px rgba(25,118,210,.07)}
+.commercial-card strong{display:block;font-size:14px;margin:9px 0 5px}
+.commercial-card small{display:block;font-size:11px;line-height:1.4;color:#778a99}
+.commercial-icon{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;background:#eef7ff;color:#1976d2;font-weight:900;font-size:15px}
+.commercial-card.cart-card.ready{background:#f2fbf6;border-color:#c9e7d5}
+.commercial-card.cart-card.locked{background:#fafbfc}
+.cart-readiness{margin:0 16px 16px;border:1px solid #e2e9ee;border-radius:11px;background:#fbfcfd}
+.cart-readiness summary{padding:11px 13px;cursor:pointer;font-size:11px;font-weight:800;color:#5d7283}
+.cart-readiness ul{margin:0;padding:0 28px 13px 34px;color:#778896;font-size:10px;line-height:1.55}
+.share-result{margin:0 16px 16px;padding:12px;border-radius:12px;background:#f6f9fb;border:1px solid #e1e9ef}
+.share-result label{display:block;font-size:10px;font-weight:850;color:#62798b;margin-bottom:6px}
+.share-result>div{display:flex;gap:7px}
+.share-result input{min-width:0;flex:1;border:1px solid #cfdae3;border-radius:9px;padding:9px 10px;background:white;color:#526b7e;font-size:10px}
+.share-result button{border:0;border-radius:9px;background:#173b5f;color:white;padding:8px 12px;font-weight:800;font-size:11px}
+.commercial-feedback{margin:0 16px 16px;padding:11px 13px;border-radius:11px;background:#eef8f3;border:1px solid #cfe9dc;color:#35664f;font-size:11px;line-height:1.45}
+.modal-backdrop{position:fixed;inset:0;background:rgba(13,31,49,.48);z-index:100;display:grid;place-items:center;padding:18px;backdrop-filter:blur(4px)}
+.commercial-modal{width:min(620px,100%);max-height:90vh;overflow:auto;background:white;border-radius:20px;box-shadow:0 24px 80px rgba(6,27,44,.28);padding:25px;position:relative}
+.modal-close{position:absolute;top:13px;right:13px;width:31px;height:31px;border-radius:50%;border:1px solid #dce6ed;background:#fff;color:#60778a;font-size:20px;line-height:1}
+.commercial-form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-top:20px}
+.commercial-form-grid label{font-size:11px;font-weight:800;color:#4b6376}
+.commercial-form-grid input{display:block;width:100%;margin-top:6px;border:1px solid #cedae4;border-radius:10px;padding:10px 11px;outline:none;color:#17324d}
+.commercial-form-grid input:focus{border-color:#6ba9d8;box-shadow:0 0 0 3px rgba(25,118,210,.08)}
+.consent-line{display:flex;gap:9px;align-items:flex-start;margin-top:18px;color:#607587;font-size:10px;line-height:1.5}
+.consent-line input{margin-top:2px;flex:0 0 auto}
+.demo-privacy-note{margin-top:12px;padding:10px 11px;border-radius:10px;background:#f7f9fb;color:#718493;font-size:10px}
+.commercial-submit{margin-top:16px;width:100%;padding:12px}
+@media(max-width:900px){.commercial-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){
+  .commercial-heading{flex-direction:column}
+  .commercial-grid{grid-template-columns:1fr}
+  .connection-pill{white-space:normal}
+  .share-result>div{flex-direction:column}
+  .commercial-form-grid{grid-template-columns:1fr}
+}
+
+.topbar-actions{display:flex;align-items:center;gap:9px}
+.resume-button{border:1px solid #cfe0ed;background:#fff;color:#245b83;border-radius:999px;padding:9px 12px;font-weight:800;font-size:11px}
+@media(max-width:760px){.resume-button{display:none}.topbar-actions{gap:0}}

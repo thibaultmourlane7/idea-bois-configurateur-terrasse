@@ -23,6 +23,10 @@ function longitudinalSpanForRowMm(input: ProjectInput, rowCenterMm: number): num
 }
 
 export function computeLayout(input: ProjectInput): LayoutResult {
+  if (input.board.gapMm == null || !Number.isFinite(input.board.gapMm) || input.board.gapMm < 0) {
+    throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
+  }
+
   const pitch = input.board.widthMm + input.board.gapMm;
   const transverse = transverseSpanMm(input);
   const requiredPieces: RequiredPiece[] = [];
@@ -37,10 +41,14 @@ export function computeLayout(input: ProjectInput): LayoutResult {
     rowIndex += 1;
   }
 
-  const hasButtJoints = requiredPieces.some((p) => p.lengthMm > input.board.lengthMm + 0.001);
-  const stockBoards = optimizeCuts(requiredPieces, input.board.lengthMm);
+  const stockLengthsMm = input.board.availableLengthsMm?.length
+    ? input.board.availableLengthsMm
+    : [input.board.lengthMm];
+  const maxStockLengthMm = Math.max(...stockLengthsMm);
+  const hasButtJoints = requiredPieces.some((p) => p.lengthMm > maxStockLengthMm + 0.001);
+  const stockBoards = optimizeCuts(requiredPieces, stockLengthsMm);
   const totalRequiredMm = requiredPieces.reduce((sum, piece) => sum + piece.lengthMm, 0);
-  const purchasedMm = stockBoards.length * input.board.lengthMm;
+  const purchasedMm = stockBoards.reduce((sum, board) => sum + board.stockLengthMm, 0);
   const wasteMm = Math.max(0, purchasedMm - totalRequiredMm);
   const purchasedAreaM2 = (purchasedMm / 1000) * (input.board.widthMm / 1000);
 

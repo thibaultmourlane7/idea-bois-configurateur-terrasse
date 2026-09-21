@@ -1,40 +1,42 @@
-# IDEA Bois — Configurateur Terrasse V0.6
+# IDEA Bois — Configurateur Terrasse V0.7
 
-Démo indépendante préparée pour IDEA Bois et SpeedArti.
+Démo indépendante B2C préparée pour IDEA Bois et SpeedArti.
 
-## Principe V0.6
+## Objectif V0.7
+Le particulier configure simplement sa terrasse et voit immédiatement le prix public TTC des lames issues du catalogue IDEA Bois local. Les règles techniques absentes ne sont jamais remplacées par des valeurs génériques.
 
-La première version publique est pensée pour un particulier : 4 étapes simples (dimensions, support, lames, résultat). La complexité technique reste invisible dans le parcours normal.
+## Nouveautés
+- catalogue Terrasse IDEA Bois réel : 99 références de lames regroupées en 38 choix commerciaux ;
+- prix public TTC au m² issu du relevé du 04/09/2026 ;
+- recherche et filtres par familles de produits ;
+- plusieurs longueurs commerciales rattachées à une même gamme ;
+- moteur de coupe préparé pour l’optimisation multi-longueurs ;
+- prix des lames visible même lorsqu’une règle technique bloque le quantitatif final ;
+- balise `SA-TERR-GAP-001` si le jeu fabricant manque ;
+- aucune classe mécanique, règle fabricant, référence ERP, stock temps réel ou disponibilité actuelle inventés.
 
-Le moteur applique uniquement les règles pour lesquelles une donnée validée existe. En cas de donnée manquante, de système propriétaire ou de sortie du domaine couvert, il bloque ou demande une vérification au lieu d'inventer une valeur.
+## Parcours particulier
+1. Dimensions
+2. Support
+3. Choix des lames IDEA Bois
+4. Projet + prix + vérifications
 
-### Inclus
+## Prix affiché
+Tant que le calepinage technique complet n’est pas validé, le prix affiché est le prix des lames sur la surface nette. Le total matériel complet devra intégrer les vraies sous-structures, appuis, fixations, accessoires, conditionnements et règles de compatibilité.
 
-- rectangle et forme en L ;
-- aperçu 2D et 3D ;
-- quantitatif lames et optimisation matière ;
-- premier chemin résidentiel NF DTU 51.4 / NF B54-040 version 2018 ;
-- calcul automatique de l'entraxe réel des lambourdes à partir d'une valeur admissible validée ;
-- calcul des longueurs de lambourdes et du nombre de points d’appui ;
-- contrôle de hauteur, drainage et systèmes hors DTU ;
-- blocage du composite tant que les règles fabricant ne sont pas intégrées ;
-- balises techniques stables `SA-TERR-*` ;
-- préparation ERP / PIM IDEA Bois et pont SpeedArti ;
-- aucun calcul de temps de pose, heures ou coût de main-d'œuvre.
+## Connexions
+Les contrats ERP/PIM/panier/commande restent prévus dans l’architecture mais ne sont pas connectés avant vente du module.
 
-### Important
-
-Le catalogue est volontairement `DEMO-*`. Aucune référence, aucun prix et aucun stock IDEA Bois ne sont inventés.
-
-La V0.6 contient uniquement les lignes normatives réellement utilisées par le scénario de démonstration. Elle n'extrapole pas un tableau incomplet.
-
-Le plan matière peut contenir des aboutages. Tant que leur placement sur appui et le traitement des joints n'est pas finalisé, le moteur marque le quantitatif de fixations comme provisoire au lieu d'afficher un nombre définitif.
+## Règle ferme IDEA Bois
+Aucun calcul de temps de pose, durée de chantier, heure de main-d’œuvre ou coût de main-d’œuvre.
 
 ## Commandes
-
 ```bash
 npm install
 npm test
 npm run build
 npm run dev
 ```
+
+## GitHub Pages
+Le workflow `.github/workflows/pages.yml` teste, compile puis publie la démo après un push sur `main`.

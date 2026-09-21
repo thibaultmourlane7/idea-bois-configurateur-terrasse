@@ -9,27 +9,61 @@ import { validateScope } from './scope';
 import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-006';
+export const VERSION_TAG = 'IB-TERR-VERSION-007';
+export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
+export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
-  const diagnostics: Diagnostic[] = [
-    ...validateProject(input),
-    ...validateScope(input),
-  ];
-  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier résidentiel.`];
+  const diagnostics: Diagnostic[] = [...validateProject(input)];
+  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + catalogue IDEA Bois local.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
-    return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué avant dimensionnement.'] };
+    return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
   }
 
   const geometry = computeGeometry(input);
   trace.push(`[${GEOMETRY_TAG}] Surface ${geometry.areaM2.toFixed(3)} m² ; périmètre ${geometry.perimeterM.toFixed(3)} m.`);
 
+  let pricing = computePricing(input, geometry);
+  if (pricing.surfaceNetTtc != null) {
+    trace.push(`[${PRICE_TAG}] Prix lames sur surface nette ${pricing.surfaceNetTtc.toFixed(2)} € TTC à partir du tarif relevé.`);
+  } else {
+    trace.push(`[${PRICE_TAG}] Prix lames indisponible : aucune valeur inventée.`);
+  }
+
+  diagnostics.push(...validateScope(input));
+
+  if (input.board.catalog) {
+    diagnostics.push({
+      tag: CATALOG_TAG,
+      severity: 'info',
+      message: `Tarif et disponibilité issus du relevé catalogue IDEA Bois du ${input.board.catalog.sourceDate.split('-').reverse().join('/')}.`,
+      technicalMessage: 'La connexion ERP n’est pas activée dans la démo : prix et disponibilité doivent être resynchronisés avant production.',
+      source: input.board.catalog.sourceUrl,
+    });
+  }
+
+  if (input.board.gapMm == null || !Number.isFinite(input.board.gapMm)) {
+    diagnostics.push({
+      tag: GAP_TAG,
+      severity: 'blocking',
+      message: 'Le jeu de pose de cette lame doit être validé avant de calculer les quantités de commande.',
+      technicalMessage: 'Le catalogue commercial ne fournit pas une règle de jeu fabricant structurée. SpeedArti ne remplace pas cette donnée par une valeur générique.',
+      source: input.board.technical.sourceLabel,
+    });
+  }
+
   const technical = computeTechnicalSizing(input);
-  if (!technical) return { valid: false, diagnostics, geometry, trace };
-  diagnostics.push(...technical.diagnostics);
-  if (diagnostics.some((d) => d.severity === 'blocking')) {
-    return { valid: false, diagnostics, geometry, trace: [...trace, 'Dimensionnement technique bloqué : données produit insuffisantes.'] };
+  if (technical) diagnostics.push(...technical.diagnostics);
+
+  if (!technical || diagnostics.some((d) => d.severity === 'blocking')) {
+    return {
+      valid: false,
+      diagnostics,
+      geometry,
+      pricing,
+      trace: [...trace, 'Quantitatif technique final bloqué : règles produit à compléter. Le prix de surface reste informatif.'],
+    };
   }
 
   const structure = computeStructure(input, technical.boardMaxSupportSpacingMm, technical.joistMaxSupportSpacingMm);
@@ -38,22 +72,21 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
 
   const layout = computeLayout(input);
   trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires.`);
-  trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames de stock ; chute matière ${layout.wastePercent.toFixed(2)} %.`);
+  trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames commerciales ; chute matière ${layout.wastePercent.toFixed(2)} %.`);
 
   if (layout.hasButtJoints) {
     diagnostics.push({
       tag: RULE_TAGS.joints,
       severity: 'warning',
       message: 'Le plan de coupe contient des raccords de lames : leur position sera finalisée avec le calepinage de pose.',
-      technicalMessage: 'V0.6 optimise la matière mais ne verrouille pas encore chaque aboutage sur une lambourde dédiée/doublée. Le quantitatif de fixations reste indicatif dans ce cas.',
+      technicalMessage: 'L’optimisation matière ne verrouille pas encore chaque aboutage sur une lambourde dédiée/doublée. Le quantitatif de fixations reste provisoire dans ce cas.',
     });
     structure.fixingCount = undefined;
     structure.fixingStatus = 'pending-joint-layout';
   }
 
-  const pricing = computePricing(input, layout);
-  if (pricing.materialTtc != null) trace.push(`[${PRICE_TAG}] Fournitures lames ${pricing.materialTtc.toFixed(2)} € TTC.`);
-  else trace.push(`[${PRICE_TAG}] Aucun prix inventé : catalogue IDEA Bois requis.`);
+  pricing = computePricing(input, geometry, layout);
+  if (pricing.boardPurchaseTtc != null) trace.push(`[${PRICE_TAG}] Lames à acheter ${pricing.boardPurchaseTtc.toFixed(2)} € TTC.`);
 
   trace.push('[SA-TERR-SCOPE-001] Aucun temps de pose, aucune heure de main-d’œuvre et aucun coût de main-d’œuvre.');
 

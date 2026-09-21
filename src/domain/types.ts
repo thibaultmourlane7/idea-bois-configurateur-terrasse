@@ -24,16 +24,33 @@ export interface BoardTechnicalData {
   sourceVersion?: string;
 }
 
+export interface BoardCatalogData {
+  internalCodes: string[];
+  family: string;
+  range: string;
+  material: string;
+  profile: string;
+  color: string;
+  fixation: string;
+  treatment: string;
+  availabilitySnapshot: string;
+  sourceUrl: string;
+  sourceDate: string;
+  sourceStatus: string;
+}
+
 export interface BoardSpec {
   id: string;
   label: string;
   subtitle: string;
   widthMm: number;
   lengthMm: number;
+  availableLengthsMm?: number[];
   thicknessMm: number;
-  gapMm: number;
+  gapMm?: number;
   priceTtcPerM2?: number;
   isDemo: boolean;
+  catalog?: BoardCatalogData;
   technical: BoardTechnicalData;
 }
 
@@ -123,8 +140,14 @@ export interface StructureResult {
 }
 
 export interface PricingResult {
-  materialTtc?: number;
   unitPriceTtcPerM2?: number;
+  surfaceNetTtc?: number;
+  boardPurchaseTtc?: number;
+  materialTtc?: number;
+  status: 'unavailable' | 'surface-price' | 'board-purchase';
+  isCompleteMaterialTotal: boolean;
+  missingCostFamilies: string[];
+  sourceDate?: string;
 }
 
 export interface ConfiguratorResult {

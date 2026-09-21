@@ -42,13 +42,13 @@ export function Preview3D({ input }: { input: ProjectInput }) {
 
     ctx.strokeStyle = 'rgba(78,61,43,.5)';
     ctx.lineWidth = 1;
-    const pitchM = (input.board.widthMm + input.board.gapMm) / 1000;
-    if (input.orientation === 'length') {
+    const pitchM = (input.board.widthMm + (input.board.gapMm ?? 0)) / 1000;
+    if (pitchM > 0 && input.orientation === 'length') {
       for (let y = pitchM; y < W; y += pitchM) {
         const a = iso(0, y); const b = iso(L, y);
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
-    } else {
+    } else if (pitchM > 0) {
       for (let x = pitchM; x < L; x += pitchM) {
         const a = iso(x, 0); const b = iso(x, W);
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -58,7 +58,7 @@ export function Preview3D({ input }: { input: ProjectInput }) {
 
   return (
     <div className="visual-card">
-      <div className="visual-title"><span>Aperçu 3D</span><code>IB-TERR-UI-3D-006</code></div>
+      <div className="visual-title"><span>Aperçu 3D</span><code>IB-TERR-UI-3D-007</code></div>
       <canvas ref={ref} />
     </div>
   );

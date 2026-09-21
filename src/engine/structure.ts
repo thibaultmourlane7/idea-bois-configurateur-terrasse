@@ -12,15 +12,12 @@ function lineLengthMm(input: ProjectInput, axisPositionMm: number): number {
   const notchStartX = mm(input.dimensions.lengthM - input.dimensions.notchLengthM);
   const notchStartY = mm(input.dimensions.widthM - input.dimensions.notchWidthM);
 
-  if (input.orientation === 'length') {
-    // Lames suivant X, lambourdes verticales suivant Y.
-    return axisPositionMm <= notchStartX + 0.001 ? W : notchStartY;
-  }
-  // Lames suivant Y, lambourdes horizontales suivant X.
+  if (input.orientation === 'length') return axisPositionMm <= notchStartX + 0.001 ? W : notchStartY;
   return axisPositionMm <= notchStartY + 0.001 ? L : notchStartX;
 }
 
 function boardRowCenters(input: ProjectInput): number[] {
+  if (input.board.gapMm == null) throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
   const transverseMm = (input.orientation === 'length' ? input.dimensions.widthM : input.dimensions.lengthM) * 1000;
   const pitch = input.board.widthMm + input.board.gapMm;
   const centers: number[] = [];
@@ -41,12 +38,7 @@ export function computeStructure(
     const axisPositionMm = i * actualSpacing;
     const lengthMm = lineLengthMm(input, axisPositionMm);
     const supportIntervals = Math.max(1, Math.ceil(lengthMm / joistMaxSupportSpacingMm));
-    return {
-      index: i,
-      axisPositionMm,
-      lengthMm,
-      supportCount: supportIntervals + 1,
-    };
+    return { index: i, axisPositionMm, lengthMm, supportCount: supportIntervals + 1 };
   });
 
   const joistLinearM = joistLines.reduce((sum, line) => sum + line.lengthMm, 0) / 1000;

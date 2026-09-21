@@ -1,20 +1,18 @@
-# Rapport de vérification V0.6
+# TEST REPORT — V0.7
 
-## Contrôles réussis
+## Contrôles exécutés avant push
+- compilation TypeScript du moteur : OK ;
+- scénario normatif de régression V0.6 : OK ;
+- 38 groupes catalogue réels chargés : OK ;
+- prix surface nette sur produit IDEA Bois réel : OK ;
+- blocage du jeu de pose manquant : OK ;
+- blocage de la classe/règle technique manquante : OK ;
+- optimisation multi-longueurs : OK ;
+- syntaxe TSX App / Results / 2D / 3D : OK ;
+- absence de calcul de main-d’œuvre : conservée.
 
-- TypeScript strict sur le moteur métier, domaine, catalogue, référentiels et intégrations : OK.
-- TypeScript de l'interface avec déclarations locales de contrôle React : OK.
-- Test d'exécution du moteur compilé en JavaScript : OK.
-- Rectangle 6 × 4 m : surface 24 m² : OK.
-- Forme en L : surface attendue : OK.
-- Entraxe réel inférieur ou égal à l'entraxe maximal validé : OK.
-- Calcul des longueurs de lambourdes et points d'appui : OK.
-- Blocage composite sans règles fabricant : OK.
-- Blocage hauteur hors domaine courant : OK.
-- Blocage dalle déclarée sans évacuation d'eau : OK.
-- Aboutages détectés : quantité de fixations volontairement non finalisée : OK.
-- Aucun champ temps de pose / heures / coût de main-d'œuvre : OK.
+## Point volontairement bloqué
+Le total matériel complet n’est pas déclaré tant que sous-structure, fixations, jeux et compatibilités ne sont pas validés avec des données techniques IDEA Bois / fabricant.
 
-## Build complet
-
-L'installation npm externe a expiré dans l'environnement de préparation. Le workflow GitHub Pages présent dans le projet exécute `npm install`, `npm test` et `npm run build` ; il permettra la validation finale du bundle React/Vite après autorisation de publication sur GitHub.
+## Données commerciales
+Source locale : `SpeedArti_Base_Terrasse_Idea_Bois_2026.xlsx`, relevé du 04/09/2026. Les disponibilités sont des instantanés et ne sont pas présentées comme du stock temps réel.

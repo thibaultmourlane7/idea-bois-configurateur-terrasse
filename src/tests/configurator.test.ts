@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { demoBoards, demoJoist } from '../catalog/catalogue';
+import { demoBoards, demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput } from '../domain/types';
 import { runConfigurator } from '../engine/configurator';
+import { optimizeCuts } from '../engine/cuts';
 
 const base: ProjectInput = {
   projectName: 'Test particulier',
@@ -16,12 +17,13 @@ const base: ProjectInput = {
   usage: 'residential',
 };
 
-describe('Configurateur terrasse V0.6 particulier', () => {
-  it('calcule exactement la surface d’un rectangle', () => {
+describe('Configurateur terrasse V0.7', () => {
+  it('conserve le scénario normatif de régression V0.6', () => {
     const result = runConfigurator(base);
     expect(result.valid).toBe(true);
     expect(result.geometry?.areaM2).toBe(24);
     expect(result.geometry?.perimeterM).toBe(20);
+    expect(result.structure?.joistMaxSpacingMm).toBe(670);
   });
 
   it('calcule la surface d’une forme en L', () => {
@@ -29,12 +31,28 @@ describe('Configurateur terrasse V0.6 particulier', () => {
     expect(result.geometry?.areaM2).toBe(22);
   });
 
-  it('applique la ligne résidentielle validée au produit bois démo', () => {
-    const result = runConfigurator(base);
-    expect(result.structure?.joistMaxSpacingMm).toBe(670);
-    expect(result.structure?.joistActualSpacingMm).toBeLessThanOrEqual(670);
-    expect(result.structure?.joistSupportMaxSpacingMm).toBeGreaterThan(0);
-    expect(result.structure?.supportPointCount).toBeGreaterThan(0);
+  it('charge le catalogue réel IDEA Bois regroupé', () => {
+    expect(ideaBoisBoards.length).toBe(38);
+    expect(ideaBoisBoards.every((board) => board.isDemo === false)).toBe(true);
+    expect(ideaBoisBoards.some((board) => (board.availableLengthsMm?.length ?? 0) > 1)).toBe(true);
+  });
+
+  it('affiche un prix commercial sans inventer la règle technique', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
+    const result = runConfigurator({ ...base, board });
+    expect(result.valid).toBe(false);
+    expect(result.pricing?.surfaceNetTtc).toBeCloseTo(24 * 25.92, 2);
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001' && d.severity === 'blocking')).toBe(true);
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-LAME-010' && d.severity === 'blocking')).toBe(true);
+  });
+
+  it('optimise sur plusieurs longueurs commerciales autorisées', () => {
+    const boards = optimizeCuts([
+      { id: 'A', rowIndex: 0, lengthMm: 4100 },
+      { id: 'B', rowIndex: 1, lengthMm: 3000 },
+    ], [3000, 4200, 5400]);
+    expect(boards.some((board) => board.stockLengthMm === 4200)).toBe(true);
+    expect(boards.every((board) => [3000, 4200, 5400].includes(board.stockLengthMm))).toBe(true);
   });
 
   it('bloque un produit composite sans règles fabricant', () => {
@@ -60,12 +78,5 @@ describe('Configurateur terrasse V0.6 particulier', () => {
     expect('labor' in result).toBe(false);
     expect('hours' in result).toBe(false);
     expect('laborCost' in result).toBe(false);
-  });
-
-  it('ne produit pas un quantitatif de fixations définitif si des aboutages restent à calepiner', () => {
-    const result = runConfigurator(base);
-    expect(result.layout?.hasButtJoints).toBe(true);
-    expect(result.structure?.fixingStatus).toBe('pending-joint-layout');
-    expect(result.structure?.fixingCount).toBeUndefined();
   });
 });

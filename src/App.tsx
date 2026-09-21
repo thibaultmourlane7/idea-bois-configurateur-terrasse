@@ -62,6 +62,7 @@ export default function App() {
   const [preview, setPreview] = useState<'2d' | '3d'>('2d');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
+  const [pdfBusy, setPdfBusy] = useState(false);
   const result = useMemo(() => runConfigurator(project), [project]);
 
   const filteredBoards = useMemo(() => {
@@ -79,8 +80,22 @@ export default function App() {
   };
 
   const saveLocal = () => {
-    localStorage.setItem('idea-bois-terrasse-v09', JSON.stringify(project));
+    localStorage.setItem('idea-bois-terrasse-v010', JSON.stringify(project));
     alert('Votre projet a été enregistré sur cet appareil.');
+  };
+
+  const downloadPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const { generateClientPdf } = await import('./pdf/clientPdf');
+      await generateClientPdf(project, result, VERSION_TAG);
+    } catch (error) {
+      console.error(error);
+      alert("Le PDF n'a pas pu être généré. Merci de réessayer.");
+    } finally {
+      setPdfBusy(false);
+    }
   };
 
   const next = () => setStep((current) => Math.min(5, current + 1));
@@ -103,7 +118,7 @@ export default function App() {
             <h1>Imaginez votre terrasse</h1>
           </div>
         </div>
-        <div className="header-note">Simple • catalogue réel • finitions • panier matériaux</div>
+        <div className="header-note">Simple • catalogue réel • panier • PDF client</div>
       </header>
 
       <div className="stepper-wrap">
@@ -283,7 +298,16 @@ export default function App() {
 
           {step === 5 && (
             <div className="step-content result-step">
-              <div className="section-heading result-heading"><span className="section-number done">✓</span><div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div><button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button></div>
+              <div className="section-heading result-heading">
+                <span className="section-number done">✓</span>
+                <div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div>
+                <div className="result-actions">
+                  <button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button>
+                  <button type="button" className="pdf-button" onClick={downloadPdf} disabled={pdfBusy}>
+                    {pdfBusy ? 'Création du PDF…' : 'Télécharger le PDF'}
+                  </button>
+                </div>
+              </div>
               <Results input={project} result={result} />
               <div className="preview-toolbar"><div className="segmented small-segmented"><button type="button" className={preview === '2d' ? 'active' : ''} onClick={() => setPreview('2d')}>Vue 2D</button><button type="button" className={preview === '3d' ? 'active' : ''} onClick={() => setPreview('3d')}>Vue 3D</button></div><span>Produit : <strong>{project.board.label}</strong></span></div>
               {preview === '2d' ? <Plan2D input={project} /> : <Preview3D input={project} />}

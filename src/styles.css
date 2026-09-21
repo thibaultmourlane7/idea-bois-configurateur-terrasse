@@ -111,3 +111,13 @@
   .stepper button span{width:25px;height:25px}
   .stepper button strong{font-size:9px}
 }
+
+
+/* V0.10 - PDF client */
+.result-actions{display:flex;gap:8px;align-items:center;margin-left:auto}
+.pdf-button{border:0;background:linear-gradient(135deg,#1772c5,#228bdd);color:#fff;border-radius:10px;padding:10px 13px;font-weight:850;box-shadow:0 6px 16px rgba(25,118,210,.18)}
+.pdf-button:disabled{opacity:.6;cursor:wait}
+@media(max-width:700px){
+  .result-actions{width:100%;margin-left:48px;flex-wrap:wrap}
+  .result-actions .ghost-button{margin-left:0}
+}

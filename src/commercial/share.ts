@@ -1,11 +1,12 @@
 import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
-import type { ProjectInput } from '../domain/types';
+import type { ProjectInput, ShapeType, TerraceObstacle } from '../domain/types';
 
-export interface ShareSnapshotV1 {
-  v: 1;
+export interface ShareSnapshotV2 {
+  v: 2;
   projectName: string;
   shape: ProjectInput['shape'];
   dimensions: ProjectInput['dimensions'];
+  obstacles: TerraceObstacle[];
   heightCm: number;
   supportType: ProjectInput['supportType'];
   supportSystem: ProjectInput['supportSystem'];
@@ -29,12 +30,17 @@ function base64UrlToBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
+function validShape(value: unknown): ShapeType {
+  return value === 'l-shape' || value === 't-shape' || value === 'u-shape' || value === 'circle' ? value : 'rectangle';
+}
+
 export function projectToShareToken(project: ProjectInput): string {
-  const snapshot: ShareSnapshotV1 = {
-    v: 1,
+  const snapshot: ShareSnapshotV2 = {
+    v: 2,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
+    obstacles: project.obstacles,
     heightCm: project.heightCm,
     supportType: project.supportType,
     supportSystem: project.supportSystem,
@@ -50,21 +56,17 @@ export function projectToShareToken(project: ProjectInput): string {
 export function projectFromShareToken(token: string, fallback: ProjectInput): ProjectInput {
   try {
     const raw = new TextDecoder().decode(base64UrlToBytes(token));
-    const snapshot = JSON.parse(raw) as Partial<ShareSnapshotV1>;
-    if (snapshot.v !== 1 || !snapshot.boardId || !snapshot.dimensions) return fallback;
+    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV2>, 'v'> & { v?: number };
+    if ((snapshot.v !== 1 && snapshot.v !== 2) || !snapshot.boardId || !snapshot.dimensions) return fallback;
     const board = ideaBoisBoards.find((item) => item.id === snapshot.boardId);
     if (!board) return fallback;
 
     return {
       ...fallback,
       projectName: typeof snapshot.projectName === 'string' ? snapshot.projectName : fallback.projectName,
-      shape: snapshot.shape === 'l-shape' ? 'l-shape' : 'rectangle',
-      dimensions: {
-        lengthM: Number(snapshot.dimensions.lengthM) || fallback.dimensions.lengthM,
-        widthM: Number(snapshot.dimensions.widthM) || fallback.dimensions.widthM,
-        notchLengthM: Number(snapshot.dimensions.notchLengthM) || fallback.dimensions.notchLengthM,
-        notchWidthM: Number(snapshot.dimensions.notchWidthM) || fallback.dimensions.notchWidthM,
-      },
+      shape: validShape(snapshot.shape),
+      dimensions: { ...fallback.dimensions, ...snapshot.dimensions },
+      obstacles: Array.isArray(snapshot.obstacles) ? snapshot.obstacles : [],
       heightCm: Number(snapshot.heightCm) || fallback.heightCm,
       supportType: snapshot.supportType ?? fallback.supportType,
       supportSystem: snapshot.supportSystem ?? fallback.supportSystem,

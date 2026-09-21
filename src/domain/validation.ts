@@ -1,19 +1,46 @@
-import type { Diagnostic, ProjectInput } from './types';
+import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
+import { isObstacleInsideBaseDeck, obstaclesOverlap } from '../engine/geometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
+
+function validateObstacle(obstacle: TerraceObstacle): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const base = { tag: 'SA-TERR-GEO-OBS-001', severity: 'blocking' as const };
+
+  if (!Number.isFinite(obstacle.xM) || obstacle.xM < 0 || !Number.isFinite(obstacle.yM) || obstacle.yM < 0) {
+    diagnostics.push({ ...base, message: `${obstacle.label || 'Réservation'} : la position doit être positive.` });
+  }
+
+  if (obstacle.shape === 'circle') {
+    if (!Number.isFinite(obstacle.diameterM ?? Number.NaN) || (obstacle.diameterM ?? 0) <= 0) {
+      diagnostics.push({ ...base, message: `${obstacle.label || 'Réservation'} : le diamètre doit être positif.` });
+    }
+  } else {
+    if (!Number.isFinite(obstacle.widthM ?? Number.NaN) || (obstacle.widthM ?? 0) <= 0 || !Number.isFinite(obstacle.heightM ?? Number.NaN) || (obstacle.heightM ?? 0) <= 0) {
+      diagnostics.push({ ...base, message: `${obstacle.label || 'Réservation'} : longueur et largeur doivent être positives.` });
+    }
+  }
+
+  return diagnostics;
+}
 
 export function validateProject(input: ProjectInput): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const { dimensions: g, board } = input;
 
-  const positive = [
-    ['longueur de la terrasse', g.lengthM, 'dimensions.lengthM'],
-    ['largeur de la terrasse', g.widthM, 'dimensions.widthM'],
+  const positive: Array<[string, number, string]> = [
     ['hauteur de la terrasse', input.heightCm, 'heightCm'],
     ['largeur de lame', board.widthMm, 'board.widthMm'],
     ['longueur de lame', board.lengthMm, 'board.lengthMm'],
     ['épaisseur de lame', board.thicknessMm, 'board.thicknessMm'],
-  ] as const;
+  ];
+
+  if (input.shape === 'circle') {
+    positive.push(['diamètre de la terrasse', g.circleDiameterM, 'dimensions.circleDiameterM']);
+  } else {
+    positive.push(['longueur de la terrasse', g.lengthM, 'dimensions.lengthM']);
+    positive.push(['largeur de la terrasse', g.widthM, 'dimensions.widthM']);
+  }
 
   for (const [label, value, field] of positive) {
     if (!Number.isFinite(value) || value <= 0) {
@@ -28,18 +55,55 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
 
   if (input.shape === 'l-shape') {
     if (g.notchLengthM <= 0 || g.notchWidthM <= 0) {
-      diagnostics.push({
-        tag: 'SA-TERR-GEO-002',
-        severity: 'blocking',
-        message: 'Les dimensions du décroché en L sont nécessaires.',
-      });
+      diagnostics.push({ tag: 'SA-TERR-GEO-002', severity: 'blocking', message: 'Les dimensions du décroché en L sont nécessaires.' });
     }
     if (g.notchLengthM >= g.lengthM || g.notchWidthM >= g.widthM) {
-      diagnostics.push({
-        tag: 'SA-TERR-GEO-003',
-        severity: 'blocking',
-        message: 'Le décroché doit rester plus petit que la terrasse.',
-      });
+      diagnostics.push({ tag: 'SA-TERR-GEO-003', severity: 'blocking', message: 'Le décroché doit rester plus petit que la terrasse.' });
+    }
+  }
+
+  if (input.shape === 't-shape') {
+    if (g.tStemWidthM <= 0 || g.tStemWidthM >= g.lengthM) {
+      diagnostics.push({ tag: 'SA-TERR-GEO-T-001', severity: 'blocking', message: 'La largeur du pied du T doit être positive et inférieure à la longueur totale.' });
+    }
+    if (g.tBarDepthM <= 0 || g.tBarDepthM >= g.widthM) {
+      diagnostics.push({ tag: 'SA-TERR-GEO-T-002', severity: 'blocking', message: 'La profondeur de la barre du T doit être positive et inférieure à la largeur totale.' });
+    }
+  }
+
+  if (input.shape === 'u-shape') {
+    if (g.uOpeningWidthM <= 0 || g.uOpeningWidthM >= g.lengthM) {
+      diagnostics.push({ tag: 'SA-TERR-GEO-U-001', severity: 'blocking', message: 'La largeur de l’ouverture du U doit être positive et inférieure à la longueur totale.' });
+    }
+    if (g.uOpeningDepthM <= 0 || g.uOpeningDepthM >= g.widthM) {
+      diagnostics.push({ tag: 'SA-TERR-GEO-U-002', severity: 'blocking', message: 'La profondeur de l’ouverture du U doit être positive et inférieure à la largeur totale.' });
+    }
+  }
+
+  for (const obstacle of input.obstacles) diagnostics.push(...validateObstacle(obstacle));
+
+  if (!diagnostics.some((item) => item.severity === 'blocking')) {
+    for (const obstacle of input.obstacles) {
+      if (!isObstacleInsideBaseDeck(input, obstacle)) {
+        diagnostics.push({
+          tag: 'SA-TERR-GEO-OBS-002',
+          severity: 'blocking',
+          message: `${obstacle.label || 'Réservation'} doit rester entièrement à l’intérieur de la terrasse.`,
+          field: `obstacles.${obstacle.id}`,
+        });
+      }
+    }
+
+    for (let i = 0; i < input.obstacles.length; i += 1) {
+      for (let j = i + 1; j < input.obstacles.length; j += 1) {
+        if (obstaclesOverlap(input.obstacles[i], input.obstacles[j])) {
+          diagnostics.push({
+            tag: 'SA-TERR-GEO-OBS-003',
+            severity: 'blocking',
+            message: `${input.obstacles[i].label} et ${input.obstacles[j].label} se chevauchent. Les réservations doivent être distinctes.`,
+          });
+        }
+      }
     }
   }
 

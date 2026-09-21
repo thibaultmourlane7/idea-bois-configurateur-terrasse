@@ -16,7 +16,10 @@ export interface ClientPdfModel {
   shape: string;
   dimensions: string;
   surface: string;
+  grossSurface: string;
+  excludedSurface: string;
   perimeter: string;
+  obstacles: string;
   support: string;
   supportSystem: string;
   height: string;
@@ -46,17 +49,13 @@ const familyLabels: Record<BasketLine['family'], string> = {
 
 function quantity(line: BasketLine): string {
   if (line.quantity != null) return `${fmt(line.quantity)} ${line.unit}`;
-  if (line.quantityMin != null && line.quantityMax != null) {
-    return `${fmt(line.quantityMin)} a ${fmt(line.quantityMax)} ${line.unit}`;
-  }
+  if (line.quantityMin != null && line.quantityMax != null) return `${fmt(line.quantityMin)} a ${fmt(line.quantityMax)} ${line.unit}`;
   return 'A confirmer';
 }
 
 function price(line: BasketLine): string {
   if (line.totalTtc != null) return eur(line.totalTtc);
-  if (line.totalMinTtc != null && line.totalMaxTtc != null) {
-    return `${eur(line.totalMinTtc)} a ${eur(line.totalMaxTtc)}`;
-  }
+  if (line.totalMinTtc != null && line.totalMaxTtc != null) return `${eur(line.totalMinTtc)} a ${eur(line.totalMaxTtc)}`;
   return 'A confirmer';
 }
 
@@ -79,6 +78,23 @@ function supportSystemLabel(input: ProjectInput): string {
   return 'A confirmer';
 }
 
+function shapeLabel(input: ProjectInput): string {
+  if (input.shape === 'l-shape') return 'Forme en L';
+  if (input.shape === 't-shape') return 'Forme en T';
+  if (input.shape === 'u-shape') return 'Forme en U';
+  if (input.shape === 'circle') return 'Cercle';
+  return 'Rectangle';
+}
+
+function dimensionLabel(input: ProjectInput): string {
+  const g = input.dimensions;
+  if (input.shape === 'circle') return `Diametre ${fmt(g.circleDiameterM)} m`;
+  if (input.shape === 'l-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - decroche ${fmt(g.notchLengthM)} x ${fmt(g.notchWidthM)} m`;
+  if (input.shape === 't-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - pied ${fmt(g.tStemWidthM)} m - barre ${fmt(g.tBarDepthM)} m`;
+  if (input.shape === 'u-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - ouverture ${fmt(g.uOpeningWidthM)} x ${fmt(g.uOpeningDepthM)} m`;
+  return `${fmt(g.lengthM)} m x ${fmt(g.widthM)} m`;
+}
+
 export function buildClientPdfModel(
   input: ProjectInput,
   result: ConfiguratorResult,
@@ -89,29 +105,19 @@ export function buildClientPdfModel(
 
   const basket = result.basket;
   const basketStatus = basket?.status ?? 'partial';
-
   const budgetLabel = basketStatus === 'complete'
     ? 'TOTAL MATERIEL TTC'
     : basketStatus === 'range'
       ? 'BUDGET MATERIEL TTC'
       : 'SOUS-TOTAL DEJA CHIFFRE';
-
   const budgetValue = basketStatus === 'complete'
     ? eur(basket?.totalTtc ?? 0)
     : basketStatus === 'range'
       ? `${eur(basket?.totalMinTtc ?? 0)} a ${eur(basket?.totalMaxTtc ?? 0)}`
       : eur(basket?.knownSubtotalTtc ?? 0);
 
-  const dims = input.shape === 'rectangle'
-    ? `${fmt(input.dimensions.lengthM)} m x ${fmt(input.dimensions.widthM)} m`
-    : `${fmt(input.dimensions.lengthM)} m x ${fmt(input.dimensions.widthM)} m - decroche ${fmt(input.dimensions.notchLengthM)} m x ${fmt(input.dimensions.notchWidthM)} m`;
-
-  const finishParts = [
-    input.edgeFinishMode === 'full-perimeter' ? 'Habillage lateral du pourtour' : 'Sans habillage lateral',
-  ];
-  if (input.supportType === 'stabilized-ground') {
-    finishParts.push(input.includeGeotextile ? 'Geotextile inclus' : 'Sans geotextile');
-  }
+  const finishParts = [input.edgeFinishMode === 'full-perimeter' ? 'Habillage lateral du pourtour' : 'Sans habillage lateral'];
+  if (input.supportType === 'stabilized-ground') finishParts.push(input.includeGeotextile ? 'Geotextile inclus' : 'Sans geotextile');
 
   const lines = (basket?.lines ?? []).map((line): ClientPdfLine => ({
     family: familyLabels[line.family],
@@ -132,10 +138,15 @@ export function buildClientPdfModel(
     projectName: input.projectName || 'Mon projet terrasse',
     generatedAt,
     version,
-    shape: input.shape === 'rectangle' ? 'Rectangle' : 'Forme en L',
-    dimensions: dims,
+    shape: shapeLabel(input),
+    dimensions: dimensionLabel(input),
     surface: `${fmt(result.geometry.areaM2)} m2`,
+    grossSurface: `${fmt(result.geometry.grossAreaM2)} m2`,
+    excludedSurface: `${fmt(result.geometry.excludedAreaM2)} m2`,
     perimeter: `${fmt(result.geometry.perimeterM)} ml`,
+    obstacles: input.obstacles.length
+      ? input.obstacles.map((obstacle) => obstacle.label).join(', ')
+      : 'Aucune reservation',
     support: supportLabel(input),
     supportSystem: supportSystemLabel(input),
     height: `${fmt(input.heightCm)} cm`,

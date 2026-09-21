@@ -207,3 +207,44 @@
 .choose-variant{width:100%;margin-top:13px;border:0;border-radius:9px;background:#1976d2;color:#fff;padding:9px 10px;font-size:10px;font-weight:850}
 @media(max-width:900px){.variant-grid{grid-template-columns:1fr}.variant-heading{align-items:flex-start;flex-direction:column}}
 @media(max-width:700px){.catalog-secondary{align-items:stretch;flex-direction:column}.catalog-sort{width:100%}}
+
+
+/* V0.13 — géométrie avancée & réservations */
+.shape-selector{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:0 0 20px}
+.shape-card{border:1px solid #d9e4ec;background:#fff;border-radius:12px;padding:12px 9px;text-align:left;position:relative;color:#17324d;min-height:82px}
+.shape-card.active{border:2px solid #1976d2;padding:11px 8px;background:#f7fbff}
+.shape-card>span{position:absolute;right:9px;top:8px;color:#1976d2;font-weight:900}
+.shape-card strong{display:block;font-size:13px}
+.shape-card small{display:block;color:#7b8b98;font-size:10px;margin-top:5px;line-height:1.3}
+.geometry-fields{margin-top:14px}
+.geometry-subpanel{margin-top:14px}
+.obstacle-section{margin-top:28px;padding-top:22px;border-top:1px solid #e8eef2}
+.obstacle-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.obstacle-heading h3{margin:0;color:#173b5f;font-size:17px}
+.obstacle-heading p{margin:4px 0 0;color:#718493;font-size:11px;line-height:1.45}
+.obstacle-heading>span{background:#eef7ff;color:#2c78ae;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:850;white-space:nowrap}
+.obstacle-list{display:grid;gap:10px;margin-top:14px}
+.obstacle-card{border:1px solid #dce6ed;border-radius:13px;background:#fbfdfe;padding:13px}
+.obstacle-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.obstacle-card-head strong{font-size:13px;color:#173b5f}
+.obstacle-card-head button{border:0;background:#fff0f0;color:#a34d4d;border-radius:8px;padding:6px 9px;font-size:9px;font-weight:850}
+.obstacle-edit-grid,.obstacle-draft-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.obstacle-edit-grid label,.obstacle-draft-grid label{position:relative;color:#607587;font-size:9px;font-weight:850}
+.obstacle-edit-grid input,.obstacle-draft-grid input{display:block;width:100%;margin-top:5px;border:1px solid #d4e0e8;border-radius:8px;padding:8px 27px 8px 9px;color:#17324d;background:#fff}
+.obstacle-edit-grid label>span,.obstacle-draft-grid label>span{position:absolute;right:8px;bottom:8px;color:#8b99a4;font-size:9px}
+.obstacle-index{display:block;margin-top:8px;color:#8a98a3;font-size:9px}
+.obstacle-builder{margin-top:14px;border:1px dashed #bfd3e2;border-radius:13px;padding:14px;background:#f8fbfd}
+.obstacle-builder h4{margin:0 0 10px;color:#173b5f}
+.obstacle-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.obstacle-presets button{border:1px solid #d6e2ea;background:#fff;color:#536f83;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:800}
+.obstacle-presets button.active{background:#1976d2;color:#fff;border-color:#1976d2}
+.add-obstacle-button{margin-top:12px;border:0;border-radius:9px;background:#173b5f;color:#fff;padding:9px 12px;font-size:10px;font-weight:850}
+.add-obstacle-button:disabled{opacity:.35}
+.obstacle-builder>small{display:block;margin-top:8px;color:#82919d;font-size:9px}
+.geometry-diagnostics{margin-top:18px}
+.obstacle-shape{stroke:#6b8193;stroke-width:1.5}
+.obstacle-label{font-size:10px;font-weight:800;fill:#486174;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+.geometry-breakdown{display:flex;gap:7px;flex-wrap:wrap;margin-top:-4px}
+.geometry-breakdown span{font-size:10px;color:#6e8291;background:#f5f8fa;border-radius:999px;padding:5px 8px}
+@media(max-width:900px){.shape-selector{grid-template-columns:repeat(3,1fr)}.obstacle-edit-grid,.obstacle-draft-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.shape-selector{grid-template-columns:repeat(2,1fr)}.obstacle-edit-grid,.obstacle-draft-grid{grid-template-columns:1fr}.obstacle-heading{flex-direction:column}}

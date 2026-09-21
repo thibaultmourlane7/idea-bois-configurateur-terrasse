@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { demoJoist, ideaBoisBoards } from './catalog/catalogue';
 import { Diagnostics } from './components/Diagnostics';
 import { Plan2D } from './components/Plan2D';
@@ -6,6 +6,7 @@ import { Preview3D } from './components/Preview3D';
 import { Results } from './components/Results';
 import { CommercialActions } from './components/CommercialActions';
 import { VariantComparator } from './components/VariantComparator';
+import { GeometryEditor } from './components/GeometryEditor';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
@@ -17,7 +18,18 @@ const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027
 const initialProject: ProjectInput = {
   projectName: 'Mon projet terrasse',
   shape: 'rectangle',
-  dimensions: { lengthM: 6, widthM: 4, notchLengthM: 2, notchWidthM: 1.5 },
+  dimensions: {
+    lengthM: 6,
+    widthM: 4,
+    notchLengthM: 2,
+    notchWidthM: 1.5,
+    circleDiameterM: 5,
+    tStemWidthM: 2.5,
+    tBarDepthM: 1.5,
+    uOpeningWidthM: 2,
+    uOpeningDepthM: 2,
+  },
+  obstacles: [],
   heightCm: 20,
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
@@ -75,6 +87,9 @@ export default function App() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [savedAvailable, setSavedAvailable] = useState(() => hasSavedProject());
   const result = useMemo(() => runConfigurator(project), [project]);
+  const geometryDiagnostics = result.diagnostics.filter((item) =>
+    item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001')
+  );
 
   const filteredBoards = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
@@ -106,10 +121,6 @@ export default function App() {
       if (current.length >= 3) return [...current.slice(1), boardId];
       return [...current, boardId];
     });
-  };
-
-  const patchDimensions = (key: keyof ProjectInput['dimensions'], value: number) => {
-    setProject((current) => ({ ...current, dimensions: { ...current.dimensions, [key]: value } }));
   };
 
   const saveLocal = () => {
@@ -165,7 +176,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Catalogue réel • comparateur • panier • PDF • devis</div>
+          <div className="header-note">Formes avancées • réservations • comparateur • panier • PDF</div>
         </div>
       </header>
 
@@ -183,24 +194,11 @@ export default function App() {
         <section className="wizard-card">
           {step === 1 && (
             <div className="step-content">
-              <div className="section-heading"><span className="section-number">1</span><div><h2>Quelle forme fait votre terrasse ?</h2><p>Indiquez simplement ses dimensions principales.</p></div></div>
-              <label className="single-field project-name-field">Nom du projet
-                <div className="input-unit"><input value={project.projectName} maxLength={80} onChange={(e) => setProject({ ...project, projectName: e.target.value })} /></div>
-                <small>Ce nom sera utilisé dans le PDF et le lien partagé.</small>
-              </label>
-              <div className="choice-grid two-choice">
-                <ChoiceCard active={project.shape === 'rectangle'} title="Rectangle" subtitle="La forme la plus courante" onClick={() => setProject({ ...project, shape: 'rectangle' })} />
-                <ChoiceCard active={project.shape === 'l-shape'} title="Forme en L" subtitle="Avec un décroché" onClick={() => setProject({ ...project, shape: 'l-shape' })} />
-              </div>
-              <div className="form-grid">
-                <label>Longueur <div className="input-unit"><input type="number" min="0.1" step="0.1" value={project.dimensions.lengthM} onChange={(e: ChangeEvent<HTMLInputElement>) => patchDimensions('lengthM', +e.target.value)} /><span>m</span></div></label>
-                <label>Largeur <div className="input-unit"><input type="number" min="0.1" step="0.1" value={project.dimensions.widthM} onChange={(e: ChangeEvent<HTMLInputElement>) => patchDimensions('widthM', +e.target.value)} /><span>m</span></div></label>
-              </div>
-              {project.shape === 'l-shape' && (
-                <div className="soft-panel"><h3>Dimensions du décroché</h3><div className="form-grid">
-                  <label>Longueur du décroché <div className="input-unit"><input type="number" min="0.1" step="0.1" value={project.dimensions.notchLengthM} onChange={(e) => patchDimensions('notchLengthM', +e.target.value)} /><span>m</span></div></label>
-                  <label>Largeur du décroché <div className="input-unit"><input type="number" min="0.1" step="0.1" value={project.dimensions.notchWidthM} onChange={(e) => patchDimensions('notchWidthM', +e.target.value)} /><span>m</span></div></label>
-                </div></div>
+              <GeometryEditor project={project} onChange={setProject} />
+              {geometryDiagnostics.length > 0 && (
+                <div className="geometry-diagnostics">
+                  <Diagnostics items={geometryDiagnostics} />
+                </div>
               )}
             </div>
           )}
@@ -405,7 +403,7 @@ export default function App() {
         <aside className="live-summary">
           <span className="live-label">Votre terrasse</span>
           <div className="live-preview"><Plan2D input={project} /></div>
-          <div className="live-stats"><div><span>Surface</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Forme</span><strong>{project.shape === 'rectangle' ? 'Rectangle' : 'En L'}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
+          <div className="live-stats"><div><span>Surface nette</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Réservations</span><strong>{project.obstacles.length}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
           <div className="speedarti-note"><span>✓</span><p>Le projet peut être partagé, repris par un conseiller et préparé pour devis/panier. Les connexions réelles restent désactivées dans la démo.</p></div>
           <code className="version-code">{VERSION_TAG}</code>
         </aside>

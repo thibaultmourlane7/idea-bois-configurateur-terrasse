@@ -1,24 +1,11 @@
 import type { ProjectInput, StructureResult } from '../domain/types';
 import { NF_DTU_51_4_2018 } from '../referentials/nf-dtu-51-4-2018';
-import { isPointInsideDeck } from './geometry';
-
-const mm = (m: number) => m * 1000;
-
-function lineLengthMm(input: ProjectInput, axisPositionMm: number): number {
-  const L = mm(input.dimensions.lengthM);
-  const W = mm(input.dimensions.widthM);
-  if (input.shape === 'rectangle') return input.orientation === 'length' ? W : L;
-
-  const notchStartX = mm(input.dimensions.lengthM - input.dimensions.notchLengthM);
-  const notchStartY = mm(input.dimensions.widthM - input.dimensions.notchWidthM);
-
-  if (input.orientation === 'length') return axisPositionMm <= notchStartX + 0.001 ? W : notchStartY;
-  return axisPositionMm <= notchStartY + 0.001 ? L : notchStartX;
-}
+import { getDeckBoundingSizeM, getDeckIntervalsAtMm, isPointInsideDeck } from './geometry';
 
 function boardRowCenters(input: ProjectInput): number[] {
   if (input.board.gapMm == null) throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
-  const transverseMm = (input.orientation === 'length' ? input.dimensions.widthM : input.dimensions.lengthM) * 1000;
+  const bounds = getDeckBoundingSizeM(input);
+  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
   const pitch = input.board.widthMm + input.board.gapMm;
   const centers: number[] = [];
   for (let pos = input.board.widthMm / 2; pos <= transverseMm + 0.001; pos += pitch) centers.push(pos);
@@ -30,16 +17,24 @@ export function computeStructure(
   boardMaxSupportSpacingMm: number,
   joistMaxSupportSpacingMm: number,
 ): StructureResult {
-  const alongBoardMm = (input.orientation === 'length' ? input.dimensions.lengthM : input.dimensions.widthM) * 1000;
+  const bounds = getDeckBoundingSizeM(input);
+  const alongBoardMm = (input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000;
   const intervalCount = Math.max(1, Math.ceil(alongBoardMm / boardMaxSupportSpacingMm));
   const actualSpacing = alongBoardMm / intervalCount;
+  const joistOrientation = input.orientation === 'length' ? 'width' : 'length';
 
   const joistLines = Array.from({ length: intervalCount + 1 }, (_, i) => {
     const axisPositionMm = i * actualSpacing;
-    const lengthMm = lineLengthMm(input, axisPositionMm);
-    const supportIntervals = Math.max(1, Math.ceil(lengthMm / joistMaxSupportSpacingMm));
-    return { index: i, axisPositionMm, lengthMm, supportCount: supportIntervals + 1 };
-  });
+    const segments = getDeckIntervalsAtMm(input, axisPositionMm, joistOrientation, 0);
+    const lengthMm = segments.reduce((sum, [start, end]) => sum + (end - start), 0);
+    const supportCount = segments.reduce((sum, [start, end]) => {
+      const segmentLength = end - start;
+      if (segmentLength <= 1) return sum;
+      const supportIntervals = Math.max(1, Math.ceil(segmentLength / joistMaxSupportSpacingMm));
+      return sum + supportIntervals + 1;
+    }, 0);
+    return { index: i, axisPositionMm, lengthMm, supportCount };
+  }).filter((line) => line.lengthMm > 1);
 
   const joistLinearM = joistLines.reduce((sum, line) => sum + line.lengthMm, 0) / 1000;
   const supportPointCount = joistLines.reduce((sum, line) => sum + line.supportCount, 0);

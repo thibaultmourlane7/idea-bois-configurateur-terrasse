@@ -1,4 +1,4 @@
-export type ShapeType = 'rectangle' | 'l-shape';
+export type ShapeType = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'circle';
 export type BoardOrientation = 'length' | 'width';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
@@ -13,6 +13,26 @@ export interface Dimensions {
   widthM: number;
   notchLengthM: number;
   notchWidthM: number;
+  circleDiameterM: number;
+  tStemWidthM: number;
+  tBarDepthM: number;
+  uOpeningWidthM: number;
+  uOpeningDepthM: number;
+}
+
+export type ObstacleKind = 'pool' | 'tree' | 'post' | 'manhole' | 'other';
+export type ObstacleShape = 'rectangle' | 'circle';
+
+export interface TerraceObstacle {
+  id: string;
+  kind: ObstacleKind;
+  label: string;
+  shape: ObstacleShape;
+  xM: number;
+  yM: number;
+  widthM?: number;
+  heightM?: number;
+  diameterM?: number;
 }
 
 export interface BoardTechnicalData {
@@ -71,6 +91,7 @@ export interface ProjectInput {
   projectName: string;
   shape: ShapeType;
   dimensions: Dimensions;
+  obstacles: TerraceObstacle[];
   heightCm: number;
   supportType: SupportType;
   supportSystem: SupportSystem;
@@ -93,8 +114,15 @@ export interface Diagnostic {
 }
 
 export interface GeometryResult {
+  /** Surface nette réellement couverte par les lames. */
   areaM2: number;
+  /** Périmètre extérieur, conservé pour compatibilité avec les finitions de rive. */
   perimeterM: number;
+  grossAreaM2: number;
+  excludedAreaM2: number;
+  outerPerimeterM: number;
+  obstaclePerimeterM: number;
+  obstacleCount: number;
 }
 
 export interface RequiredPiece {

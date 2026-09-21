@@ -41,6 +41,12 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
           <span>Surface</span>
           <strong>{number(result.geometry.areaM2, 2)} m²</strong>
           <small>surface nette du projet</small>
+          {result.geometry.excludedAreaM2 > 0 && (
+            <div className="geometry-breakdown">
+              <span>Brute {number(result.geometry.grossAreaM2, 2)} m²</span>
+              <span>Exclue {number(result.geometry.excludedAreaM2, 2)} m²</span>
+            </div>
+          )}
         </article>
         <article className="result-card">
           <span>Produit</span>

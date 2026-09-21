@@ -1,33 +1,50 @@
-# IDEA Bois — Configurateur Terrasse V0.12
+# IDEA Bois — Configurateur Terrasse V0.13
 
-## Gros lot V0.12
-La V0.12 regroupe plusieurs évolutions majeures :
+## Gros lot V0.13 — géométrie avancée
 
-- catalogue classé par niveau de complétude ;
-- plusieurs variantes Pin du Nord 145x27 désormais rattachées à la recette commerciale documentée ;
-- Cumaru 145x21 calculable avec jeu publié de 5 mm ;
-- Garapa 145x21 documenté avec plage de jeu publiée 8–10 mm sans choisir silencieusement une valeur ;
-- Padouk 120x21 et Ipé 140x20 classés en calcul partiel selon les données disponibles ;
-- vis bois dur dédiée pour les recettes exotiques documentées ;
-- suppression des structures génériques automatiques pour les produits sans recette commerciale validée ;
-- filtres « panier calculable / calcul avancé / calcul partiel / prix seul » ;
-- tri par complétude ou prix ;
-- comparateur de 2 à 3 variantes sur la même géométrie ;
-- comparaison du prix lame, budget matériel, longueurs disponibles et disponibilité ;
-- choix direct d'une variante depuis le comparateur.
+Cette version transforme la géométrie en vrai moteur de projet.
 
-## Niveaux de produit
-- **Panier calculable** : données commerciales suffisantes pour chiffrer le panier de base.
-- **Calcul avancé** : plusieurs postes sont calculables mais une famille reste à finaliser.
-- **Calcul partiel** : composition documentée mais une règle de pose importante manque encore.
-- **Prix disponible** : prix catalogue connu, pas assez de règles pour calculer le panier.
+### Formes disponibles
+- rectangle ;
+- forme en L ;
+- forme en T ;
+- forme en U ;
+- cercle.
 
-## Règle de sécurité
-Une plage fabricant n'est jamais remplacée par une valeur unique inventée.
-Exemple : le Garapa publie 8–10 mm ; la V0.12 conserve cette plage et n'exécute pas le calepinage final tant qu'une valeur n'est pas validée.
+### Réservations / zones exclues
+Le particulier peut ajouter plusieurs zones qui ne doivent pas recevoir de lames :
+- piscine ;
+- arbre ;
+- poteau ;
+- regard ;
+- autre réservation.
+
+Chaque réservation possède une position et des dimensions explicites.
+
+### Impact réel des réservations
+Les réservations :
+- retirent leur surface de la surface nette ;
+- réduisent les quantités et les budgets ;
+- coupent les rangées de lames en plusieurs segments ;
+- influencent l'optimisation des longueurs commerciales ;
+- sont visibles dans les vues 2D et 3D ;
+- sont conservées dans la sauvegarde locale ;
+- sont conservées dans le lien partagé ;
+- apparaissent dans le PDF client.
+
+### Contrôles
+Le moteur bloque :
+- une réservation hors de la terrasse ;
+- des dimensions nulles ou négatives ;
+- deux réservations qui se chevauchent ;
+- une géométrie T/U/L incohérente.
+
+### Compatibilité
+Les anciennes fonctions restent présentes :
+catalogue réel, comparateur, panier matériaux, finitions, PDF, partage, devis/rappel et préparation du panier.
 
 ## Connexions
-ERP/PIM/stock/panier/devis réels restent désactivés avant vente du module.
+ERP/PIM/CRM/e-commerce restent préparés mais non activés avant vente du module.
 
 ## Règle ferme
 Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.

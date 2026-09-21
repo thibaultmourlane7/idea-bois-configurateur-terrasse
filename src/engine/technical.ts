@@ -1,6 +1,7 @@
 import type { Diagnostic, ProjectInput } from '../domain/types';
 import { RULE_TAGS } from '../domain/rules';
 import { NF_DTU_51_4_2018 } from '../referentials/nf-dtu-51-4-2018';
+import { getDeckBoundingSizeM } from './geometry';
 
 export interface TechnicalSizing {
   boardMaxSupportSpacingMm: number;
@@ -41,7 +42,8 @@ export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | n
     return { boardMaxSupportSpacingMm: 0, joistMaxSupportSpacingMm: 0, diagnostics };
   }
 
-  const alongBoardMm = (input.orientation === 'length' ? input.dimensions.lengthM : input.dimensions.widthM) * 1000;
+  const bounds = getDeckBoundingSizeM(input);
+  const alongBoardMm = (input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000;
   const intervalCount = Math.max(1, Math.ceil(alongBoardMm / boardRule.maxSpacingMm));
   const actualJoistSpacingMm = alongBoardMm / intervalCount;
 

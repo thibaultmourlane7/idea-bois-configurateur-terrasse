@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { ConfiguratorResult, ProjectInput } from '../domain/types';
 import { buildClientPdfModel } from './clientPdfModel';
+import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 
 type Pdf = InstanceType<typeof jsPDF>;
 
@@ -65,64 +66,81 @@ function drawFooter(doc: Pdf, version: string) {
 }
 
 function drawPlan(doc: Pdf, input: ProjectInput, x: number, y: number, width: number, height: number) {
-  const L = input.dimensions.lengthM;
-  const W = input.dimensions.widthM;
-  const nL = input.dimensions.notchLengthM;
-  const nW = input.dimensions.notchWidthM;
-  const scale = Math.min((width - 8) / L, (height - 8) / W);
-  const ox = x + (width - L * scale) / 2;
-  const oy = y + (height - W * scale) / 2;
+  const bounds = getDeckBoundingSizeM(input);
+  const scale = Math.min((width - 8) / bounds.lengthM, (height - 8) / bounds.widthM);
+  const ox = x + (width - bounds.lengthM * scale) / 2;
+  const oy = y + (height - bounds.widthM * scale) / 2;
+  const outline = getDeckOutlinePointsM(input);
+
+  const pdfPoint = (point: { x: number; y: number }) => [ox + point.x * scale, oy + point.y * scale] as const;
+  const outlinePdf = outline.map(pdfPoint);
+  const first = outlinePdf[0];
+  const vectors = outlinePdf.slice(1).map((point, index) => [
+    point[0] - outlinePdf[index][0],
+    point[1] - outlinePdf[index][1],
+  ]);
 
   doc.setFillColor(250, 252, 254);
   doc.roundedRect(x, y, width, height, 3, 3, 'F');
   doc.setFillColor(217, 181, 141);
   doc.setDrawColor(24, 63, 100);
   doc.setLineWidth(0.6);
-
-  if (input.shape === 'rectangle') {
-    doc.rect(ox, oy, L * scale, W * scale, 'FD');
-  } else {
-    const points = [
-      [ox, oy],
-      [ox + L * scale, oy],
-      [ox + L * scale, oy + (W - nW) * scale],
-      [ox + (L - nL) * scale, oy + (W - nW) * scale],
-      [ox + (L - nL) * scale, oy + W * scale],
-      [ox, oy + W * scale],
-    ];
-    doc.lines(
-      points.slice(1).map((p, i) => [p[0] - points[i][0], p[1] - points[i][1]]),
-      points[0][0],
-      points[0][1],
-      [1, 1],
-      'FD',
-      true,
-    );
-  }
+  doc.lines(vectors, first[0], first[1], [1, 1], 'FD', true);
 
   doc.setDrawColor(118, 88, 60);
-  doc.setLineWidth(0.25);
-  const pitchM = Math.max(0.08, (input.board.widthMm + (input.board.gapMm ?? 0)) / 1000);
+  doc.setLineWidth(0.2);
+  const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
+  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
 
-  if (input.orientation === 'length') {
-    for (let pos = pitchM; pos < W; pos += pitchM) {
-      const yy = oy + pos * scale;
-      if (input.shape === 'rectangle' || pos <= W - nW) {
-        doc.line(ox, yy, ox + L * scale, yy);
-      } else {
-        doc.line(ox, yy, ox + (L - nL) * scale, yy);
-      }
-    }
-  } else {
-    for (let pos = pitchM; pos < L; pos += pitchM) {
-      const xx = ox + pos * scale;
-      if (input.shape === 'rectangle' || pos <= L - nL) {
-        doc.line(xx, oy, xx, oy + W * scale);
-      } else {
-        doc.line(xx, oy, xx, oy + (W - nW) * scale);
+  if (pitchMm > 0) {
+    for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
+      const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
+      for (const [intervalStart, intervalEnd] of intervals) {
+        if (input.orientation === 'length') {
+          doc.line(
+            ox + (intervalStart / 1000) * scale,
+            oy + (center / 1000) * scale,
+            ox + (intervalEnd / 1000) * scale,
+            oy + (center / 1000) * scale,
+          );
+        } else {
+          doc.line(
+            ox + (center / 1000) * scale,
+            oy + (intervalStart / 1000) * scale,
+            ox + (center / 1000) * scale,
+            oy + (intervalEnd / 1000) * scale,
+          );
+        }
       }
     }
   }
+
+  for (const obstacle of input.obstacles) {
+    doc.setFillColor(obstacle.kind === 'pool' ? 207 : obstacle.kind === 'tree' ? 223 : 235, obstacle.kind === 'pool' ? 238 : obstacle.kind === 'tree' ? 242 : 238, obstacle.kind === 'pool' ? 255 : obstacle.kind === 'tree' ? 223 : 241);
+    doc.setDrawColor(105, 125, 142);
+    if (obstacle.shape === 'circle') {
+      const d = obstacle.diameterM ?? 0;
+      doc.ellipse(
+        ox + (obstacle.xM + d / 2) * scale,
+        oy + (obstacle.yM + d / 2) * scale,
+        (d / 2) * scale,
+        (d / 2) * scale,
+        'FD',
+      );
+    } else {
+      doc.rect(
+        ox + obstacle.xM * scale,
+        oy + obstacle.yM * scale,
+        (obstacle.widthM ?? 0) * scale,
+        (obstacle.heightM ?? 0) * scale,
+        'FD',
+      );
+    }
+  }
+
+  doc.setDrawColor(24, 63, 100);
+  doc.setLineWidth(0.6);
+  doc.lines(vectors, first[0], first[1], [1, 1], 'S', true);
 }
 
 function drawInfoCell(doc: Pdf, label: string, value: string, x: number, y: number, w: number) {
@@ -158,8 +176,8 @@ export async function generateClientPdf(input: ProjectInput, result: Configurato
   text(doc, 'Apercu du projet', 14, 61, 11, true, NAVY);
   drawPlan(doc, input, 14, 66, 82, 70);
 
-  drawInfoCell(doc, 'Surface', model.surface, 104, 66, 43);
-  drawInfoCell(doc, 'Perimetre', model.perimeter, 153, 66, 43);
+  drawInfoCell(doc, 'Surface nette', model.surface, 104, 66, 43);
+  drawInfoCell(doc, 'Zones exclues', model.excludedSurface, 153, 66, 43);
   drawInfoCell(doc, 'Forme', model.shape, 104, 90, 43);
   drawInfoCell(doc, 'Hauteur finie', model.height, 153, 90, 43);
   drawInfoCell(doc, 'Support', model.support, 104, 114, 43);
@@ -171,19 +189,21 @@ export async function generateClientPdf(input: ProjectInput, result: Configurato
   drawInfoCell(doc, 'Dimensions', model.dimensions, 14, 180, 88);
   drawInfoCell(doc, 'Finitions', model.finishes, 108, 180, 88);
 
-  doc.setFillColor(238, 247, 255);
-  doc.roundedRect(14, 207, 182, 30, 3, 3, 'F');
-  text(doc, 'Votre panier materiaux', 19, 216, 10, true, NAVY);
-  wrapped(doc, model.clientNote, 19, 223, 172, 8.5, MUTED);
+  drawInfoCell(doc, 'Reservations', model.obstacles, 14, 204, 182);
 
-  text(doc, 'Important', 14, 251, 9, true, NAVY);
+  doc.setFillColor(238, 247, 255);
+  doc.roundedRect(14, 227, 182, 22, 3, 3, 'F');
+  text(doc, 'Votre panier materiaux', 19, 235, 9.5, true, NAVY);
+  wrapped(doc, model.clientNote, 19, 241, 172, 7.5, MUTED);
+
+  text(doc, 'Important', 14, 258, 9, true, NAVY);
   wrapped(
     doc,
     'Les prix presentes correspondent aux donnees catalogue integrees a la demonstration. Les prix et stocks seront resynchronises avec le systeme IDEA Bois lors de la mise en production.',
     14,
-    257,
+    264,
     182,
-    8,
+    7.5,
     MUTED,
   );
 

@@ -10,20 +10,20 @@ import { validateScope } from './scope';
 import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-012';
+export const VERSION_TAG = 'IB-TERR-VERSION-013';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + catalogue étendu + comparateur V0.12.`];
+  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + géométrie avancée + réservations V0.13.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
   }
 
   const geometry = computeGeometry(input);
-  trace.push(`[${GEOMETRY_TAG}] Surface ${geometry.areaM2.toFixed(3)} m² ; périmètre ${geometry.perimeterM.toFixed(3)} m.`);
+  trace.push(`[${GEOMETRY_TAG}] Surface brute ${geometry.grossAreaM2.toFixed(3)} m² ; exclusions ${geometry.excludedAreaM2.toFixed(3)} m² ; surface nette ${geometry.areaM2.toFixed(3)} m² ; périmètre extérieur ${geometry.perimeterM.toFixed(3)} m.`);
 
   let layout: LayoutResult | undefined;
   if (input.board.gapMm != null && Number.isFinite(input.board.gapMm) && input.board.gapMm >= 0) {

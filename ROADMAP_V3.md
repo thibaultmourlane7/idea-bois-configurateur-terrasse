@@ -1,26 +1,28 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.12
-Parcours B2C complet avec catalogue réel, géométrie, support, calepinage, panier, finitions, PDF, sauvegarde/reprise, partage, formulaires commerciaux, préparation panier et désormais comparateur multi-variantes + couverture produit élargie.
-
-## Couverture renforcée V0.12
-- Pin du Nord 145x27 : plusieurs variantes lisse/striée/marron ;
-- Cumaru 145x21 : recette commerciale exploitable ;
-- Garapa 145x21 : composition connue, jeu 8–10 mm conservé comme plage ;
-- Padouk 120x21 : composition commerciale documentée, jeu final à confirmer ;
-- Ipé 140x20 : support/fixation documentés, quantitatifs encore partiels ;
-- SILVADEC Atmosphère : jeu/clips calculables, structure à finaliser.
+## Présent V0.13
+Le configurateur gère maintenant :
+- 5 formes de terrasse ;
+- réservations rectangulaires et circulaires ;
+- piscine/arbre/poteau/regard ;
+- surface brute, surface exclue et surface nette ;
+- calepinage découpé autour des réservations ;
+- optimisation des lames sur les segments restants ;
+- vues 2D/3D cohérentes ;
+- panier/prix recalculés ;
+- PDF, partage et sauvegarde avec géométrie complète ;
+- catalogue, comparateur et parcours commercial V0.12 conservés.
 
 ## Prochaine grosse version
-### V0.13 — géométrie et projet avancés
-- formes supplémentaires ;
-- obstacles/réservations ;
-- piscine, poteau, arbre, regard ;
-- zones exclues ;
-- cotations enrichies ;
-- calepinage autour des obstacles ;
-- impact automatique sur surfaces, quantités et budgets ;
-- préparation dessin libre.
+### V0.14 — dessin et implantation avancés
+- déplacement visuel des réservations dans le plan ;
+- cotations visuelles ;
+- poignées de redimensionnement ;
+- ajout/suppression de points ;
+- première forme libre polygonale ;
+- préparation import plan/photo ;
+- règles de distance aux murs/rives ;
+- meilleure gestion des rives autour des piscines et trémies.
 
 ## Après vente
 Connexions ERP/PIM/CRM/e-commerce, prix et stocks live, agences, devis et commandes réels.

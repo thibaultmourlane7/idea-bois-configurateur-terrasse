@@ -133,3 +133,63 @@ export const PLOT_OPTIONS: PlotMaterial[] = [
     sourceDate: '2026-09-21',
   },
 ];
+
+
+export interface FinishMaterial extends CommercialMaterial {
+  lengthM?: number;
+  packQuantity?: number;
+  spacingM?: number;
+}
+
+export const GEODECK_20M2: CommercialMaterial = {
+  id: 'IDEA-WEB-GEODECK-20M2',
+  productRef: '3760178990219',
+  label: 'Feutre géotextile GEODECK — rouleau 20 m²',
+  unit: 'rouleau',
+  unitPriceTtc: 34.50,
+  sourceUrl: 'https://idea-bois.com/art-feutre-g-otextile-pour-terrasse-bois-long-10-ml-x-larg-2m-geodeck-2582.htm',
+  sourceDate: '2026-09-21',
+};
+
+export const SILVADEC_SKIRT_GREY: FinishMaterial = {
+  id: 'IDEA-WEB-SILVADEC-JUPE-GRIS',
+  productRef: '3760102978122',
+  label: 'Jupe de finition Atmosphère — Gris Ushuaia — 2,00 m',
+  unit: 'pièce',
+  unitPriceTtc: 33.07,
+  lengthM: 2,
+  sourceUrl: 'https://www.idea-bois.com/art-jupe-de-finition-composite-atmosph-re-20x70x2000-mm-gris-ushuaia-silvadec-2394.htm',
+  sourceDate: '2026-09-21',
+};
+
+export const SILVADEC_SKIRT_IPE: FinishMaterial = {
+  id: 'IDEA-WEB-SILVADEC-JUPE-IPE',
+  label: 'Jupe de finition Atmosphère — Nuances Ipé — 2,00 m',
+  unit: 'pièce',
+  unitPriceTtc: 34.73,
+  lengthM: 2,
+  sourceUrl: 'https://idea-bois.com/cat-lames-de-terrasse-composite-142.htm',
+  sourceDate: '2026-09-21',
+};
+
+export const SILVADEC_FINISH_SCREWS_GREY: FinishMaterial = {
+  id: 'IDEA-WEB-SILVADEC-VIS-GRIS-50',
+  label: 'Vis inox SILVADEC 5 × 50 mm — Gris — blister 50',
+  unit: 'blister',
+  unitPriceTtc: 21.98,
+  packQuantity: 50,
+  spacingM: 0.4,
+  sourceUrl: 'https://idea-bois.com/cat-vis-fixation-terrasse-274.htm',
+  sourceDate: '2026-09-21',
+};
+
+export const SILVADEC_FINISH_SCREWS_BROWN: FinishMaterial = {
+  id: 'IDEA-WEB-SILVADEC-VIS-BRUN-50',
+  label: 'Vis inox SILVADEC 5 × 50 mm — Brun — blister 50',
+  unit: 'blister',
+  unitPriceTtc: 16.49,
+  packQuantity: 50,
+  spacingM: 0.4,
+  sourceUrl: 'https://idea-bois.com/cat-vis-fixation-terrasse-274.htm',
+  sourceDate: '2026-09-21',
+};

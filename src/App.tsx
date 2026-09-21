@@ -4,7 +4,7 @@ import { Diagnostics } from './components/Diagnostics';
 import { Plan2D } from './components/Plan2D';
 import { Preview3D } from './components/Preview3D';
 import { Results } from './components/Results';
-import type { BoardOrientation, DrainageAnswer, ProjectInput, SupportSystem, SupportType } from './domain/types';
+import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 
 const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027') ?? ideaBoisBoards[0];
@@ -16,6 +16,8 @@ const initialProject: ProjectInput = {
   heightCm: 20,
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
+  edgeFinishMode: 'none',
+  includeGeotextile: false,
   drainage: 'unknown',
   orientation: 'length',
   board: defaultBoard,
@@ -27,7 +29,8 @@ const steps = [
   { id: 1, label: 'Dimensions' },
   { id: 2, label: 'Support' },
   { id: 3, label: 'Lames' },
-  { id: 4, label: 'Votre projet' },
+  { id: 4, label: 'Finitions' },
+  { id: 5, label: 'Votre projet' },
 ];
 
 const euro = (value: number) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -76,11 +79,11 @@ export default function App() {
   };
 
   const saveLocal = () => {
-    localStorage.setItem('idea-bois-terrasse-v08', JSON.stringify(project));
+    localStorage.setItem('idea-bois-terrasse-v09', JSON.stringify(project));
     alert('Votre projet a été enregistré sur cet appareil.');
   };
 
-  const next = () => setStep((current) => Math.min(4, current + 1));
+  const next = () => setStep((current) => Math.min(5, current + 1));
   const previous = () => setStep((current) => Math.max(1, current - 1));
   const liveBudget = result.basket?.totalTtc != null
     ? euro(result.basket.totalTtc)
@@ -100,7 +103,7 @@ export default function App() {
             <h1>Imaginez votre terrasse</h1>
           </div>
         </div>
-        <div className="header-note">Simple • catalogue réel • panier matériaux en direct</div>
+        <div className="header-note">Simple • catalogue réel • finitions • panier matériaux</div>
       </header>
 
       <div className="stepper-wrap">
@@ -143,7 +146,11 @@ export default function App() {
                   ['existing-concrete-slab', 'Dalle béton existante', 'Une dalle est déjà présente'],
                   ['new-concrete-slab', 'Dalle béton neuve', 'La dalle sera créée pour le projet'],
                   ['stabilized-ground', 'Sol stabilisé', 'Terrain préparé et drainant'],
-                ] as const).map(([value, title, subtitle]) => <ChoiceCard key={value} active={project.supportType === value} title={title} subtitle={subtitle} onClick={() => setProject({ ...project, supportType: value as SupportType })} />)}
+                ] as const).map(([value, title, subtitle]) => <ChoiceCard key={value} active={project.supportType === value} title={title} subtitle={subtitle} onClick={() => setProject({
+                    ...project,
+                    supportType: value as SupportType,
+                    includeGeotextile: value === 'stabilized-ground' ? project.includeGeotextile : false,
+                  })} />)}
               </div>
               <div className="question-block support-choice-block">
                 <h3>Comment la structure sera-t-elle supportée ?</h3>
@@ -209,6 +216,72 @@ export default function App() {
           )}
 
           {step === 4 && (
+            <div className="step-content">
+              <div className="section-heading">
+                <span className="section-number">4</span>
+                <div>
+                  <h2>Choisissez vos finitions</h2>
+                  <p>Ajoutez uniquement les éléments que vous souhaitez réellement intégrer à votre projet.</p>
+                </div>
+              </div>
+
+              <div className="finish-section">
+                <h3>Habillage latéral de la terrasse</h3>
+                <p className="finish-help">Permet de masquer la structure sur les côtés visibles.</p>
+                <div className="choice-grid two-choice">
+                  <ChoiceCard
+                    active={project.edgeFinishMode === 'none'}
+                    title="Sans habillage latéral"
+                    subtitle="La structure reste visible sur les côtés"
+                    onClick={() => setProject({ ...project, edgeFinishMode: 'none' as EdgeFinishMode })}
+                  />
+                  <ChoiceCard
+                    active={project.edgeFinishMode === 'full-perimeter'}
+                    title="Habiller tout le pourtour"
+                    subtitle="Le configurateur ajoute les finitions compatibles quand elles sont connues"
+                    onClick={() => setProject({ ...project, edgeFinishMode: 'full-perimeter' as EdgeFinishMode })}
+                  />
+                </div>
+              </div>
+
+              {project.supportType === 'stabilized-ground' && (
+                <div className="finish-section">
+                  <h3>Protection du sol</h3>
+                  <p className="finish-help">IDEA Bois recommande un géotextile sur sol en terre ou gravier pour limiter les remontées de végétation.</p>
+                  <div className="choice-grid two-choice">
+                    <ChoiceCard
+                      active={!project.includeGeotextile}
+                      title="Sans géotextile"
+                      subtitle="Je ne souhaite pas l’ajouter au panier"
+                      onClick={() => setProject({ ...project, includeGeotextile: false })}
+                    />
+                    <ChoiceCard
+                      active={project.includeGeotextile}
+                      title="Ajouter le géotextile"
+                      subtitle="Rouleaux GEODECK de 20 m²"
+                      onClick={() => setProject({ ...project, includeGeotextile: true })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="soft-panel finish-summary">
+                <h3>Ce qui sera ajouté au panier</h3>
+                <p>
+                  {project.edgeFinishMode === 'full-perimeter'
+                    ? 'Habillage latéral : oui, sur tout le pourtour.'
+                    : 'Habillage latéral : non.'}
+                  {project.supportType === 'stabilized-ground'
+                    ? project.includeGeotextile
+                      ? ' Géotextile : inclus.'
+                      : ' Géotextile : non inclus.'
+                    : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
             <div className="step-content result-step">
               <div className="section-heading result-heading"><span className="section-number done">✓</span><div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div><button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button></div>
               <Results input={project} result={result} />
@@ -219,7 +292,7 @@ export default function App() {
             </div>
           )}
 
-          <footer className="wizard-actions"><button type="button" className="back-button" onClick={previous} disabled={step === 1}>Retour</button>{step < 4 ? <button type="button" className="primary-button" onClick={next}>Continuer <span>→</span></button> : <button type="button" className="primary-button" onClick={() => setStep(1)}>Modifier mon projet</button>}</footer>
+          <footer className="wizard-actions"><button type="button" className="back-button" onClick={previous} disabled={step === 1}>Retour</button>{step < 5 ? <button type="button" className="primary-button" onClick={next}>Continuer <span>→</span></button> : <button type="button" className="primary-button" onClick={() => setStep(1)}>Modifier mon projet</button>}</footer>
         </section>
 
         <aside className="live-summary">

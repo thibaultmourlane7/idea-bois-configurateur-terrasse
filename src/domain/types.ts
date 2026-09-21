@@ -3,6 +3,7 @@ export type BoardOrientation = 'length' | 'width';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
 export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
+export type EdgeFinishMode = 'none' | 'full-perimeter';
 export type DrainageAnswer = 'yes' | 'no' | 'unknown';
 export type MaterialFamily = 'solid-wood' | 'composite';
 export type TechnicalEngine = 'nf-dtu-51-4' | 'manufacturer-rules';
@@ -72,6 +73,8 @@ export interface ProjectInput {
   heightCm: number;
   supportType: SupportType;
   supportSystem: SupportSystem;
+  edgeFinishMode: EdgeFinishMode;
+  includeGeotextile: boolean;
   drainage: DrainageAnswer;
   orientation: BoardOrientation;
   board: BoardSpec;

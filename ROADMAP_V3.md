@@ -1,14 +1,14 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.7
-Moteur séparé de l’UI, rectangle + L, 2 orientations, aperçu 2D/3D, catalogue réel IDEA Bois regroupé, prix public TTC des lames, optimisation multi-longueurs prête, règles normatives partielles, sauvegarde locale, contrats ERP et pont SpeedArti, tests et balises.
+## Présent V0.9
+Moteur métier séparé de l'UI, rectangle + L, 2 orientations, aperçu 2D/3D, catalogue réel IDEA Bois regroupé, optimisation multi-longueurs, panier matériaux, prix TTC, plots/appuis, vis/clips, protections, étape finitions, géotextile optionnel, habillage latéral, sauvegarde locale, contrats ERP et tests/balises.
 
 ## Prochaine priorité P0
-1. Enrichir les règles produits : jeu de pose, classe mécanique ou règles fabricant, compatibilités.
-2. Relier les vraies lambourdes / structures / plots / fixations du catalogue aux lames compatibles.
-3. Calculer le total matériel TTC complet sans estimation silencieuse.
-4. Rives et accessoires.
-5. PDF client.
+1. Enrichir les règles produits : jeux de pose, classes mécaniques, règles fabricant et compatibilités pour davantage de gammes.
+2. Relier davantage de vraies lambourdes / structures / plots / fixations aux 38 choix commerciaux.
+3. Finaliser les rives bois et accessoires qui restent `pending`.
+4. Générer le PDF client avec projet, visuel, panier et prix.
+5. Préparer le mode « demande de devis / panier / commande » sans activer les connexions avant vente.
 
 ## Après vente / connexion
 Prix et stock ERP en direct, agence/dépôt, panier, devis/commande, gestion des erreurs de synchronisation et mapping des références officielles.

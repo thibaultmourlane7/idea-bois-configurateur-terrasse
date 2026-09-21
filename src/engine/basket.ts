@@ -1,5 +1,16 @@
 import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput } from '../domain/types';
-import { PGB_SCREWS_5X60_200, PIN_JOIST_60X40_2400, PLOT_OPTIONS, SILVADEC_CLIPS_30, UBBINK_BAND_20M } from '../catalog/materials';
+import {
+  GEODECK_20M2,
+  PGB_SCREWS_5X60_200,
+  PIN_JOIST_60X40_2400,
+  PLOT_OPTIONS,
+  SILVADEC_CLIPS_30,
+  SILVADEC_FINISH_SCREWS_BROWN,
+  SILVADEC_FINISH_SCREWS_GREY,
+  SILVADEC_SKIRT_GREY,
+  SILVADEC_SKIRT_IPE,
+  UBBINK_BAND_20M,
+} from '../catalog/materials';
 
 export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
@@ -203,6 +214,82 @@ function silvadecLines(input: ProjectInput, geometry: GeometryResult): BasketLin
   ];
 }
 
+function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
+  const lines: BasketLine[] = [];
+
+  if (input.supportType === 'stabilized-ground' && input.includeGeotextile) {
+    const rolls = Math.ceil(geometry.areaM2 / 20);
+    lines.push({
+      id: 'geotextile',
+      family: 'accessories',
+      label: GEODECK_20M2.label,
+      productRef: GEODECK_20M2.productRef,
+      quantity: rolls,
+      unit: 'rouleau(x)',
+      unitPriceTtc: GEODECK_20M2.unitPriceTtc,
+      totalTtc: round2(rolls * GEODECK_20M2.unitPriceTtc),
+      status: 'exact',
+      required: true,
+      note: `${rolls * 20} m² couverts pour ${geometry.areaM2.toFixed(2)} m² de terrasse.`,
+      sourceUrl: GEODECK_20M2.sourceUrl,
+    });
+  }
+
+  if (input.edgeFinishMode !== 'full-perimeter') return lines;
+
+  if (input.board.id === 'IDEA-TERR-G037' || input.board.id === 'IDEA-TERR-G038') {
+    const grey = input.board.id === 'IDEA-TERR-G037';
+    const skirt = grey ? SILVADEC_SKIRT_GREY : SILVADEC_SKIRT_IPE;
+    const screws = grey ? SILVADEC_FINISH_SCREWS_GREY : SILVADEC_FINISH_SCREWS_BROWN;
+    const perimeter = geometry.perimeterM;
+    const skirtLength = skirt.lengthM ?? 2;
+    const skirtQty = Math.ceil(perimeter / skirtLength);
+    const screwSpacing = screws.spacingM ?? 0.4;
+    const screwCount = Math.ceil(perimeter / screwSpacing);
+    const screwPack = screws.packQuantity ?? 50;
+    const screwPacks = Math.ceil(screwCount / screwPack);
+
+    lines.push({
+      id: 'edge-finish',
+      family: 'accessories',
+      label: skirt.label,
+      productRef: skirt.productRef,
+      quantity: skirtQty,
+      unit: 'pièce(s)',
+      unitPriceTtc: skirt.unitPriceTtc,
+      totalTtc: round2(skirtQty * skirt.unitPriceTtc),
+      status: 'informative',
+      required: true,
+      note: `${perimeter.toFixed(2)} ml de rives. Quantité commerciale minimale sur longueurs de ${skirtLength.toFixed(2)} m ; angles et chutes de rive à confirmer.`,
+      sourceUrl: skirt.sourceUrl,
+    });
+
+    lines.push({
+      id: 'edge-finish-screws',
+      family: 'accessories',
+      label: screws.label,
+      productRef: screws.productRef,
+      quantity: screwPacks,
+      unit: 'blister(s)',
+      unitPriceTtc: screws.unitPriceTtc,
+      totalTtc: round2(screwPacks * screws.unitPriceTtc),
+      status: 'informative',
+      required: true,
+      note: `Base fabricant : 1 vis tous les ${Math.round(screwSpacing * 100)} cm sur la jupe. Quantité à confirmer avec le calepinage des angles.`,
+      sourceUrl: screws.sourceUrl,
+    });
+  } else {
+    lines.push(pending(
+      'edge-finish',
+      'accessories',
+      'Habillage latéral assorti',
+      `${geometry.perimeterM.toFixed(2)} ml de rives à habiller. La référence de finition compatible avec cette lame doit être validée avant chiffrage.`,
+    ));
+  }
+
+  return lines;
+}
+
 export function computeBasket(
   input: ProjectInput,
   geometry: GeometryResult,
@@ -223,6 +310,8 @@ export function computeBasket(
       pending('protection', 'protection', 'Protection / accessoires', 'Accessoires compatibles à valider.'),
     );
   }
+
+  lines.push(...accessoryLines(input, geometry));
 
   const required = lines.filter((line) => line.required);
   const exactLines = required.filter((line) => line.status === 'exact');

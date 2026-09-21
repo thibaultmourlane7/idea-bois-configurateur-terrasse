@@ -11,6 +11,8 @@ const base: ProjectInput = {
   heightCm: 20,
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
+  edgeFinishMode: 'none',
+  includeGeotextile: false,
   drainage: 'yes',
   orientation: 'length',
   board: demoBoards[0],
@@ -18,7 +20,7 @@ const base: ProjectInput = {
   usage: 'residential',
 };
 
-describe('Configurateur terrasse V0.8', () => {
+describe('Configurateur terrasse V0.9', () => {
   it('conserve le scénario normatif de régression V0.6', () => {
     const result = runConfigurator(base);
     expect(result.valid).toBe(true);
@@ -80,6 +82,48 @@ describe('Configurateur terrasse V0.8', () => {
     const clips = result.basket?.lines.find((line) => line.id === 'fixings');
     expect(clips?.status).toBe('exact');
     expect(clips?.quantity).toBe(Math.ceil((24 * 18) / 30));
+    expect(result.basket?.status).toBe('partial');
+  });
+
+  it('ajoute exactement le géotextile demandé sur sol stabilisé', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
+    const result = runConfigurator({
+      ...base,
+      board,
+      supportType: 'stabilized-ground',
+      includeGeotextile: true,
+    });
+    const geotextile = result.basket?.lines.find((line) => line.id === 'geotextile');
+    expect(geotextile?.status).toBe('exact');
+    expect(geotextile?.quantity).toBe(2);
+    expect(geotextile?.totalTtc).toBeCloseTo(69, 2);
+  });
+
+  it('ajoute la jupe SILVADEC comme finition informative quand tout le pourtour est demandé', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G038')!;
+    const result = runConfigurator({
+      ...base,
+      board,
+      edgeFinishMode: 'full-perimeter',
+    });
+    const finish = result.basket?.lines.find((line) => line.id === 'edge-finish');
+    const finishScrews = result.basket?.lines.find((line) => line.id === 'edge-finish-screws');
+    expect(finish?.status).toBe('informative');
+    expect(finish?.quantity).toBe(10);
+    expect(finishScrews?.status).toBe('informative');
+    expect(result.basket?.status).toBe('partial');
+  });
+
+  it('n’invente pas une finition latérale bois non validée', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
+    const result = runConfigurator({
+      ...base,
+      board,
+      edgeFinishMode: 'full-perimeter',
+    });
+    const finish = result.basket?.lines.find((line) => line.id === 'edge-finish');
+    expect(finish?.status).toBe('pending');
+    expect(finish?.totalTtc).toBeUndefined();
     expect(result.basket?.status).toBe('partial');
   });
 

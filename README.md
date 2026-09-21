@@ -1,28 +1,38 @@
-# IDEA Bois — Configurateur Terrasse V0.8
+# IDEA Bois — Configurateur Terrasse V0.9
 
 Démo B2C indépendante préparée pour IDEA Bois et SpeedArti.
 
-## Objectif V0.8
-Le particulier configure sa terrasse et obtient un panier matériaux lisible : lames, lambourdes, plots/appuis, fixations et protections. Le moteur distingue les montants exacts, les fourchettes publiées et les lignes restant à confirmer.
+## Objectif V0.9
+Le particulier configure sa terrasse, obtient son panier matériaux et peut maintenant choisir les finitions réellement souhaitées avant le récapitulatif.
+
+## Parcours
+1. Dimensions
+2. Support
+3. Lames
+4. Finitions
+5. Votre projet
 
 ## Nouveautés
-- panier matériaux visible même lorsqu'une vérification technique reste bloquante ;
-- total TTC affiché uniquement lorsque toutes les lignes obligatoires sont chiffrées ;
-- fourchette TTC lorsqu'un fabricant publie une consommation sous forme de plage ;
-- sous-total exact quand certaines familles restent à confirmer ;
-- choix du système de support : plots réglables, cales/appuis fixes ou indéterminé ;
-- référentiel commercial V0.8 séparé du moteur normatif ;
-- recette commerciale IDEA Bois pour Pin du Nord 145x27 : jeu 5 mm, lambourdes 60x40 Classe 4, bande bitumineuse, vis inox et plots compatibles selon hauteur ;
-- règles SILVADEC Atmosphère : jeu 5 mm et clips à 18 unités/m² ; structure encore à valider avant total complet ;
-- diagnostics techniques repliés par défaut pour ne pas encombrer le parcours particulier ;
-- aucune connexion ERP/PIM/stock/panier activée avant vente du module.
+- nouvelle étape **Finitions** ;
+- choix « sans habillage » ou « habiller tout le pourtour » ;
+- ajout optionnel du géotextile GEODECK sur sol stabilisé ;
+- géotextile calculé par rouleaux réels de 20 m² ;
+- finitions SILVADEC Atmosphère reliées aux jupes de finition IDEA Bois ;
+- vis de finition SILVADEC associées à la teinte lorsque le produit est connu ;
+- pour les terrasses bois sans référence de rive validée, la ligne reste explicitement `pending` ;
+- aucun montant de finition non validé n'est ajouté silencieusement au total ;
+- panier B2C et diagnostics techniques restent séparés.
 
 ## Principe de prix
-Un montant absent n'est jamais remplacé par une estimation silencieuse.
 - `exact` : quantité + référence + prix connus ;
 - `range` : consommation publiée sous forme de plage ;
-- `informative` : prix commercial connu mais quantité de commande non finalisée ;
-- `pending` : donnée/règle encore nécessaire.
+- `informative` : produit et prix connus, mais calepinage final à confirmer ;
+- `pending` : référence, compatibilité ou règle encore nécessaire.
+
+Un total TTC complet n'est déclaré que lorsque toutes les lignes obligatoires sont réellement calculables.
+
+## Connexions
+Les connexions ERP/PIM/stock/panier/commande restent prévues dans l'architecture mais ne sont pas activées avant vente du module.
 
 ## Règle ferme
 Aucun temps de pose, aucune durée de chantier, aucune heure de main-d'œuvre et aucun coût de main-d'œuvre.

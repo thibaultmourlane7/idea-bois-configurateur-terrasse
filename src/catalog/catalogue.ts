@@ -13,6 +13,9 @@ export const ideaBoisBoards: BoardSpec[] = RAW_IDEA_BOIS_BOARDS.map((row) => {
     family, range, material, profile, color, fixation, treatment, availabilitySnapshot,
     internalCodes, sourceUrl, materialFamily, useClass, technicalEngine] = row;
 
+  const isPinNord145x27 = id === 'IDEA-TERR-G027';
+  const isSilvadecAtmosphere = id === 'IDEA-TERR-G037' || id === 'IDEA-TERR-G038';
+
   return {
     id,
     label,
@@ -21,9 +24,10 @@ export const ideaBoisBoards: BoardSpec[] = RAW_IDEA_BOIS_BOARDS.map((row) => {
     lengthMm: Math.max(...availableLengthsMm),
     availableLengthsMm,
     thicknessMm,
-    gapMm: undefined,
+    gapMm: (isPinNord145x27 || isSilvadecAtmosphere) ? 5 : undefined,
     priceTtcPerM2: priceTtcPerM2 ?? undefined,
     isDemo: false,
+    commercialRecipeId: isPinNord145x27 ? 'idea-pin-nord-145x27' : (isSilvadecAtmosphere ? 'silvadec-atmosphere-138x23' : undefined),
     catalog: {
       internalCodes,
       family,

@@ -1,34 +1,31 @@
-# IDEA Bois — Configurateur Terrasse V0.7
+# IDEA Bois — Configurateur Terrasse V0.8
 
-Démo indépendante B2C préparée pour IDEA Bois et SpeedArti.
+Démo B2C indépendante préparée pour IDEA Bois et SpeedArti.
 
-## Objectif V0.7
-Le particulier configure simplement sa terrasse et voit immédiatement le prix public TTC des lames issues du catalogue IDEA Bois local. Les règles techniques absentes ne sont jamais remplacées par des valeurs génériques.
+## Objectif V0.8
+Le particulier configure sa terrasse et obtient un panier matériaux lisible : lames, lambourdes, plots/appuis, fixations et protections. Le moteur distingue les montants exacts, les fourchettes publiées et les lignes restant à confirmer.
 
 ## Nouveautés
-- catalogue Terrasse IDEA Bois réel : 99 références de lames regroupées en 38 choix commerciaux ;
-- prix public TTC au m² issu du relevé du 04/09/2026 ;
-- recherche et filtres par familles de produits ;
-- plusieurs longueurs commerciales rattachées à une même gamme ;
-- moteur de coupe préparé pour l’optimisation multi-longueurs ;
-- prix des lames visible même lorsqu’une règle technique bloque le quantitatif final ;
-- balise `SA-TERR-GAP-001` si le jeu fabricant manque ;
-- aucune classe mécanique, règle fabricant, référence ERP, stock temps réel ou disponibilité actuelle inventés.
+- panier matériaux visible même lorsqu'une vérification technique reste bloquante ;
+- total TTC affiché uniquement lorsque toutes les lignes obligatoires sont chiffrées ;
+- fourchette TTC lorsqu'un fabricant publie une consommation sous forme de plage ;
+- sous-total exact quand certaines familles restent à confirmer ;
+- choix du système de support : plots réglables, cales/appuis fixes ou indéterminé ;
+- référentiel commercial V0.8 séparé du moteur normatif ;
+- recette commerciale IDEA Bois pour Pin du Nord 145x27 : jeu 5 mm, lambourdes 60x40 Classe 4, bande bitumineuse, vis inox et plots compatibles selon hauteur ;
+- règles SILVADEC Atmosphère : jeu 5 mm et clips à 18 unités/m² ; structure encore à valider avant total complet ;
+- diagnostics techniques repliés par défaut pour ne pas encombrer le parcours particulier ;
+- aucune connexion ERP/PIM/stock/panier activée avant vente du module.
 
-## Parcours particulier
-1. Dimensions
-2. Support
-3. Choix des lames IDEA Bois
-4. Projet + prix + vérifications
+## Principe de prix
+Un montant absent n'est jamais remplacé par une estimation silencieuse.
+- `exact` : quantité + référence + prix connus ;
+- `range` : consommation publiée sous forme de plage ;
+- `informative` : prix commercial connu mais quantité de commande non finalisée ;
+- `pending` : donnée/règle encore nécessaire.
 
-## Prix affiché
-Tant que le calepinage technique complet n’est pas validé, le prix affiché est le prix des lames sur la surface nette. Le total matériel complet devra intégrer les vraies sous-structures, appuis, fixations, accessoires, conditionnements et règles de compatibilité.
-
-## Connexions
-Les contrats ERP/PIM/panier/commande restent prévus dans l’architecture mais ne sont pas connectés avant vente du module.
-
-## Règle ferme IDEA Bois
-Aucun calcul de temps de pose, durée de chantier, heure de main-d’œuvre ou coût de main-d’œuvre.
+## Règle ferme
+Aucun temps de pose, aucune durée de chantier, aucune heure de main-d'œuvre et aucun coût de main-d'œuvre.
 
 ## Commandes
 ```bash
@@ -38,5 +35,5 @@ npm run build
 npm run dev
 ```
 
-## GitHub Pages
-Le workflow `.github/workflows/pages.yml` teste, compile puis publie la démo après un push sur `main`.
+## Publication
+Le workflow GitHub Pages teste, compile puis publie automatiquement après un push sur `main`.

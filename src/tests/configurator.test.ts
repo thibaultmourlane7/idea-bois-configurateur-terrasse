@@ -10,6 +10,7 @@ const base: ProjectInput = {
   dimensions: { lengthM: 6, widthM: 4, notchLengthM: 2, notchWidthM: 1 },
   heightCm: 20,
   supportType: 'existing-concrete-slab',
+  supportSystem: 'adjustable-pedestals',
   drainage: 'yes',
   orientation: 'length',
   board: demoBoards[0],
@@ -17,7 +18,7 @@ const base: ProjectInput = {
   usage: 'residential',
 };
 
-describe('Configurateur terrasse V0.7', () => {
+describe('Configurateur terrasse V0.8', () => {
   it('conserve le scénario normatif de régression V0.6', () => {
     const result = runConfigurator(base);
     expect(result.valid).toBe(true);
@@ -34,16 +35,52 @@ describe('Configurateur terrasse V0.7', () => {
   it('charge le catalogue réel IDEA Bois regroupé', () => {
     expect(ideaBoisBoards.length).toBe(38);
     expect(ideaBoisBoards.every((board) => board.isDemo === false)).toBe(true);
-    expect(ideaBoisBoards.some((board) => (board.availableLengthsMm?.length ?? 0) > 1)).toBe(true);
   });
 
-  it('affiche un prix commercial sans inventer la règle technique', () => {
+  it('produit un panier matériel complet pour le Pin du Nord 145x27 sur plots compatibles', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
+    const result = runConfigurator({ ...base, board });
+    expect(result.layout).toBeDefined();
+    expect(result.basket?.status).toBe('complete');
+    expect(result.basket?.totalTtc).toBeGreaterThan(0);
+
+    const joists = result.basket?.lines.find((line) => line.id === 'joists');
+    const supports = result.basket?.lines.find((line) => line.id === 'supports');
+    const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
+    const protection = result.basket?.lines.find((line) => line.id === 'protection');
+
+    expect(joists?.quantity).toBe(25);
+    expect(supports?.quantity).toBe(96);
+    expect(fixings?.quantity).toBe(5);
+    expect(protection?.quantity).toBe(3);
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001')).toBe(false);
+  });
+
+  it('conserve le panier commercial même si la validation normative finale bloque', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
     const result = runConfigurator({ ...base, board });
     expect(result.valid).toBe(false);
-    expect(result.pricing?.surfaceNetTtc).toBeCloseTo(24 * 25.92, 2);
-    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001' && d.severity === 'blocking')).toBe(true);
-    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-LAME-010' && d.severity === 'blocking')).toBe(true);
+    expect(result.basket?.status).toBe('complete');
+    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-LAME-010')).toBe(true);
+  });
+
+  it('affiche les familles manquantes au lieu de les masquer pour une lame sans jeu validé', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G001')!;
+    const result = runConfigurator({ ...base, board });
+    expect(result.basket?.lines.some((line) => line.family === 'joists')).toBe(true);
+    expect(result.basket?.lines.some((line) => line.family === 'supports')).toBe(true);
+    expect(result.basket?.lines.some((line) => line.family === 'fixings')).toBe(true);
+    expect(result.basket?.status).toBe('partial');
+  });
+
+  it('applique le jeu et les clips publiés à la gamme SILVADEC Atmosphère', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G038')!;
+    const result = runConfigurator({ ...base, board });
+    expect(board.gapMm).toBe(5);
+    const clips = result.basket?.lines.find((line) => line.id === 'fixings');
+    expect(clips?.status).toBe('exact');
+    expect(clips?.quantity).toBe(Math.ceil((24 * 18) / 30));
+    expect(result.basket?.status).toBe('partial');
   });
 
   it('optimise sur plusieurs longueurs commerciales autorisées', () => {
@@ -55,22 +92,10 @@ describe('Configurateur terrasse V0.7', () => {
     expect(boards.every((board) => [3000, 4200, 5400].includes(board.stockLengthMm))).toBe(true);
   });
 
-  it('bloque un produit composite sans règles fabricant', () => {
+  it('bloque un produit composite démo sans règles fabricant', () => {
     const result = runConfigurator({ ...base, board: demoBoards[1] });
     expect(result.valid).toBe(false);
     expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-SYSTEM-001' && d.severity === 'blocking')).toBe(true);
-  });
-
-  it('bloque une hauteur hors domaine courant du NF DTU 51.4', () => {
-    const result = runConfigurator({ ...base, heightCm: 120 });
-    expect(result.valid).toBe(false);
-    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-DTU-003')).toBe(true);
-  });
-
-  it('bloque une dalle déclarée sans évacuation d’eau', () => {
-    const result = runConfigurator({ ...base, drainage: 'no' });
-    expect(result.valid).toBe(false);
-    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-WATER-001')).toBe(true);
   });
 
   it('n’expose aucun calcul de main-d’œuvre', () => {

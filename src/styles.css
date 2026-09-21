@@ -35,3 +35,63 @@
 .price-status.warning{background:#fff8e9;border-color:#efd79c;color:#705f3f}
 .price-status strong{font-size:12px}
 @media(max-width:700px){.real-catalog-grid{max-height:none}.product-meta{align-items:flex-start;flex-direction:column}.catalog-filters{gap:5px}}
+
+
+/* V0.8 — panier matériaux B2C */
+.compact-choices{margin-bottom:0}
+.support-choice-block{margin-top:22px}
+.material-result{display:grid;gap:16px}
+.project-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.total-card.complete{background:#edf9f2;border-color:#bfe5cf}
+.total-card.complete strong{color:#137044}
+.total-card.range{background:#fff8e9;border-color:#efd79c}
+.total-card.partial{background:#f7f9fb}
+.basket-panel{border:1px solid #dce6ed;border-radius:16px;overflow:hidden;background:#fff}
+.basket-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:17px 18px;border-bottom:1px solid #e7eef3;background:#fbfdfe}
+.basket-heading h3{margin:0;font-size:17px;color:#173b5f}
+.basket-heading p{margin:4px 0 0;font-size:12px;color:#748797}
+.basket-status{font-size:11px;font-weight:850;border-radius:999px;padding:7px 10px;white-space:nowrap}
+.basket-status.complete{background:#e4f6ec;color:#177146}
+.basket-status.range{background:#fff2d8;color:#88611c}
+.basket-status.partial{background:#eef3f7;color:#60778a}
+.basket-lines{display:grid}
+.basket-line{display:grid;grid-template-columns:105px minmax(0,1fr) 105px 135px 28px;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid #edf2f5}
+.basket-line:last-child{border-bottom:0}
+.basket-family{font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:900;color:#718696}
+.basket-product strong{display:block;font-size:13px;color:#17324d;line-height:1.35}
+.basket-product small{display:block;margin-top:3px;font-size:10px;color:#82919d}
+.basket-product p{margin:5px 0 0;font-size:10px;color:#728493;line-height:1.4}
+.basket-qty{font-size:12px;font-weight:800;color:#405d73;text-align:right}
+.basket-price{text-align:right}
+.basket-price strong{display:block;font-size:13px;color:#173b5f}
+.basket-price small{display:block;font-size:9px;color:#8a98a3;margin-top:3px}
+.line-state{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:12px}
+.line-state.exact{background:#e4f6ec;color:#16804d}
+.line-state.range{background:#fff1d5;color:#a36d11}
+.line-state.informative{background:#eaf4fd;color:#2876ad}
+.line-state.pending{background:#eef1f3;color:#82909a}
+.basket-line.pending{background:#fbfcfd}
+.basket-line.informative{background:#f8fbfe}
+.basket-total{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 18px;border-top:1px solid #dce6ed;background:#f6f9fb}
+.basket-total.complete{background:#eaf8f0}
+.basket-total.range{background:#fff8e9}
+.basket-total span{font-size:11px;font-weight:900;letter-spacing:.05em;color:#546b7d}
+.basket-total small{display:block;margin-top:4px;color:#7c8b96;font-size:10px}
+.basket-total>strong{font-size:23px;color:#153f64}
+.basket-total.complete>strong{color:#147044}
+.customer-check-note{display:flex;gap:12px;align-items:flex-start;padding:13px 15px;border-radius:13px;background:#eef7ff;border:1px solid #d2e7f7;color:#3c6079}
+.customer-check-note>span{width:23px;height:23px;border-radius:50%;background:#d8edf9;color:#2876ad;display:grid;place-items:center;font-weight:900;flex:0 0 auto}
+.customer-check-note strong{font-size:12px}
+.customer-check-note p{font-size:11px;line-height:1.45;margin:3px 0 0}
+@media(max-width:900px){.basket-line{grid-template-columns:90px minmax(0,1fr) 90px 115px 25px}}
+@media(max-width:700px){
+  .project-summary-grid{grid-template-columns:1fr}
+  .basket-heading{align-items:flex-start;flex-direction:column}
+  .basket-line{grid-template-columns:1fr auto;gap:6px 10px}
+  .basket-family{grid-column:1/-1}
+  .basket-product{grid-column:1/2}
+  .basket-qty{grid-column:1/2;text-align:left}
+  .basket-price{grid-column:2/3;grid-row:2/4;align-self:center}
+  .line-state{grid-column:2/3;grid-row:1/2;justify-self:end}
+  .basket-total{align-items:flex-start;flex-direction:column}
+}

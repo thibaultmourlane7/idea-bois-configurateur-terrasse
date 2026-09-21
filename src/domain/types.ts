@@ -2,6 +2,7 @@ export type ShapeType = 'rectangle' | 'l-shape';
 export type BoardOrientation = 'length' | 'width';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
+export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
 export type DrainageAnswer = 'yes' | 'no' | 'unknown';
 export type MaterialFamily = 'solid-wood' | 'composite';
 export type TechnicalEngine = 'nf-dtu-51-4' | 'manufacturer-rules';
@@ -51,6 +52,7 @@ export interface BoardSpec {
   priceTtcPerM2?: number;
   isDemo: boolean;
   catalog?: BoardCatalogData;
+  commercialRecipeId?: 'idea-pin-nord-145x27' | 'silvadec-atmosphere-138x23';
   technical: BoardTechnicalData;
 }
 
@@ -69,6 +71,7 @@ export interface ProjectInput {
   dimensions: Dimensions;
   heightCm: number;
   supportType: SupportType;
+  supportSystem: SupportSystem;
   drainage: DrainageAnswer;
   orientation: BoardOrientation;
   board: BoardSpec;
@@ -150,6 +153,38 @@ export interface PricingResult {
   sourceDate?: string;
 }
 
+export type BasketLineStatus = 'exact' | 'range' | 'informative' | 'pending';
+export type BasketFamily = 'decking' | 'joists' | 'supports' | 'fixings' | 'protection' | 'accessories';
+
+export interface BasketLine {
+  id: string;
+  family: BasketFamily;
+  label: string;
+  productRef?: string;
+  quantity?: number;
+  quantityMin?: number;
+  quantityMax?: number;
+  unit: string;
+  unitPriceTtc?: number;
+  totalTtc?: number;
+  totalMinTtc?: number;
+  totalMaxTtc?: number;
+  status: BasketLineStatus;
+  required: boolean;
+  note?: string;
+  sourceUrl?: string;
+}
+
+export interface BasketResult {
+  lines: BasketLine[];
+  knownSubtotalTtc: number;
+  totalTtc?: number;
+  totalMinTtc?: number;
+  totalMaxTtc?: number;
+  status: 'complete' | 'range' | 'partial';
+  missingFamilies: string[];
+}
+
 export interface ConfiguratorResult {
   valid: boolean;
   diagnostics: Diagnostic[];
@@ -157,5 +192,6 @@ export interface ConfiguratorResult {
   structure?: StructureResult;
   layout?: LayoutResult;
   pricing?: PricingResult;
+  basket?: BasketResult;
   trace: string[];
 }

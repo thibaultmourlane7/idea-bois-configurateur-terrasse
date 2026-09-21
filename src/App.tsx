@@ -4,7 +4,7 @@ import { Diagnostics } from './components/Diagnostics';
 import { Plan2D } from './components/Plan2D';
 import { Preview3D } from './components/Preview3D';
 import { Results } from './components/Results';
-import type { BoardOrientation, DrainageAnswer, ProjectInput, SupportType } from './domain/types';
+import type { BoardOrientation, DrainageAnswer, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 
 const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027') ?? ideaBoisBoards[0];
@@ -15,6 +15,7 @@ const initialProject: ProjectInput = {
   dimensions: { lengthM: 6, widthM: 4, notchLengthM: 2, notchWidthM: 1.5 },
   heightCm: 20,
   supportType: 'existing-concrete-slab',
+  supportSystem: 'adjustable-pedestals',
   drainage: 'unknown',
   orientation: 'length',
   board: defaultBoard,
@@ -75,13 +76,19 @@ export default function App() {
   };
 
   const saveLocal = () => {
-    localStorage.setItem('idea-bois-terrasse-v07', JSON.stringify(project));
+    localStorage.setItem('idea-bois-terrasse-v08', JSON.stringify(project));
     alert('Votre projet a été enregistré sur cet appareil.');
   };
 
   const next = () => setStep((current) => Math.min(4, current + 1));
   const previous = () => setStep((current) => Math.max(1, current - 1));
-  const livePrice = result.pricing?.boardPurchaseTtc ?? result.pricing?.surfaceNetTtc;
+  const liveBudget = result.basket?.totalTtc != null
+    ? euro(result.basket.totalTtc)
+    : result.basket?.totalMinTtc != null && result.basket?.totalMaxTtc != null
+      ? `${euro(result.basket.totalMinTtc)} – ${euro(result.basket.totalMaxTtc)}`
+      : result.basket?.knownSubtotalTtc != null && result.basket.knownSubtotalTtc > 0
+        ? `dès ${euro(result.basket.knownSubtotalTtc)}`
+        : 'À compléter';
 
   return (
     <div className="app-shell">
@@ -93,7 +100,7 @@ export default function App() {
             <h1>Imaginez votre terrasse</h1>
           </div>
         </div>
-        <div className="header-note">Simple • catalogue réel • prix lames en direct</div>
+        <div className="header-note">Simple • catalogue réel • panier matériaux en direct</div>
       </header>
 
       <div className="stepper-wrap">
@@ -138,6 +145,19 @@ export default function App() {
                   ['stabilized-ground', 'Sol stabilisé', 'Terrain préparé et drainant'],
                 ] as const).map(([value, title, subtitle]) => <ChoiceCard key={value} active={project.supportType === value} title={title} subtitle={subtitle} onClick={() => setProject({ ...project, supportType: value as SupportType })} />)}
               </div>
+              <div className="question-block support-choice-block">
+                <h3>Comment la structure sera-t-elle supportée ?</h3>
+                <div className="choice-grid three-choice compact-choices">
+                  {([
+                    ['adjustable-pedestals', 'Plots réglables', 'Pour régler précisément la hauteur'],
+                    ['pads', 'Cales / appuis fixes', 'Pour une pose proche du support'],
+                    ['unknown', 'Je ne sais pas', 'Le configurateur le signalera sans inventer'],
+                  ] as const).map(([value, title, subtitle]) => (
+                    <ChoiceCard key={value} active={project.supportSystem === value} title={title} subtitle={subtitle} onClick={() => setProject({ ...project, supportSystem: value as SupportSystem })} />
+                  ))}
+                </div>
+              </div>
+
               <label className="single-field">Hauteur souhaitée de la terrasse<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support jusqu'au dessus des lames.</small></label>
               {project.supportType !== 'stabilized-ground' && (
                 <div className="question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
@@ -190,11 +210,11 @@ export default function App() {
 
           {step === 4 && (
             <div className="step-content result-step">
-              <div className="section-heading result-heading"><span className="section-number done">✓</span><div><h2>Votre projet terrasse</h2><p>Prix commercial disponible immédiatement ; les contrôles techniques manquants restent visibles et bloquants.</p></div><button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button></div>
+              <div className="section-heading result-heading"><span className="section-number done">✓</span><div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div><button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button></div>
               <Results input={project} result={result} />
               <div className="preview-toolbar"><div className="segmented small-segmented"><button type="button" className={preview === '2d' ? 'active' : ''} onClick={() => setPreview('2d')}>Vue 2D</button><button type="button" className={preview === '3d' ? 'active' : ''} onClick={() => setPreview('3d')}>Vue 3D</button></div><span>Produit : <strong>{project.board.label}</strong></span></div>
               {preview === '2d' ? <Plan2D input={project} /> : <Preview3D input={project} />}
-              <details className="technical-details" open={!result.valid}><summary>Vérifications techniques</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
+              <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
               <div className="scope-reminder">Cette démo calcule uniquement les matériaux. Aucun temps de pose, aucune heure ni aucun coût de main-d'œuvre.</div>
             </div>
           )}
@@ -205,8 +225,8 @@ export default function App() {
         <aside className="live-summary">
           <span className="live-label">Votre terrasse</span>
           <div className="live-preview"><Plan2D input={project} /></div>
-          <div className="live-stats"><div><span>Surface</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Forme</span><strong>{project.shape === 'rectangle' ? 'Rectangle' : 'En L'}</strong></div><div><span>Prix lames</span><strong>{livePrice != null ? euro(livePrice) : '—'}</strong></div></div>
-          <div className="speedarti-note"><span>✓</span><p>Les prix proviennent du catalogue local. Les règles techniques absentes ne sont jamais inventées.</p></div>
+          <div className="live-stats"><div><span>Surface</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Forme</span><strong>{project.shape === 'rectangle' ? 'Rectangle' : 'En L'}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
+          <div className="speedarti-note"><span>✓</span><p>Le panier affiche lames, structure, appuis, fixations et protections. Les lignes non validées restent clairement à confirmer.</p></div>
           <code className="version-code">{VERSION_TAG}</code>
         </aside>
       </main>

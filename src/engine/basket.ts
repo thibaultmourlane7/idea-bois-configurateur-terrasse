@@ -1,0 +1,249 @@
+import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput } from '../domain/types';
+import { PGB_SCREWS_5X60_200, PIN_JOIST_60X40_2400, PLOT_OPTIONS, SILVADEC_CLIPS_30, UBBINK_BAND_20M } from '../catalog/materials';
+
+export const BASKET_TAG = 'SA-TERR-BASKET-001';
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, pricing: PricingResult): BasketLine {
+  if (layout && pricing.boardPurchaseTtc != null) {
+    return {
+      id: 'decking',
+      family: 'decking',
+      label: input.board.label,
+      productRef: input.board.catalog?.internalCodes.join(', '),
+      quantity: layout.stockBoards.length,
+      unit: 'lame(s)',
+      unitPriceTtc: input.board.priceTtcPerM2,
+      totalTtc: round2(pricing.boardPurchaseTtc),
+      status: 'exact',
+      required: true,
+      note: `${layout.purchasedLinearM.toFixed(2)} ml achetés • ${layout.wastePercent.toFixed(1)} % de chute`,
+      sourceUrl: input.board.catalog?.sourceUrl,
+    };
+  }
+
+  return {
+    id: 'decking',
+    family: 'decking',
+    label: input.board.label,
+    productRef: input.board.catalog?.internalCodes.join(', '),
+    quantity: geometry.areaM2,
+    unit: 'm² nets',
+    unitPriceTtc: input.board.priceTtcPerM2,
+    totalTtc: pricing.surfaceNetTtc != null ? round2(pricing.surfaceNetTtc) : undefined,
+    status: pricing.surfaceNetTtc != null ? 'informative' : 'pending',
+    required: true,
+    note: pricing.surfaceNetTtc != null
+      ? 'Prix sur surface nette : quantité de commande à finaliser après validation du jeu de pose.'
+      : 'Prix catalogue à confirmer.',
+    sourceUrl: input.board.catalog?.sourceUrl,
+  };
+}
+
+function pending(id: string, family: BasketLine['family'], label: string, note: string): BasketLine {
+  return { id, family, label, unit: '—', status: 'pending', required: true, note };
+}
+
+function choosePlot(residualHeightMm: number) {
+  const candidates = PLOT_OPTIONS.filter((item) => residualHeightMm >= item.minHeightMm && residualHeightMm <= item.maxHeightMm);
+  return candidates.sort((a, b) => {
+    const aExact = a.consumptionPerM2 != null ? 1 : 0;
+    const bExact = b.consumptionPerM2 != null ? 1 : 0;
+    return bExact - aExact || (a.maxHeightMm - a.minHeightMm) - (b.maxHeightMm - b.minHeightMm);
+  })[0];
+}
+
+function woodCommercialLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
+  const area = geometry.areaM2;
+  const joistLinearM = area * 2.5;
+  const joistPieces = Math.ceil(joistLinearM / 2.4);
+  const bandRolls = Math.ceil(joistLinearM / 20);
+
+  const lines: BasketLine[] = [
+    {
+      id: 'joists',
+      family: 'joists',
+      label: PIN_JOIST_60X40_2400.label,
+      productRef: PIN_JOIST_60X40_2400.productRef,
+      quantity: joistPieces,
+      unit: 'pièce(s)',
+      unitPriceTtc: PIN_JOIST_60X40_2400.unitPriceTtc,
+      totalTtc: round2(joistPieces * PIN_JOIST_60X40_2400.unitPriceTtc),
+      status: 'exact',
+      required: true,
+      note: `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
+      sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
+    },
+    {
+      id: 'protection',
+      family: 'protection',
+      label: UBBINK_BAND_20M.label,
+      productRef: UBBINK_BAND_20M.productRef,
+      quantity: bandRolls,
+      unit: 'rouleau(x)',
+      unitPriceTtc: UBBINK_BAND_20M.unitPriceTtc,
+      totalTtc: round2(bandRolls * UBBINK_BAND_20M.unitPriceTtc),
+      status: 'exact',
+      required: true,
+      note: '1 rouleau couvre 20 ml de lambourdes.',
+      sourceUrl: UBBINK_BAND_20M.sourceUrl,
+    },
+  ];
+
+  if (input.board.thicknessMm >= 21 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
+    const screwMin = Math.ceil(area * 35);
+    const screwMax = Math.ceil(area * 40);
+    const packMin = Math.ceil(screwMin / 200);
+    const packMax = Math.ceil(screwMax / 200);
+    const exact = packMin === packMax;
+    lines.push({
+      id: 'fixings',
+      family: 'fixings',
+      label: PGB_SCREWS_5X60_200.label,
+      productRef: PGB_SCREWS_5X60_200.productRef,
+      quantity: exact ? packMin : undefined,
+      quantityMin: exact ? undefined : packMin,
+      quantityMax: exact ? undefined : packMax,
+      unit: 'boîte(s)',
+      unitPriceTtc: PGB_SCREWS_5X60_200.unitPriceTtc,
+      totalTtc: exact ? round2(packMin * PGB_SCREWS_5X60_200.unitPriceTtc) : undefined,
+      totalMinTtc: exact ? undefined : round2(packMin * PGB_SCREWS_5X60_200.unitPriceTtc),
+      totalMaxTtc: exact ? undefined : round2(packMax * PGB_SCREWS_5X60_200.unitPriceTtc),
+      status: exact ? 'exact' : 'range',
+      required: true,
+      note: 'IDEA Bois indique 35 à 40 vis/m² ; conditionnement de 200.',
+      sourceUrl: PGB_SCREWS_5X60_200.sourceUrl,
+    });
+  } else {
+    lines.push(pending('fixings', 'fixings', 'Fixations adaptées à la lame', 'La fixation doit être confirmée pour ce profil avant commande.'));
+  }
+
+  if (input.supportSystem === 'adjustable-pedestals') {
+    const residualHeightMm = input.heightCm * 10 - input.board.thicknessMm - 40;
+    const plot = choosePlot(residualHeightMm);
+    if (!plot || residualHeightMm <= 0) {
+      lines.push(pending('supports', 'supports', 'Plots / appuis', `Hauteur utile calculée : ${Math.max(0, residualHeightMm).toFixed(0)} mm. Aucun plot tarifé compatible n'est validé dans le référentiel V0.8.`));
+    } else if (plot.consumptionPerM2 != null) {
+      const qty = Math.ceil(area * plot.consumptionPerM2);
+      lines.push({
+        id: 'supports',
+        family: 'supports',
+        label: plot.label,
+        productRef: plot.productRef,
+        quantity: qty,
+        unit: 'plot(s)',
+        unitPriceTtc: plot.unitPriceTtc,
+        totalTtc: round2(qty * plot.unitPriceTtc),
+        status: 'exact',
+        required: true,
+        note: `Hauteur utile ${residualHeightMm.toFixed(0)} mm • ${plot.consumptionPerM2} plots/m² publiés.`,
+        sourceUrl: plot.sourceUrl,
+      });
+    } else {
+      const qMin = Math.ceil(area * (plot.consumptionMinPerM2 ?? 4));
+      const qMax = Math.ceil(area * (plot.consumptionMaxPerM2 ?? 5));
+      lines.push({
+        id: 'supports',
+        family: 'supports',
+        label: plot.label,
+        productRef: plot.productRef,
+        quantityMin: qMin,
+        quantityMax: qMax,
+        unit: 'plot(s)',
+        unitPriceTtc: plot.unitPriceTtc,
+        totalMinTtc: round2(qMin * plot.unitPriceTtc),
+        totalMaxTtc: round2(qMax * plot.unitPriceTtc),
+        status: 'range',
+        required: true,
+        note: `Hauteur utile ${residualHeightMm.toFixed(0)} mm • consommation publiée 4 à 5 plots/m².`,
+        sourceUrl: plot.sourceUrl,
+      });
+    }
+  } else if (input.supportSystem === 'pads') {
+    lines.push(pending('supports', 'supports', 'Cales / appuis fixes', 'Le type et l’épaisseur des cales doivent être choisis selon le support réel.'));
+  } else {
+    lines.push(pending('supports', 'supports', 'Plots / cales / appuis', 'Choisissez le système de support pour obtenir son prix.'));
+  }
+
+  return lines;
+}
+
+function silvadecLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
+  const area = geometry.areaM2;
+  const clips = Math.ceil(area * 18);
+  const packs = Math.ceil(clips / 30);
+  return [
+    {
+      id: 'joists',
+      family: 'joists',
+      label: 'Lambourdes compatibles SILVADEC',
+      quantity: round2(area * 3),
+      unit: 'ml',
+      status: 'pending',
+      required: true,
+      note: 'Quantité fabricant : 3 ml/m². La référence de lambourde IDEA Bois compatible et son prix restent à valider.',
+    },
+    {
+      id: 'fixings',
+      family: 'fixings',
+      label: SILVADEC_CLIPS_30.label,
+      productRef: SILVADEC_CLIPS_30.productRef,
+      quantity: packs,
+      unit: 'sachet(s)',
+      unitPriceTtc: SILVADEC_CLIPS_30.unitPriceTtc,
+      totalTtc: round2(packs * SILVADEC_CLIPS_30.unitPriceTtc),
+      status: 'exact',
+      required: true,
+      note: `${clips} clips requis à 18 clips/m² • sachets de 30.`,
+      sourceUrl: SILVADEC_CLIPS_30.sourceUrl,
+    },
+    pending('supports', 'supports', 'Plots / appuis compatibles', 'La référence de structure doit être validée avant de chiffrer les appuis.'),
+    pending('protection', 'protection', 'Protection / accessoires structure', 'Dépend du matériau de lambourde retenu.'),
+  ];
+}
+
+export function computeBasket(
+  input: ProjectInput,
+  geometry: GeometryResult,
+  layout: LayoutResult | undefined,
+  pricing: PricingResult,
+): BasketResult {
+  const lines: BasketLine[] = [deckingLine(input, geometry, layout, pricing)];
+
+  if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
+    lines.push(...silvadecLines(input, geometry));
+  } else if (input.board.technical.materialFamily === 'solid-wood' && input.board.technical.technicalEngine !== 'manufacturer-rules') {
+    lines.push(...woodCommercialLines(input, geometry));
+  } else {
+    lines.push(
+      pending('joists', 'joists', 'Lambourdes / structure', 'Compatibilité produit à valider.'),
+      pending('supports', 'supports', 'Plots / appuis', 'Système de support à valider.'),
+      pending('fixings', 'fixings', 'Vis / clips / fixations', 'Fixation fabricant à valider.'),
+      pending('protection', 'protection', 'Protection / accessoires', 'Accessoires compatibles à valider.'),
+    );
+  }
+
+  const required = lines.filter((line) => line.required);
+  const exactLines = required.filter((line) => line.status === 'exact');
+  const rangeLines = required.filter((line) => line.status === 'range');
+  const unresolved = required.filter((line) => line.status === 'pending' || line.status === 'informative');
+
+  const knownSubtotalTtc = round2(exactLines.reduce((sum, line) => sum + (line.totalTtc ?? 0), 0));
+  const rangeMin = round2(knownSubtotalTtc + rangeLines.reduce((sum, line) => sum + (line.totalMinTtc ?? 0), 0));
+  const rangeMax = round2(knownSubtotalTtc + rangeLines.reduce((sum, line) => sum + (line.totalMaxTtc ?? 0), 0));
+
+  if (!unresolved.length && !rangeLines.length) {
+    return { lines, knownSubtotalTtc, totalTtc: knownSubtotalTtc, status: 'complete', missingFamilies: [] };
+  }
+  if (!unresolved.length && rangeLines.length) {
+    return { lines, knownSubtotalTtc, totalMinTtc: rangeMin, totalMaxTtc: rangeMax, status: 'range', missingFamilies: [] };
+  }
+
+  return {
+    lines,
+    knownSubtotalTtc,
+    status: 'partial',
+    missingFamilies: unresolved.map((line) => line.label),
+  };
+}

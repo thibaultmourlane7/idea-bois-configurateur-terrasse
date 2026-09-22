@@ -65,7 +65,7 @@ function drawFooter(doc: Pdf, version: string) {
   text(doc, version, 170, 287, 7.2, false, MUTED);
 }
 
-function drawPlan(doc: Pdf, input: ProjectInput, x: number, y: number, width: number, height: number) {
+function drawPlan(doc: Pdf, input: ProjectInput, result: ConfiguratorResult, x: number, y: number, width: number, height: number) {
   const bounds = getDeckBoundingSizeM(input);
   const scale = Math.min((width - 8) / bounds.lengthM, (height - 8) / bounds.widthM);
   const ox = x + (width - bounds.lengthM * scale) / 2;
@@ -138,9 +138,34 @@ function drawPlan(doc: Pdf, input: ProjectInput, x: number, y: number, width: nu
     }
   }
 
+  if (result.layout?.buttJoints?.length) {
+    doc.setDrawColor(28, 36, 44);
+    doc.setLineWidth(0.45);
+    const half = Math.max(1.2, (input.board.widthMm / 1000) * scale * 0.7);
+    for (const joint of result.layout.buttJoints) {
+      const cx = ox + (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000 * scale;
+      const cy = oy + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
+      if (input.orientation === 'length') doc.line(cx, cy - half, cx, cy + half);
+      else doc.line(cx - half, cy, cx + half, cy);
+    }
+  }
+
   doc.setDrawColor(24, 63, 100);
   doc.setLineWidth(0.6);
   doc.lines(vectors, first[0], first[1], [1, 1], 'S', true);
+
+  if (input.shape !== 'circle') {
+    outline.forEach((point, index) => {
+      const next = outline[(index + 1) % outline.length];
+      const a = String.fromCharCode(65 + (index % 26));
+      const b = String.fromCharCode(65 + ((index + 1) % 26));
+      const mx = ox + ((point.x + next.x) / 2) * scale;
+      const my = oy + ((point.y + next.y) / 2) * scale;
+      const lengthM = Math.hypot(next.x - point.x, next.y - point.y);
+      text(doc, `${a}${b} ${lengthM.toFixed(2)} m`, mx - 5, my - 1.5, 5.5, true, BLUE);
+      text(doc, a, ox + point.x * scale + 1.5, oy + point.y * scale - 1.5, 5.3, true, NAVY);
+    });
+  }
 }
 
 function drawInfoCell(doc: Pdf, label: string, value: string, x: number, y: number, w: number) {
@@ -174,7 +199,7 @@ export async function generateClientPdf(input: ProjectInput, result: Configurato
   text(doc, model.budgetValue, 136, 46, 13, true, budgetColor);
 
   text(doc, 'Apercu du projet', 14, 61, 11, true, NAVY);
-  drawPlan(doc, input, 14, 66, 82, 70);
+  drawPlan(doc, input, result, 14, 66, 82, 70);
 
   drawInfoCell(doc, 'Surface nette', model.surface, 104, 66, 43);
   drawInfoCell(doc, 'Zones exclues', model.excludedSurface, 153, 66, 43);

@@ -350,15 +350,15 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         id: 'edge-vertical-joists',
         family: 'joists',
         label: `Lambourdes verticales d’habillage — morceaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm`,
-        productRef: joistMaterial.productRef,
+        productRef: PIN_JOIST_60X40_2400.productRef,
         quantity: cladding.verticalJoistStockBoards?.length,
         unit: 'lambourde(s) 2,40 m',
-        unitPriceTtc: joistMaterial.unitPriceTtc,
+        unitPriceTtc: PIN_JOIST_60X40_2400.unitPriceTtc,
         totalTtc: cladding.verticalJoistTotalTtc,
         status: 'exact',
         required: true,
         note: `${cladding.verticalSupportCount} support(s) verticaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires.`,
-        sourceUrl: joistMaterial.sourceUrl,
+        sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
       });
     } else if (cladding.mode === 'same-decking' && cladding.boardTotalTtc != null) {
       lines.push({

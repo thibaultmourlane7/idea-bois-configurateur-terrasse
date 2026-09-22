@@ -59,12 +59,12 @@ describe('Configurateur terrasse V0.9', () => {
     expect(result.basket?.totalTtc).toBeGreaterThan(0);
 
     const joists = result.basket?.lines.find((line) => line.id === 'joists');
-    const supports = result.basket?.lines.find((line) => line.id === 'supports');
+    const supports = result.basket?.lines.filter((line) => line.family === 'supports' && line.status === 'exact') ?? [];
     const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
     const protection = result.basket?.lines.find((line) => line.id === 'protection');
 
-    expect(joists?.quantity).toBe(25);
-    expect(supports?.quantity).toBe(96);
+    expect(joists?.quantity).toBe(28);
+    expect(supports.reduce((sum, line) => sum + (line.quantity ?? 0), 0)).toBe(98);
     expect(fixings?.quantity).toBe(5);
     expect(protection?.quantity).toBe(3);
     expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001')).toBe(false);

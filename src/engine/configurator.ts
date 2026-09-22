@@ -9,14 +9,15 @@ import { computePricing, PRICE_TAG } from './pricing';
 import { validateScope } from './scope';
 import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
+import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-015';
+export const VERSION_TAG = 'IB-TERR-VERSION-016';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + éditeur visuel interactif et forme libre V0.15.`];
+  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + structure technique avancée, niveaux et carte de plots V0.16.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -49,7 +50,23 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
     trace.push(`[${PRICE_TAG}] Prix lames indisponible : aucune valeur inventée.`);
   }
 
-  const basket = computeBasket(input, geometry, layout, pricing);
+  const supportPlan = computeSupportPlan(input, layout);
+  if (supportPlan.status === 'exact') {
+    trace.push(`[${SUPPORT_PLAN_TAG}] ${supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} appuis implantés • hauteurs ${supportPlan.minRequiredPlotHeightMm?.toFixed(0) ?? '?'} à ${supportPlan.maxRequiredPlotHeightMm?.toFixed(0) ?? '?'} mm • ${supportPlan.joistStockBoards.length} lambourdes commerciales.`);
+  } else if (supportPlan.status === 'partial') {
+    diagnostics.push({
+      tag: SUPPORT_PLAN_TAG,
+      severity: 'warning',
+      message: 'Certaines hauteurs de plots restent hors des gammes tarifées connues.',
+      technicalMessage: `${supportPlan.unsupportedPointCount} appui(s) sans plot compatible dans le référentiel actuel.`,
+      source: supportPlan.sourceUrl,
+    });
+    trace.push(`[${SUPPORT_PLAN_TAG}] Plan structurel partiel : ${supportPlan.unsupportedPointCount} appui(s) restent à résoudre.`);
+  } else if (supportPlan.note) {
+    trace.push(`[${SUPPORT_PLAN_TAG}] ${supportPlan.note}`);
+  }
+
+  const basket = computeBasket(input, geometry, layout, pricing, supportPlan);
   if (basket.totalTtc != null) {
     trace.push(`[${BASKET_TAG}] Panier matériel complet : ${basket.totalTtc.toFixed(2)} € TTC.`);
   } else if (basket.totalMinTtc != null && basket.totalMaxTtc != null) {
@@ -81,6 +98,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
       layout,
       pricing,
       basket,
+      supportPlan,
       trace: [...trace, 'Panier commercial conservé ; validation technique finale encore requise avant commande.'],
     };
   }
@@ -112,6 +130,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
     layout,
     pricing,
     basket,
+    supportPlan,
     trace,
   };
 }

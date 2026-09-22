@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import type { BasketResult, ProjectInput, TerraceObstacle } from '../domain/types';
+import type { BasketResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
@@ -19,11 +19,13 @@ function obstacleFill(kind: TerraceObstacle['kind']) {
 export function Plan2D({
   input,
   basket,
+  supportPlan,
   layers = FINISHED_LAYERS,
   exploded = false,
 }: {
   input: ProjectInput;
   basket?: BasketResult;
+  supportPlan?: SupportPlanResult;
   layers?: ConstructionLayers;
   exploded?: boolean;
 }) {
@@ -31,7 +33,7 @@ export function Plan2D({
   const clipId = `deck-${baseId}`;
   const bounds = getDeckBoundingSizeM(input);
   const outline = getDeckOutlinePointsM(input);
-  const construction = buildConstructionVisual(input, basket);
+  const construction = buildConstructionVisual(input, basket, supportPlan);
   const texture = resolveBoardTexture(input.board);
   const materialProfile = resolveMaterialProfile(input.board);
   const grooveLines = buildGrooveLines(materialProfile);
@@ -140,7 +142,7 @@ export function Plan2D({
     <div className="visual-card construction-plan-card">
       <div className="visual-title">
         <span>Vue de dessus</span>
-        <code>IB-TERR-UI-2D-0142-B1</code>
+        <code>IB-TERR-UI-2D-016</code>
       </div>
       <svg viewBox={`0 0 ${maxW} ${maxH}`} className="plan" role="img" aria-label="Plan 2D de la construction de terrasse">
         <defs>
@@ -203,25 +205,48 @@ export function Plan2D({
 
         {layers.plots && construction.plots.map((plot) => (
           <g key={plot.id} className="plot-symbol">
-            <circle cx={x + plot.xM * scale} cy={y + plot.yM * scale} r="5.2" fill="#2f3f4b" stroke="#fff" strokeWidth="1.8" />
-            <circle cx={x + plot.xM * scale} cy={y + plot.yM * scale} r="2" fill="#8fa1ad" />
+            <circle
+              cx={x + plot.xM * scale}
+              cy={y + plot.yM * scale}
+              r={plot.multiplicity === 2 ? 6.2 : 5.2}
+              fill={plot.status === 'unsupported' ? '#b64c45' : '#2f3f4b'}
+              stroke="#fff"
+              strokeWidth="1.8"
+            />
+            <circle cx={x + plot.xM * scale} cy={y + plot.yM * scale} r="2" fill={plot.status === 'unsupported' ? '#ffd2ce' : '#8fa1ad'} />
+            {plot.multiplicity === 2 && (
+              <text x={x + plot.xM * scale + 7} y={y + plot.yM * scale - 5} fontSize="7" fontWeight="900" fill="#7a4b27">×2</text>
+            )}
           </g>
         ))}
 
         {layers.joists && (
           <g className="joist-lines">
             {construction.joists.map((joist) => (
-              <line
-                key={joist.id}
-                x1={x + joist.x1M * scale}
-                y1={y + joist.y1M * scale}
-                x2={x + joist.x2M * scale}
-                y2={y + joist.y2M * scale}
-                stroke="#6c4d31"
-                strokeWidth={Math.max(4, Math.min(8, scale * 0.045))}
-                strokeLinecap="square"
-                opacity="0.88"
-              />
+              <g key={joist.id}>
+                <line
+                  x1={x + joist.x1M * scale}
+                  y1={y + joist.y1M * scale}
+                  x2={x + joist.x2M * scale}
+                  y2={y + joist.y2M * scale}
+                  stroke={joist.multiplicity === 2 ? '#9b5f2f' : '#6c4d31'}
+                  strokeWidth={Math.max(4, Math.min(joist.multiplicity === 2 ? 12 : 8, scale * (joist.multiplicity === 2 ? 0.07 : 0.045)))}
+                  strokeLinecap="square"
+                  opacity="0.88"
+                />
+                {joist.multiplicity === 2 && (
+                  <line
+                    x1={x + joist.x1M * scale}
+                    y1={y + joist.y1M * scale}
+                    x2={x + joist.x2M * scale}
+                    y2={y + joist.y2M * scale}
+                    stroke="#f0c38f"
+                    strokeWidth="1.4"
+                    strokeDasharray="4 3"
+                    opacity="0.9"
+                  />
+                )}
+              </g>
             ))}
           </g>
         )}

@@ -155,8 +155,10 @@ export function buildClientPdfModel(
       ? input.obstacles.map((obstacle) => obstacle.label).join(', ')
       : 'Aucune reservation',
     support: supportLabel(input),
-    supportSystem: supportSystemLabel(input),
-    height: `${fmt(input.heightCm)} cm`,
+    supportSystem: result.supportPlan && result.supportPlan.status !== 'unavailable'
+      ? `${result.supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} plots - ${fmt(result.supportPlan.minRequiredPlotHeightMm ?? 0, 0)} a ${fmt(result.supportPlan.maxRequiredPlotHeightMm ?? 0, 0)} mm`
+      : supportSystemLabel(input),
+    height: `${fmt(input.heightCm)} cm (reference)`,
     decking: input.board.label,
     orientation: input.orientation === 'length' ? 'Dans la longueur' : 'Dans la largeur',
     finishes: finishParts.join(' - '),

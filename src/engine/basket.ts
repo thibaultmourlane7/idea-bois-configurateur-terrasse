@@ -1,4 +1,4 @@
-import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput } from '../domain/types';
+import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { computeEdgeCladding } from './edgeCladding';
 import {
   GEODECK_20M2,
@@ -67,10 +67,15 @@ function choosePlot(residualHeightMm: number) {
   })[0];
 }
 
-function woodCommercialLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
+function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
-  const joistLinearM = area * 2.5;
-  const joistPieces = Math.ceil(joistLinearM / 2.4);
+  const hasPrecisePlan = input.board.commercialRecipeId === 'idea-pin-nord-145x27'
+    && input.supportSystem === 'adjustable-pedestals'
+    && supportPlan
+    && supportPlan.status !== 'unavailable'
+    && supportPlan.joistStockBoards.length > 0;
+  const joistLinearM = hasPrecisePlan ? supportPlan.joistLinearM : area * 2.5;
+  const joistPieces = hasPrecisePlan ? supportPlan.joistStockBoards.length : Math.ceil(joistLinearM / 2.4);
   const bandRolls = Math.ceil(joistLinearM / 20);
 
   const lines: BasketLine[] = [
@@ -85,7 +90,9 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult): Bas
       totalTtc: round2(joistPieces * PIN_JOIST_60X40_2400.unitPriceTtc),
       status: 'exact',
       required: true,
-      note: `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
+      note: hasPrecisePlan
+        ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation en longueurs de 2,40 m.`
+        : `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
       sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
     },
     {
@@ -135,45 +142,72 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult): Bas
   }
 
   if (input.supportSystem === 'adjustable-pedestals') {
-    const residualHeightMm = input.heightCm * 10 - input.board.thicknessMm - 40;
-    const plot = choosePlot(residualHeightMm);
-    if (!plot || residualHeightMm <= 0) {
-      lines.push(pending('supports', 'supports', 'Plots / appuis', `Hauteur utile calculée : ${Math.max(0, residualHeightMm).toFixed(0)} mm. Aucun plot tarifé compatible n'est validé dans le référentiel V0.8.`));
-    } else if (plot.consumptionPerM2 != null) {
-      const qty = Math.ceil(area * plot.consumptionPerM2);
-      lines.push({
-        id: 'supports',
-        family: 'supports',
-        label: plot.label,
-        productRef: plot.productRef,
-        quantity: qty,
-        unit: 'plot(s)',
-        unitPriceTtc: plot.unitPriceTtc,
-        totalTtc: round2(qty * plot.unitPriceTtc),
-        status: 'exact',
-        required: true,
-        note: `Hauteur utile ${residualHeightMm.toFixed(0)} mm • ${plot.consumptionPerM2} plots/m² publiés.`,
-        sourceUrl: plot.sourceUrl,
-      });
+    if (hasPrecisePlan) {
+      for (const group of supportPlan.plotGroups) {
+        lines.push({
+          id: `supports-${group.materialId}`,
+          family: 'supports',
+          label: group.label,
+          productRef: group.productRef,
+          quantity: group.quantity,
+          unit: 'plot(s)',
+          unitPriceTtc: group.unitPriceTtc,
+          totalTtc: group.totalTtc,
+          status: 'exact',
+          required: true,
+          note: `Implantation V0.16 : hauteur compatible ${group.minHeightMm}–${group.maxHeightMm} mm • quantités issues des positions réelles des lambourdes et d'un entraxe plots ≤ ${supportPlan.plotSpacingMm ?? 700} mm.`,
+          sourceUrl: group.sourceUrl,
+        });
+      }
+      if (supportPlan.unsupportedPointCount > 0) {
+        lines.push(pending(
+          'supports-unavailable-heights',
+          'supports',
+          'Plots pour hauteurs hors gamme',
+          `${supportPlan.unsupportedPointCount} appui(s) nécessitent une hauteur non couverte par les plots tarifés du référentiel actuel (${supportPlan.minRequiredPlotHeightMm?.toFixed(0) ?? '?'} à ${supportPlan.maxRequiredPlotHeightMm?.toFixed(0) ?? '?'} mm sur le projet).`,
+        ));
+      }
     } else {
-      const qMin = Math.ceil(area * (plot.consumptionMinPerM2 ?? 4));
-      const qMax = Math.ceil(area * (plot.consumptionMaxPerM2 ?? 5));
-      lines.push({
-        id: 'supports',
-        family: 'supports',
-        label: plot.label,
-        productRef: plot.productRef,
-        quantityMin: qMin,
-        quantityMax: qMax,
-        unit: 'plot(s)',
-        unitPriceTtc: plot.unitPriceTtc,
-        totalMinTtc: round2(qMin * plot.unitPriceTtc),
-        totalMaxTtc: round2(qMax * plot.unitPriceTtc),
-        status: 'range',
-        required: true,
-        note: `Hauteur utile ${residualHeightMm.toFixed(0)} mm • consommation publiée 4 à 5 plots/m².`,
-        sourceUrl: plot.sourceUrl,
-      });
+      const residualHeightMm = input.heightCm * 10 - input.board.thicknessMm - 40;
+      const plot = choosePlot(residualHeightMm);
+      if (!plot || residualHeightMm <= 0) {
+        lines.push(pending('supports', 'supports', 'Plots / appuis', `Hauteur utile calculée : ${Math.max(0, residualHeightMm).toFixed(0)} mm. Aucun plot tarifé compatible n'est validé dans le référentiel V0.8.`));
+      } else if (plot.consumptionPerM2 != null) {
+        const qty = Math.ceil(area * plot.consumptionPerM2);
+        lines.push({
+          id: 'supports',
+          family: 'supports',
+          label: plot.label,
+          productRef: plot.productRef,
+          quantity: qty,
+          unit: 'plot(s)',
+          unitPriceTtc: plot.unitPriceTtc,
+          totalTtc: round2(qty * plot.unitPriceTtc),
+          status: 'exact',
+          required: true,
+          note: `Hauteur utile ${residualHeightMm.toFixed(0)} mm • ${plot.consumptionPerM2} plots/m² publiés.`,
+          sourceUrl: plot.sourceUrl,
+        });
+      } else {
+        const qMin = Math.ceil(area * (plot.consumptionMinPerM2 ?? 4));
+        const qMax = Math.ceil(area * (plot.consumptionMaxPerM2 ?? 5));
+        lines.push({
+          id: 'supports',
+          family: 'supports',
+          label: plot.label,
+          productRef: plot.productRef,
+          quantityMin: qMin,
+          quantityMax: qMax,
+          unit: 'plot(s)',
+          unitPriceTtc: plot.unitPriceTtc,
+          totalMinTtc: round2(qMin * plot.unitPriceTtc),
+          totalMaxTtc: round2(qMax * plot.unitPriceTtc),
+          status: 'range',
+          required: true,
+          note: `Hauteur utile ${residualHeightMm.toFixed(0)} mm • consommation publiée 4 à 5 plots/m².`,
+          sourceUrl: plot.sourceUrl,
+        });
+      }
     }
   } else if (input.supportSystem === 'pads') {
     lines.push(pending('supports', 'supports', 'Cales / appuis fixes', 'Le type et l’épaisseur des cales doivent être choisis selon le support réel.'));
@@ -359,13 +393,14 @@ export function computeBasket(
   geometry: GeometryResult,
   layout: LayoutResult | undefined,
   pricing: PricingResult,
+  supportPlan?: SupportPlanResult,
 ): BasketResult {
   const lines: BasketLine[] = [deckingLine(input, geometry, layout, pricing)];
 
   if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
     lines.push(...silvadecLines(input, geometry));
   } else if (['idea-pin-nord-145x27','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21'].includes(input.board.commercialRecipeId ?? '')) {
-    lines.push(...woodCommercialLines(input, geometry));
+    lines.push(...woodCommercialLines(input, geometry, supportPlan));
   } else {
     lines.push(
       pending('joists', 'joists', 'Lambourdes / structure', 'Compatibilité produit à valider.'),

@@ -9,6 +9,8 @@ import { VariantComparator } from './components/VariantComparator';
 import { GeometryEditor } from './components/GeometryEditor';
 import { SideView } from './components/SideView';
 import { LayerControls } from './components/LayerControls';
+import { LevelingEditor } from './components/LevelingEditor';
+import { SupportHeightMap } from './components/SupportHeightMap';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
@@ -36,6 +38,16 @@ const initialProject: ProjectInput = {
   },
   obstacles: [],
   heightCm: 20,
+  supportLevelProfile: {
+    mode: 'flat',
+    topLeftDeltaMm: 0,
+    topRightDeltaMm: 0,
+    bottomRightDeltaMm: 0,
+    bottomLeftDeltaMm: 0,
+    targetSlopeXPercent: 0,
+    targetSlopeYPercent: 0,
+  },
+  doubleJoistsAtButtJoints: false,
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
   edgeFinishMode: 'none',
@@ -195,7 +207,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Éditeur interactif V0.15 • forme libre • structure • rives</div>
+          <div className="header-note">Structure V0.16 • niveaux • plots • carte de hauteurs</div>
         </div>
       </header>
 
@@ -341,7 +353,32 @@ export default function App() {
                 </div>
               </div>
 
-              <label className="single-field">Hauteur souhaitée de la terrasse<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support jusqu'au dessus des lames.</small></label>
+              {result.layout?.hasButtJoints && (
+                <div className="question-block">
+                  <h3>Renfort aux jonctions de lames</h3>
+                  <p className="finish-help">Le configurateur a détecté au moins une jonction de lames. Le double lambourdage est une option, désactivée par défaut.</p>
+                  <div className="choice-grid two-choice">
+                    <ChoiceCard
+                      active={!project.doubleJoistsAtButtJoints}
+                      title="Lambourde simple"
+                      subtitle="Calcul de base : une seule lambourde sur l’axe de jonction"
+                      onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
+                    />
+                    <ChoiceCard
+                      active={project.doubleJoistsAtButtJoints}
+                      title="Double lambourdage"
+                      subtitle="Ajoute une seconde lambourde et recalcule les plots et le panier"
+                      onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <label className="single-field">Hauteur finie au point de référence<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support au-dessus de la lame au coin haut-gauche de référence.</small></label>
+              <LevelingEditor project={project} onChange={setProject} />
+              {project.supportSystem === 'adjustable-pedestals' && (
+                <SupportHeightMap project={project} plan={result.supportPlan} />
+              )}
               {project.supportType !== 'stabilized-ground' && (
                 <div className="question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
                   {([['yes', 'Oui'], ['no', 'Non'], ['unknown', 'Je ne sais pas']] as const).map(([value, label]) => <button type="button" key={value} className={project.drainage === value ? 'active' : ''} onClick={() => setProject({ ...project, drainage: value as DrainageAnswer })}>{label}</button>)}
@@ -394,7 +431,7 @@ export default function App() {
                   </label>
                 )}
                 <div className="finish-live-side">
-                  <SideView input={project} basket={result.basket} layers={progressiveLayers} />
+                  <SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={progressiveLayers} />
                 </div>
               </div>
 
@@ -463,9 +500,9 @@ export default function App() {
                 onPreset={(preset, layers) => { setVisualPreset(preset); setVisualLayers(layers); }}
                 onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
               />
-              {preview === '2d' && <Plan2D input={project} basket={result.basket} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
-              {preview === '3d' && <Preview3D input={project} basket={result.basket} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
-              {preview === 'side' && <SideView input={project} basket={result.basket} layers={visualLayers} />}
+              {preview === '2d' && <Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
+              {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
+              {preview === 'side' && <SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} />}
               <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
               <div className="scope-reminder">Cette démo calcule uniquement les matériaux. Aucun temps de pose, aucune heure ni aucun coût de main-d'œuvre.</div>
             </div>
@@ -477,11 +514,11 @@ export default function App() {
         <aside className="live-summary">
           <span className="live-label">Construction — étape {step}/5</span>
           <div className="progressive-stage">
-            <strong>{step === 1 ? 'Contour du projet' : step === 2 ? 'Lambourdes' : step === 3 ? 'Lambourdes + plots' : step === 4 ? 'Structure + rives' : 'Terrasse finie'}</strong>
-            <small>{step === 1 ? 'Les réservations et dimensions définissent la forme.' : step === 2 ? 'La lame choisie détermine l’entraxe documenté.' : step === 3 ? 'Les appuis apparaissent avec le support sélectionné.' : step === 4 ? 'L’habillage et ses supports verticaux sont ajoutés.' : 'Les lames recouvrent la structure.'}</small>
+            <strong>{step === 1 ? 'Contour du projet' : step === 2 ? 'Lambourdes' : step === 3 ? 'Lambourdes + plots + hauteurs' : step === 4 ? 'Structure + rives' : 'Terrasse finie'}</strong>
+            <small>{step === 1 ? 'Les réservations et dimensions définissent la forme.' : step === 2 ? 'La lame choisie détermine l’entraxe documenté.' : step === 3 ? 'Les appuis sont implantés et leur hauteur est calculée selon les niveaux saisis.' : step === 4 ? 'L’habillage et ses supports verticaux sont ajoutés.' : 'Les lames recouvrent la structure.'}</small>
           </div>
-          <div className="live-preview"><Plan2D input={project} basket={result.basket} layers={progressiveLayers} /></div>
-          {step === 4 && <div className="live-side-preview"><SideView input={project} basket={result.basket} layers={progressiveLayers} /></div>}
+          <div className="live-preview"><Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={progressiveLayers} /></div>
+          {step === 4 && <div className="live-side-preview"><SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={progressiveLayers} /></div>}
           <div className="live-stats"><div><span>Surface nette</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Réservations</span><strong>{project.obstacles.length}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
           <div className="speedarti-note"><span>✓</span><p>Le projet peut être partagé, repris par un conseiller et préparé pour devis/panier. Les connexions réelles restent désactivées dans la démo.</p></div>
           <code className="version-code">{VERSION_TAG}</code>

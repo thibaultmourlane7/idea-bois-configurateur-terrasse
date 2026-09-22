@@ -604,3 +604,120 @@
   .interactive-plan-svg{min-height:290px}
   .editor-reference-row{align-items:flex-start}
 }
+
+
+/* V0.16 — niveaux, pentes, carte des hauteurs et structure calculée */
+.leveling-editor{
+  margin:18px 0;
+  padding:16px;
+  border:1px solid #d9e5ec;
+  border-radius:14px;
+  background:#f8fbfd;
+}
+.leveling-heading h3,.leveling-slope h4{margin:0;color:#244b68}
+.leveling-heading p,.leveling-slope p{
+  margin:5px 0 0;
+  color:#718391;
+  font-size:10px;
+  line-height:1.45;
+}
+.leveling-mode{margin-top:12px}
+.level-corners{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:13px;
+}
+.level-corners.two{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:10px}
+.level-corners label{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  color:#566f80;
+  font-size:9px;
+  font-weight:850;
+}
+.leveling-slope{
+  margin-top:15px;
+  padding-top:14px;
+  border-top:1px solid #e3ebf0;
+}
+.support-map{
+  margin:18px 0 4px;
+  border:1px solid #d7e4ec;
+  border-radius:16px;
+  overflow:hidden;
+  background:#fff;
+}
+.support-map.unavailable{padding:15px;background:#fafcfd}
+.support-map.unavailable h3{margin:0 0 5px;color:#405f74}
+.support-map.unavailable p{margin:0;color:#778996;font-size:10px;line-height:1.5}
+.support-map-heading{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:13px 14px;
+  border-bottom:1px solid #e6edf1;
+  background:#f8fbfd;
+}
+.support-map-heading h3{margin:0;color:#244b68}
+.support-map-heading p{margin:4px 0 0;color:#738694;font-size:9px;line-height:1.4}
+.support-plan-status{
+  flex:0 0 auto;
+  border-radius:999px;
+  padding:5px 9px;
+  font-size:8px;
+  font-weight:900;
+}
+.support-plan-status.exact{background:#dff3e7;color:#20724a}
+.support-plan-status.partial{background:#fff0d4;color:#8a6117}
+.support-map-svg{display:block;width:100%;height:auto;background:linear-gradient(#fbfdfe,#f7f9fa)}
+.support-map-stats{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:1px;
+  background:#e6edf1;
+  border-top:1px solid #e6edf1;
+}
+.support-map-stats>div{
+  padding:9px 8px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.support-map-stats span{font-size:8px;color:#7a8c99;font-weight:750}
+.support-map-stats strong{font-size:11px;color:#244b68}
+.plot-group-table{border-top:1px solid #e7edf1}
+.plot-group-row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  padding:9px 12px;
+  border-bottom:1px solid #edf1f4;
+}
+.plot-group-row>div{display:flex;flex-direction:column;gap:2px}
+.plot-group-row strong{font-size:9px;color:#405b6d}
+.plot-group-row small{font-size:8px;color:#82919b}
+.plot-group-row>span{font-size:10px;font-weight:900;color:#244b68}
+.plot-group-row.warning{background:#fff8ec}
+.plot-group-row.warning strong,.plot-group-row.warning>span{color:#9a6418}
+.support-map-source{
+  padding:10px 12px;
+  background:#f6f9fb;
+  color:#718491;
+  font-size:8px;
+  line-height:1.45;
+}
+.support-map-source strong{color:#4f6879}
+@media(max-width:900px){
+  .level-corners{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .support-map-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .level-corners,.level-corners.two{grid-template-columns:1fr}
+  .support-map-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .support-map-heading{flex-direction:column}
+}

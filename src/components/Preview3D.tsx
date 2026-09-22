@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { BasketResult, ProjectInput, TerraceObstacle } from '../domain/types';
+import type { BasketResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
@@ -18,11 +18,13 @@ function obstacleColor(kind: TerraceObstacle['kind']) {
 export function Preview3D({
   input,
   basket,
+  supportPlan,
   layers = FINISHED_LAYERS,
   exploded = false,
 }: {
   input: ProjectInput;
   basket?: BasketResult;
+  supportPlan?: SupportPlanResult;
   layers?: ConstructionLayers;
   exploded?: boolean;
 }) {
@@ -40,7 +42,7 @@ export function Preview3D({
     const dpr = window.devicePixelRatio || 1;
     const width = 640;
     const height = 390;
-    const construction = buildConstructionVisual(input, basket);
+    const construction = buildConstructionVisual(input, basket, supportPlan);
     const bounds = getDeckBoundingSizeM(input);
     const deckLift = exploded ? -26 : 0;
     const joistLift = exploded ? 4 : 0;
@@ -101,7 +103,7 @@ export function Preview3D({
       if (layers.plots) {
         construction.plots.forEach((plot) => {
           const p = iso(plot.xM, plot.yM, 15 + plotDrop);
-          ctx.fillStyle = '#2f3e49';
+          ctx.fillStyle = plot.status === 'unsupported' ? '#b64c45' : '#2f3e49';
           ctx.beginPath();
           ctx.ellipse(p.x, p.y, 5.5, 3.2, 0, 0, Math.PI * 2);
           ctx.fill();
@@ -119,8 +121,8 @@ export function Preview3D({
         construction.joists.forEach((joist) => {
           const a = iso(joist.x1M, joist.y1M, 7 + joistLift);
           const b = iso(joist.x2M, joist.y2M, 7 + joistLift);
-          ctx.strokeStyle = '#62442e';
-          ctx.lineWidth = 7;
+          ctx.strokeStyle = joist.multiplicity === 2 ? '#935a2f' : '#62442e';
+          ctx.lineWidth = joist.multiplicity === 2 ? 11 : 7;
           ctx.lineCap = 'square';
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
@@ -269,11 +271,11 @@ export function Preview3D({
       image.onerror = () => paint();
       image.src = texture.textureImageUrl;
     }
-  }, [input, basket, layers, exploded, texture]);
+  }, [input, basket, supportPlan, layers, exploded, texture]);
 
   return (
     <div className="visual-card">
-      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-0142-B1</code></div>
+      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-016</code></div>
       <canvas ref={ref} />
       <div className="construction-legend">
         {layers.decking && <span><i className="legend-decking" />Lames</span>}

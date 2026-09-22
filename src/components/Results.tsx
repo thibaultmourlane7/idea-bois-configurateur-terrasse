@@ -53,6 +53,19 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
           <strong className="product-result-name">{input.board.label}</strong>
           <small>{input.board.catalog?.material ?? input.board.subtitle}</small>
         </article>
+        {result.supportPlan && result.supportPlan.status !== 'unavailable' && (
+          <article className="result-card">
+            <span>Structure V0.16</span>
+            <strong>
+              {result.supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} plots
+            </strong>
+            <small>
+              {result.supportPlan.minRequiredPlotHeightMm?.toFixed(0) ?? '?'}–{result.supportPlan.maxRequiredPlotHeightMm?.toFixed(0) ?? '?'} mm
+              {' • '}{result.supportPlan.joistStockBoards.length} lambourdes à acheter
+              {result.supportPlan.buttJointAxisPositionsMm.length ? input.doubleJoistsAtButtJoints ? ` • ${result.supportPlan.buttJointAxisPositionsMm.length} axe(s) doublé(s)` : ` • ${result.supportPlan.buttJointAxisPositionsMm.length} jonction(s) repérée(s)` : ''}
+            </small>
+          </article>
+        )}
         <article className={`result-card total-card ${headline.tone}`}>
           <span>{headline.label}</span>
           <strong>{headline.value}</strong>

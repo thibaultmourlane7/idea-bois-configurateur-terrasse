@@ -1,65 +1,66 @@
-# IDEA Bois — Configurateur Terrasse V0.15
+# IDEA Bois — Configurateur Terrasse V0.16
 
-## Gros lot V0.15 — éditeur visuel interactif
+## Gros lot V0.16 — structure technique avancée
 
-La V0.15 transforme l'étape géométrie en véritable éditeur de plan.
+La V0.16 ajoute un plan structurel calculé pour la recette Pin du Nord 145x27 + lambourde pin Classe 4 60x40 + plots réglables.
 
-### Réservations interactives
-Les piscines, arbres, poteaux, regards et autres réservations peuvent maintenant :
-- être déplacés directement au pointeur ;
-- être sélectionnés ;
-- être redimensionnés avec une poignée ;
-- conserver en parallèle leurs champs numériques précis ;
-- afficher dimensions et distances depuis la gauche / le haut.
+### Niveaux et pente
+L'étape Support permet de renseigner :
+- la hauteur finie au point de référence ;
+- un support plan ou un relevé de niveaux aux 4 coins ;
+- les écarts de niveau en millimètres, avec le coin haut-gauche comme référence 0 ;
+- une pente volontaire du dessus fini sur X et Y.
 
-Chaque modification met immédiatement à jour le projet transmis au moteur métier.
+Aucune pente n'est imposée automatiquement.
 
-### Zoom / pan
-L'éditeur fournit :
-- zoom avant / arrière ;
-- recentrage ;
-- déplacement du plan ;
-- grille visuelle de 0,50 m.
+### Implantation des plots
+Pour la recette prise en charge :
+- les lambourdes sont positionnées à partir de l'entraxe commercial documenté ;
+- les plots sont implantés avec un espacement maximum de 70 cm conformément à la fiche IDEA Bois / JOUPLAST utilisée par cette version ;
+- les réservations qui coupent une lambourde créent des segments et des appuis de rive ;
+- la hauteur de chaque plot est calculée individuellement ;
+- si une hauteur n'est couverte par aucune référence du catalogue intégré, elle reste explicitement à confirmer.
 
-### Annuler / rétablir
-Les modifications de géométrie disposent d'un historique local :
-- boutons Annuler / Rétablir ;
-- Ctrl/Cmd + Z hors champs de saisie ;
-- Ctrl/Cmd + Maj + Z ou Ctrl/Cmd + Y pour rétablir.
+### Carte de hauteurs
+La V0.16 affiche :
+- lambourdes ;
+- plots ;
+- hauteur requise de chaque plot ;
+- hauteur mini / maxi ;
+- références de plots regroupées par plage ;
+- quantité de lambourdes commerciales ;
+- jonctions de lames détectées.
 
-### Forme libre
-Une nouvelle forme `freeform` est disponible.
-Le client peut :
-- déplacer les sommets ;
-- ajouter un sommet sur la plus longue arête ;
-- supprimer un sommet en conservant au minimum 3 points ;
-- voir la longueur de chaque arête ;
-- recalculer surface, périmètre, lames et panier avec ce vrai contour polygonal.
+### Double lambourdage : option uniquement
+Le double lambourdage aux jonctions de lames n'est PAS appliqué dans le calcul de base.
 
-Une forme libre auto-croisée est bloquée explicitement.
+Par défaut :
+- les jonctions sont repérées ;
+- une seule lambourde est comptée sur l'axe de jonction ;
+- les quantités structurelles restent en simple lambourdage.
 
-### Fond plan / photo
-Un plan ou une photo locale peut être affiché en fond de l'éditeur avec réglage d'opacité.
+Si l'utilisateur active l'option « Double lambourdage » :
+- une seconde lambourde est ajoutée sur chaque axe de jonction détecté ;
+- les longueurs de lambourdes sont recalculées ;
+- les plots correspondants sont doublés dans le panier ;
+- les vues 2D / 3D montrent le renfort.
 
-Important :
-- le fichier reste local au navigateur ;
-- aucune cote n'est extraite automatiquement ;
-- l'image n'entre dans aucun calcul ;
-- elle sert uniquement de référence visuelle pour préparer les futurs imports/calibrages.
+### Panier structurel
+Pour la recette V0.16 prise en charge, le panier utilise :
+- les longueurs réelles du plan de lambourdes ;
+- l'optimisation en pièces commerciales de 2,40 m ;
+- le nombre réel d'appuis du plan ;
+- le choix de la gamme de plot selon la hauteur de chaque appui ;
+- le double lambourdage uniquement si l'option est activée.
 
-### Persistance
-La forme libre et ses sommets sont intégrés :
-- au lien partagé ;
-- à la sauvegarde locale ;
-- au PDF client ;
-- au payload SpeedArti.
+### Limites volontaires
+Le plan précis V0.16 n'est pas étendu automatiquement aux autres gammes lorsque la section de lambourde ou la règle fabricant n'est pas suffisamment validée.
+
+## V0.15 conservée
+L'éditeur interactif, la forme libre, les réservations déplaçables, zoom/pan, annuler/rétablir et fond plan/photo restent disponibles.
 
 ## Textures
-Le chantier textures V0.14.2-B1 est volontairement mis en pause.
-Point de reprise conservé :
-- Pin du Nord strié vert/marron : profil B1 déjà intégré ;
-- rendu encore à affiner ultérieurement avec le travail dédié textures ;
-- V0.15 ne modifie pas ces règles visuelles.
+Le chantier textures reste volontairement en pause au point V0.14.2-B1.
 
 ## Règle permanente
 Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.

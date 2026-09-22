@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { BasketResult, ProjectInput } from '../domain/types';
+import type { BasketResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
@@ -9,14 +9,16 @@ import { buildGrooveLines } from '../visual/texturePainter';
 export function SideView({
   input,
   basket,
+  supportPlan,
   layers = FINISHED_LAYERS,
 }: {
   input: ProjectInput;
   basket?: BasketResult;
+  supportPlan?: SupportPlanResult;
   layers?: ConstructionLayers;
 }) {
   const patternId = `side-texture-${useId().replace(/:/g, '')}`;
-  const construction = buildConstructionVisual(input, basket);
+  const construction = buildConstructionVisual(input, basket, supportPlan);
   const texture = resolveBoardTexture(input.board);
   const materialProfile = resolveMaterialProfile(input.board);
   const grooveLines = buildGrooveLines(materialProfile);
@@ -36,7 +38,7 @@ export function SideView({
 
   return (
     <div className="visual-card side-view-card">
-      <div className="visual-title"><span>Vue de côté</span><code>IB-TERR-SIDE-0142-B1</code></div>
+      <div className="visual-title"><span>Vue de côté</span><code>IB-TERR-SIDE-016</code></div>
       <svg viewBox="0 0 640 210" className="side-view-svg" role="img" aria-label="Coupe latérale de la terrasse">
         <defs>
           <pattern id={patternId} width="160" height="44" patternUnits="userSpaceOnUse">
@@ -140,7 +142,13 @@ export function SideView({
           {input.edgeFinishMode === 'full-perimeter' && (
             <text x="74" y={Math.min(194, claddingBottomY + 16)} fill="#5c7182" fontSize="10">Habillage {input.edgeCladdingHeightCm.toFixed(0)} cm • supports verticaux {construction.cladding.verticalSupportCount ?? 'à confirmer'}</text>
           )}
-          {layers.plots && <text x="74" y="190" fill="#768895" fontSize="9">Hauteur utile appui ≈ {usefulSupportCm.toFixed(1)} cm</text>}
+          {layers.plots && (
+            <text x="74" y="190" fill="#768895" fontSize="9">
+              {supportPlan && supportPlan.status !== 'unavailable' && supportPlan.minRequiredPlotHeightMm != null && supportPlan.maxRequiredPlotHeightMm != null
+                ? `Plots calculés ${supportPlan.minRequiredPlotHeightMm.toFixed(0)}–${supportPlan.maxRequiredPlotHeightMm.toFixed(0)} mm`
+                : `Hauteur utile appui ≈ ${usefulSupportCm.toFixed(1)} cm`}
+            </text>
+          )}
         </g>
       </svg>
       <div className={`texture-quality-note compact ${texture.status}`}>

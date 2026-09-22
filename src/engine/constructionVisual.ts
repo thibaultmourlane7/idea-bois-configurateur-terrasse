@@ -1,4 +1,4 @@
-import type { BasketResult, ProjectInput } from '../domain/types';
+import type { BasketResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { getCommercialConstructionRule, type CommercialConstructionRule } from './constructionRules';
 import { computeEdgeCladding, type EdgeCladdingCalculation } from './edgeCladding';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from './geometry';
@@ -9,19 +9,24 @@ export interface VisualLineSegment {
   y1M: number;
   x2M: number;
   y2M: number;
+  multiplicity?: number;
+  buttJointSupport?: boolean;
 }
 
 export interface VisualPoint {
   id: string;
   xM: number;
   yM: number;
+  multiplicity?: number;
+  requiredHeightMm?: number;
+  status?: 'exact' | 'unsupported';
 }
 
 export interface ConstructionVisualModel {
   rule?: CommercialConstructionRule;
   joists: VisualLineSegment[];
   plots: VisualPoint[];
-  plotsStatus: 'none' | 'commercial-distribution' | 'pending';
+  plotsStatus: 'none' | 'commercial-distribution' | 'height-plan' | 'pending';
   cladding: EdgeCladdingCalculation;
   verticalJoists: VisualPoint[];
 }
@@ -124,14 +129,35 @@ function edgeSupportPoints(input: ProjectInput, spacingMm: number): VisualPoint[
   return out;
 }
 
-export function buildConstructionVisual(input: ProjectInput, basket?: BasketResult): ConstructionVisualModel {
+export function buildConstructionVisual(input: ProjectInput, basket?: BasketResult, supportPlan?: SupportPlanResult): ConstructionVisualModel {
   const rule = getCommercialConstructionRule(input);
-  const joists = rule ? joistSegments(input, rule) : [];
+  const planned = supportPlan && supportPlan.status !== 'unavailable' && supportPlan.joistSegments.length > 0;
+  const joists = planned
+    ? supportPlan.joistSegments.map((segment) => ({
+        id: segment.id,
+        x1M: segment.x1M,
+        y1M: segment.y1M,
+        x2M: segment.x2M,
+        y2M: segment.y2M,
+        multiplicity: segment.multiplicity,
+        buttJointSupport: segment.buttJointSupport,
+      }))
+    : rule ? joistSegments(input, rule) : [];
+
   const supportLine = basket?.lines.find((line) => line.id === 'supports');
   const exactPlotCount = supportLine?.status === 'exact' ? supportLine.quantity ?? 0 : 0;
-  const plots = input.supportSystem === 'adjustable-pedestals' && exactPlotCount > 0
-    ? distributePlots(joists, exactPlotCount)
-    : [];
+  const plots = planned
+    ? supportPlan.supportPoints.map((point) => ({
+        id: point.id,
+        xM: point.xM,
+        yM: point.yM,
+        multiplicity: point.multiplicity,
+        requiredHeightMm: point.requiredPlotHeightMm,
+        status: point.status,
+      }))
+    : input.supportSystem === 'adjustable-pedestals' && exactPlotCount > 0
+      ? distributePlots(joists, exactPlotCount)
+      : [];
 
   const cladding = computeEdgeCladding(input);
   const verticalJoists = rule && cladding.mode === 'same-decking' && input.edgeFinishMode === 'full-perimeter'
@@ -144,9 +170,11 @@ export function buildConstructionVisual(input: ProjectInput, basket?: BasketResu
     plots,
     plotsStatus: input.supportSystem !== 'adjustable-pedestals'
       ? 'none'
-      : exactPlotCount > 0
-        ? 'commercial-distribution'
-        : 'pending',
+      : planned
+        ? 'height-plan'
+        : exactPlotCount > 0
+          ? 'commercial-distribution'
+          : 'pending',
     cladding,
     verticalJoists,
   };

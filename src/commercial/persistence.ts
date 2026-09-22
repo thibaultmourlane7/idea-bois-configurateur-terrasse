@@ -1,8 +1,8 @@
 import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
-import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint } from '../domain/types';
+import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile } from '../domain/types';
 
-export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v015';
-const LEGACY_KEYS = ['idea-bois-terrasse-v014', 'idea-bois-terrasse-v013', 'idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
+export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v016';
+const LEGACY_KEYS = ['idea-bois-terrasse-v015', 'idea-bois-terrasse-v014', 'idea-bois-terrasse-v013', 'idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
 
 function validShape(value: unknown): ShapeType {
   return value === 'l-shape'
@@ -16,13 +16,15 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
     obstacles: project.obstacles,
     freeformPoints: project.freeformPoints,
     heightCm: project.heightCm,
+    supportLevelProfile: project.supportLevelProfile,
+    doubleJoistsAtButtJoints: Boolean(project.doubleJoistsAtButtJoints),
     supportType: project.supportType,
     supportSystem: project.supportSystem,
     edgeFinishMode: project.edgeFinishMode,
@@ -49,6 +51,8 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     obstacles: Array.isArray(snapshot.obstacles) ? snapshot.obstacles as TerraceObstacle[] : [],
     freeformPoints: Array.isArray(snapshot.freeformPoints) ? snapshot.freeformPoints as TerracePoint[] : fallback.freeformPoints,
     heightCm: Number(snapshot.heightCm) || fallback.heightCm,
+    supportLevelProfile: (snapshot.supportLevelProfile as SupportLevelProfile | undefined) ?? fallback.supportLevelProfile,
+    doubleJoistsAtButtJoints: Boolean(snapshot.doubleJoistsAtButtJoints),
     supportType: (snapshot.supportType as ProjectInput['supportType']) ?? fallback.supportType,
     supportSystem: (snapshot.supportSystem as ProjectInput['supportSystem']) ?? fallback.supportSystem,
     edgeFinishMode: (snapshot.edgeFinishMode as ProjectInput['edgeFinishMode']) ?? fallback.edgeFinishMode,

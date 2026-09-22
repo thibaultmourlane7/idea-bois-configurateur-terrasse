@@ -50,11 +50,13 @@ describe('Construction visuelle et habillage V0.14', () => {
 
   it('calcule les lambourdes visibles à partir de l’entraxe documenté', () => {
     const result = runConfigurator(base);
-    const visual = buildConstructionVisual(base, result.basket);
+    const visual = buildConstructionVisual(base, result.basket, result.supportPlan);
     expect(visual.rule?.joistSpacingMm).toBe(500);
-    expect(visual.joists).toHaveLength(13);
-    expect(visual.plots).toHaveLength(96);
-    expect(visual.plotsStatus).toBe('commercial-distribution');
+    expect(visual.joists).toHaveLength(14);
+    expect(visual.joists.filter((line) => line.buttJointSupport)).toHaveLength(1);
+    expect(visual.plots).toHaveLength(98);
+    expect(visual.plots.reduce((sum, point) => sum + (point.multiplicity ?? 1), 0)).toBe(98);
+    expect(visual.plotsStatus).toBe('height-plan');
   });
 
   it('calcule un habillage bois de 50 cm avec la même lame et des supports verticaux de 50 cm', () => {

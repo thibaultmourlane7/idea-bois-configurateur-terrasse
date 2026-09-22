@@ -28,6 +28,21 @@ export interface TerracePoint {
   yM: number;
 }
 
+export type SupportLevelMode = 'flat' | 'four-corners';
+
+export interface SupportLevelProfile {
+  /** Profil du support existant utilisé pour calculer la hauteur de chaque plot. */
+  mode: SupportLevelMode;
+  /** Ecarts de niveau du support par rapport au coin haut-gauche. Positif = support plus haut. */
+  topLeftDeltaMm: number;
+  topRightDeltaMm: number;
+  bottomRightDeltaMm: number;
+  bottomLeftDeltaMm: number;
+  /** Pente volontaire du dessus fini. Positive = le niveau fini monte dans la direction de l'axe. */
+  targetSlopeXPercent: number;
+  targetSlopeYPercent: number;
+}
+
 export interface TerraceObstacle {
   id: string;
   kind: ObstacleKind;
@@ -138,6 +153,9 @@ export interface ProjectInput {
   /** Sommets utilisés uniquement lorsque shape === 'freeform'. */
   freeformPoints?: TerracePoint[];
   heightCm: number;
+  supportLevelProfile?: SupportLevelProfile;
+  /** Option client : doubler la lambourde sur les axes de jonction de lames. Désactivé par défaut. */
+  doubleJoistsAtButtJoints?: boolean;
   supportType: SupportType;
   supportSystem: SupportSystem;
   edgeFinishMode: EdgeFinishMode;
@@ -209,6 +227,64 @@ export interface JoistLine {
   supportCount: number;
 }
 
+export interface SupportPlanPoint {
+  id: string;
+  xM: number;
+  yM: number;
+  multiplicity: number;
+  surfaceDeltaMm: number;
+  targetFinishedDeltaMm: number;
+  requiredPlotHeightMm: number;
+  plotMaterialId?: string;
+  plotLabel?: string;
+  productRef?: string;
+  unitPriceTtc?: number;
+  status: 'exact' | 'unsupported';
+}
+
+export interface SupportPlanGroup {
+  materialId: string;
+  label: string;
+  productRef?: string;
+  quantity: number;
+  unitPriceTtc: number;
+  totalTtc: number;
+  minHeightMm: number;
+  maxHeightMm: number;
+  sourceUrl: string;
+}
+
+export interface PlannedJoistSegment {
+  id: string;
+  axisPositionMm: number;
+  x1M: number;
+  y1M: number;
+  x2M: number;
+  y2M: number;
+  lengthMm: number;
+  multiplicity: 1 | 2;
+  buttJointSupport: boolean;
+}
+
+export interface SupportPlanResult {
+  status: 'exact' | 'partial' | 'unavailable';
+  joistSpacingMm?: number;
+  plotSpacingMm?: number;
+  joistSegments: PlannedJoistSegment[];
+  joistLinearM: number;
+  doubleJoistLinearM: number;
+  joistStockBoards: StockBoard[];
+  buttJointAxisPositionsMm: number[];
+  supportPoints: SupportPlanPoint[];
+  plotGroups: SupportPlanGroup[];
+  unsupportedPointCount: number;
+  minRequiredPlotHeightMm?: number;
+  maxRequiredPlotHeightMm?: number;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  note?: string;
+}
+
 export interface StructureResult {
   joistMaxSpacingMm: number;
   joistActualSpacingMm: number;
@@ -271,5 +347,6 @@ export interface ConfiguratorResult {
   layout?: LayoutResult;
   pricing?: PricingResult;
   basket?: BasketResult;
+  supportPlan?: SupportPlanResult;
   trace: string[];
 }

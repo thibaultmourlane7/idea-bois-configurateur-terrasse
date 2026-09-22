@@ -1,39 +1,28 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.15
-- formes rectangle, L, T, U et cercle ;
-- nouvelle forme libre polygonale ;
-- déplacement des sommets ;
-- ajout / suppression de sommets ;
-- cotations des arêtes ;
-- déplacement des réservations à la souris ;
-- redimensionnement des réservations ;
-- distances visibles ;
-- zoom / pan / recentrage ;
-- annuler / rétablir ;
-- fond plan/photo local avec opacité ;
-- recalcul continu via le moteur métier existant ;
-- partage, sauvegarde et PDF compatibles forme libre.
-
-## Sujet textures en pause
-V0.14.2-B1 reste le point de reprise textures :
-- Pin strié vert/marron déjà amélioré ;
-- rendu à affiner plus tard avec le travail dédié textures ;
-- ne pas considérer le chantier textures comme terminé.
-
-## Prochaine grosse version
-### V0.16 — structure technique avancée
-- hauteurs multiples ;
-- pente et niveaux ;
-- implantation structurelle réelle des plots ;
+## Présent — V0.16
+- éditeur interactif V0.15 conservé ;
+- forme libre ;
+- niveaux aux 4 coins ;
+- pente cible X/Y ;
+- calcul de hauteur plot par plot ;
+- implantation réelle des appuis pour la recette Pin du Nord 145x27 ;
 - carte de hauteurs ;
-- doubles lambourdes / aboutages ;
-- règles de structure plus proches de la commande finale ;
-- panier structurel enrichi.
+- regroupement des plots par référence ;
+- points hors gamme explicitement bloqués / à confirmer ;
+- optimisation des lambourdes 2,40 m ;
+- jonctions de lames détectées ;
+- double lambourdage disponible comme option, désactivée par défaut ;
+- panier recalculé selon l'option choisie.
 
-## Après V0.16
-- calibration réelle d'un plan/photo importé ;
-- import de plans plus avancé ;
-- environnement jardin ;
-- rendu 3D/PBR avancé ;
-- reprise du chantier textures.
+## Texture
+Sujet mis en pause.
+Point de reprise : V0.14.2-B1 Pin du Nord strié vert/marron.
+
+## Prochains axes possibles après validation V0.16
+- calibration métrique d'un plan/photo importé ;
+- relevés de niveaux plus détaillés que 4 coins ;
+- règles structurelles validées pour Cumaru, Garapa, Padouk, Ipé et composite ;
+- gestion explicite des rehausses de plots lorsque les références IDEA Bois sont validées ;
+- représentation technique plus détaillée des doubles lambourdes ;
+- reprise du chantier textures / PBR.

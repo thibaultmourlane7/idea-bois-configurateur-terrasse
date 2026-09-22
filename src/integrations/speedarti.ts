@@ -4,7 +4,7 @@ export const SPEEDARTI_TAG = 'SA-TERR-SA-002';
 
 export interface SpeedArtiTerracePayload {
   source: 'idea-bois-configurateur-terrasse';
-  version: '0.15.0';
+  version: '0.16.0';
   projectName: string;
   input: ProjectInput;
   materialSummary: {
@@ -20,6 +20,9 @@ export interface SpeedArtiTerracePayload {
     totalMinTtc?: number;
     totalMaxTtc?: number;
     knownSubtotalTtc?: number;
+    minRequiredPlotHeightMm?: number;
+    maxRequiredPlotHeightMm?: number;
+    plotGroupCount?: number;
   };
   excludesLabor: true;
 }
@@ -31,7 +34,7 @@ export function toSpeedArtiPayload(input: ProjectInput, result: ConfiguratorResu
 
   return {
     source: 'idea-bois-configurateur-terrasse',
-    version: '0.15.0',
+    version: '0.16.0',
     projectName: input.projectName,
     input,
     materialSummary: {
@@ -39,14 +42,19 @@ export function toSpeedArtiPayload(input: ProjectInput, result: ConfiguratorResu
       perimeterM: result.geometry.perimeterM,
       purchasedAreaM2: result.layout?.purchasedAreaM2,
       stockBoards: result.layout?.stockBoards.length,
-      joistLinearM: result.structure?.joistLinearM,
-      supportPointCount: result.structure?.supportPointCount,
+      joistLinearM: result.supportPlan?.status !== 'unavailable' ? result.supportPlan?.joistLinearM : result.structure?.joistLinearM,
+      supportPointCount: result.supportPlan?.status !== 'unavailable'
+        ? result.supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)
+        : result.structure?.supportPointCount,
       fixingCount: result.structure?.fixingCount,
       basketStatus: result.basket?.status,
       totalTtc: result.basket?.totalTtc,
       totalMinTtc: result.basket?.totalMinTtc,
       totalMaxTtc: result.basket?.totalMaxTtc,
       knownSubtotalTtc: result.basket?.knownSubtotalTtc,
+      minRequiredPlotHeightMm: result.supportPlan?.minRequiredPlotHeightMm,
+      maxRequiredPlotHeightMm: result.supportPlan?.maxRequiredPlotHeightMm,
+      plotGroupCount: result.supportPlan?.plotGroups.length,
     },
     excludesLabor: true,
   };

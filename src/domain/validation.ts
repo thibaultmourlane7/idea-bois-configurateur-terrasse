@@ -95,6 +95,28 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     }
   }
 
+  if (input.supportLevelProfile) {
+    const profile = input.supportLevelProfile;
+    const values = [
+      ['supportLevelProfile.topLeftDeltaMm', profile.topLeftDeltaMm],
+      ['supportLevelProfile.topRightDeltaMm', profile.topRightDeltaMm],
+      ['supportLevelProfile.bottomRightDeltaMm', profile.bottomRightDeltaMm],
+      ['supportLevelProfile.bottomLeftDeltaMm', profile.bottomLeftDeltaMm],
+      ['supportLevelProfile.targetSlopeXPercent', profile.targetSlopeXPercent],
+      ['supportLevelProfile.targetSlopeYPercent', profile.targetSlopeYPercent],
+    ] as const;
+    for (const [field, value] of values) {
+      if (!Number.isFinite(value)) {
+        diagnostics.push({
+          tag: 'SA-TERR-LEVEL-001',
+          severity: 'blocking',
+          message: 'Les niveaux et pentes du support doivent être des nombres valides.',
+          field,
+        });
+      }
+    }
+  }
+
   if (input.edgeFinishMode === 'full-perimeter') {
     if (!Number.isFinite(input.edgeCladdingHeightCm) || input.edgeCladdingHeightCm <= 0) {
       diagnostics.push({

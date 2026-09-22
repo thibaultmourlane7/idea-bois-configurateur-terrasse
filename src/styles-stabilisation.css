@@ -155,3 +155,26 @@
 .laying-pattern-disabled{opacity:.55;cursor:not-allowed!important;border-style:dashed!important}
 @media(max-width:980px){.laying-pattern-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.laying-pattern-grid{grid-template-columns:1fr}}
+
+
+/* V0.17 — plan/photo calibré */
+.reference-v017{flex-wrap:wrap;gap:8px}
+.reference-status{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:8px;font-weight:850}
+.reference-status.calibrated{background:#eaf8ef;color:#257345;border:1px solid #b8dfc5}
+.reference-status.uncalibrated{background:#fff4dd;color:#765414;border:1px solid #ead49f}
+.reference-status.saved{background:#edf5fb;color:#496c86;border:1px solid #c9ddea}
+.reference-rotation{display:inline-flex;align-items:center;gap:4px;font-size:8px;font-weight:800;color:#587185}
+.reference-rotation input{width:58px;padding:5px;border:1px solid #c8d7e1;border-radius:7px}
+.reference-calibration-panel{display:flex;align-items:end;gap:9px;flex-wrap:wrap;margin:8px 0;padding:10px 12px;border:1px solid #a8c9e2;border-radius:10px;background:#f5fbff}
+.reference-calibration-panel strong{color:#145f9e;font-size:10px}
+.reference-calibration-panel>span{font-size:8px;color:#607b8e}
+.reference-calibration-panel label{font-size:8px;font-weight:800;color:#587185}
+.reference-diagnostic{margin:0 0 8px;padding:7px 10px;border-radius:8px;font-size:8px;font-weight:750}
+.reference-diagnostic.warning{background:#fff4dd;color:#765414;border:1px solid #ead49f}
+.reference-diagnostic.info{background:#eaf8ef;color:#257345;border:1px solid #b8dfc5}
+.reference-plan-layer image{cursor:move}
+.reference-plan-layer.locked image{cursor:default}
+.reference-calibration-hitbox{fill:transparent;cursor:crosshair}
+.reference-calibration-markers circle{fill:#fff;stroke:#d84040;stroke-width:2;vector-effect:non-scaling-stroke}
+.reference-calibration-markers line{stroke:#d84040;stroke-width:1.5;stroke-dasharray:5 3;vector-effect:non-scaling-stroke}
+.reference-calibration-markers text{fill:#a92e2e;font-size:8px;font-weight:900;paint-order:stroke;stroke:#fff;stroke-width:3px}

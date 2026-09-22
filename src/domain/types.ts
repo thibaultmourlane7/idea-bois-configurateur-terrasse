@@ -29,6 +29,19 @@ export interface TerracePoint {
   yM: number;
 }
 
+export interface ReferencePlanTransform {
+  scaleMmPerPixel: number;
+  offsetXM: number;
+  offsetYM: number;
+  rotationDeg: number;
+  opacity: number;
+  locked: boolean;
+  calibrated: boolean;
+  calibrationDistanceMm?: number;
+  imageWidthPx?: number;
+  imageHeightPx?: number;
+}
+
 export type SupportLevelMode = 'flat' | 'four-corners';
 
 export interface SupportLevelProfile {
@@ -163,6 +176,7 @@ export interface ProjectInput {
   obstacles: TerraceObstacle[];
   /** Sommets utilisés uniquement lorsque shape === 'freeform'. */
   freeformPoints?: TerracePoint[];
+  referencePlan?: ReferencePlanTransform;
   heightCm: number;
   supportLevelProfile?: SupportLevelProfile;
   /** Option client : doubler la lambourde sur les axes de jonction de lames. Désactivé par défaut. */

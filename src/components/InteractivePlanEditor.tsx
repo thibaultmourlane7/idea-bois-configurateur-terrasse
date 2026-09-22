@@ -420,6 +420,9 @@ export function InteractivePlanEditor({
         <div className="editor-tool-group">
           <button type="button" className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')}>Sélection</button>
           <button type="button" className={tool === 'pan' ? 'active' : ''} onClick={() => setTool('pan')}>Déplacer le plan</button>
+          {referenceImageUrl && referencePlan && !referencePlan.locked && (
+            <button type="button" className={tool === 'reference' ? 'active' : ''} onClick={() => setTool('reference')}>Déplacer le fond</button>
+          )}
           {project.shape === 'freeform' && <button type="button" className={tool === 'draw' ? 'active' : ''} onClick={beginDrawing}>Dessiner un nouveau contour</button>}
           {project.shape === 'freeform' && (
             <button type="button" className={orthogonalMode ? 'active' : ''} onClick={() => setOrthogonalMode((value) => !value)}>
@@ -439,21 +442,69 @@ export function InteractivePlanEditor({
         </div>
       </div>
 
-      <div className="editor-reference-row">
+      <div className="editor-reference-row reference-v017">
         <label className="reference-upload">
-          Fond plan / photo
+          Importer plan / photo
           <input type="file" accept="image/*" onChange={(event) => setReference(event.target.files?.[0])} />
         </label>
-        {referenceImageUrl && (
+        {referenceImageUrl && referencePlan && (
           <>
-            <label className="reference-opacity">Opacité
-              <input type="range" min="0.08" max="0.8" step="0.02" value={referenceOpacity} onChange={(event) => setReferenceOpacity(+event.target.value)} />
+            <span className={`reference-status ${referencePlan.calibrated ? 'calibrated' : 'uncalibrated'}`}>
+              {referencePlan.calibrated ? '✓ Fond calibré' : '⚠ Calibration requise'}
+            </span>
+            <button type="button" className={tool === 'calibrate' ? 'active' : ''} onClick={beginCalibration}>Calibrer 2 points</button>
+            <button type="button" disabled={referencePlan.locked} onClick={() => startReferenceZoom(0.9)}>Zoom fond −</button>
+            <button type="button" disabled={referencePlan.locked} onClick={() => startReferenceZoom(1.1)}>Zoom fond +</button>
+            <label className="reference-rotation">Rotation
+              <input
+                type="number"
+                step="1"
+                value={referencePlan.rotationDeg}
+                disabled={referencePlan.locked}
+                onChange={(event) => updateReferencePlan({ ...referencePlan, rotationDeg: Number(event.target.value) || 0 })}
+              />
+              <span>°</span>
             </label>
+            <label className="reference-opacity">Opacité
+              <input
+                type="range"
+                min="0.08"
+                max="0.8"
+                step="0.02"
+                value={referencePlan.opacity}
+                onChange={(event) => updateReferencePlan({ ...referencePlan, opacity: +event.target.value })}
+              />
+            </label>
+            <button type="button" onClick={() => updateReferencePlan({ ...referencePlan, locked: !referencePlan.locked })}>
+              {referencePlan.locked ? '🔒 Fond verrouillé' : '🔓 Verrouiller le fond'}
+            </button>
             <button type="button" onClick={() => setReference()}>Retirer le fond</button>
           </>
         )}
-        <small>Le fond sert uniquement de référence visuelle : aucune cote n’est déduite automatiquement.</small>
+        {!referenceImageUrl && referencePlan && (
+          <span className="reference-status saved">Calibration enregistrée — réimportez le même fichier pour retrouver le fond.</span>
+        )}
+        <small>Le fond est une référence visuelle. La calibration utilise deux points + une distance connue ; aucune cote n’est déduite automatiquement.</small>
       </div>
+
+      {referenceImageUrl && referencePlan && tool === 'calibrate' && (
+        <div className="reference-calibration-panel">
+          <strong>Calibration métrique</strong>
+          <span>{calibrationPoints.length}/2 point{calibrationPoints.length > 1 ? 's' : ''} sélectionné{calibrationPoints.length > 1 ? 's' : ''}</span>
+          <label>Distance réelle
+            <div className="input-unit compact">
+              <input value={calibrationDistanceM} onChange={(event) => setCalibrationDistanceM(event.target.value)} inputMode="decimal" placeholder="ex. 4,00" />
+              <span>m</span>
+            </div>
+          </label>
+          <button type="button" disabled={calibrationPoints.length !== 2} onClick={applyCalibration}>Appliquer l’échelle</button>
+          <button type="button" onClick={() => { setCalibrationPoints([]); setTool('select'); setEditorMessage(null); }}>Annuler</button>
+        </div>
+      )}
+
+      {referenceDiagnostics.length > 0 && referencePlan && (
+        <div className={`reference-diagnostic ${referenceDiagnostics[0].severity}`}>{referenceDiagnostics[0].message}</div>
+      )}
 
       {project.shape === 'freeform' && (
         <div className="freeform-toolbar">

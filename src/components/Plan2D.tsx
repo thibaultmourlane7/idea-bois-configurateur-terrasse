@@ -3,6 +3,7 @@ import type { BasketResult, ProjectInput, TerraceObstacle } from '../domain/type
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
+import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 
 function obstacleFill(kind: TerraceObstacle['kind']) {
   if (kind === 'pool') return '#cfeeff';
@@ -25,10 +26,10 @@ export function Plan2D({
 }) {
   const baseId = useId().replace(/:/g, '');
   const clipId = `deck-${baseId}`;
-  const patternId = `wood-${baseId}`;
   const bounds = getDeckBoundingSizeM(input);
   const outline = getDeckOutlinePointsM(input);
   const construction = buildConstructionVisual(input, basket);
+  const texture = resolveBoardTexture(input.board);
   const pad = 34;
   const maxW = 640;
   const maxH = 390;
@@ -36,9 +37,12 @@ export function Plan2D({
   const x = pad + (maxW - pad * 2 - bounds.lengthM * scale) / 2;
   const y = pad + (maxH - pad * 2 - bounds.widthM * scale) / 2;
   const points = outline.map((point) => `${x + point.x * scale},${y + point.y * scale}`).join(' ');
-  const visual = input.board.visual;
   const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
   const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
+  const boardWidthPx = Math.max(2.2, (input.board.widthMm / 1000) * scale);
+  const textureWidthPx = Math.max(90, (texture.textureScaleMmX / 1000) * scale);
+  const textureHeightPx = Math.max(boardWidthPx * 1.15, (texture.textureScaleMmY / 1000) * scale);
+  const patternIds = Array.from({ length: 4 }, (_, index) => `texture-${baseId}-${index}`);
 
   const boardLines: ReactNode[] = [];
   if (layers.decking && pitchMm > 0) {
@@ -46,13 +50,35 @@ export function Plan2D({
     for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
       const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
       intervals.forEach(([start, end], segment) => {
+        const patternId = patternIds[row % patternIds.length];
+        const common = { key: `r-${row}-s-${segment}` };
+        const grooveCount = texture.grooveCount ?? 0;
+
         if (input.orientation === 'length') {
+          const x1 = x + (start / 1000) * scale;
+          const x2 = x + (end / 1000) * scale;
+          const yc = y + (center / 1000) * scale;
           boardLines.push(
-            <line key={`r-${row}-s-${segment}`} x1={x + (start / 1000) * scale} y1={y + (center / 1000) * scale} x2={x + (end / 1000) * scale} y2={y + (center / 1000) * scale} />,
+            <g {...common}>
+              <line x1={x1} y1={yc} x2={x2} y2={yc} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
+              {Array.from({ length: grooveCount }, (_, groove) => {
+                const offset = (((groove + 1) / (grooveCount + 1)) - 0.5) * boardWidthPx * 0.78;
+                return <line key={groove} x1={x1} y1={yc + offset} x2={x2} y2={yc + offset} stroke="rgba(49,42,35,.34)" strokeWidth=".55" />;
+              })}
+            </g>,
           );
         } else {
+          const xc = x + (center / 1000) * scale;
+          const y1 = y + (start / 1000) * scale;
+          const y2 = y + (end / 1000) * scale;
           boardLines.push(
-            <line key={`r-${row}-s-${segment}`} x1={x + (center / 1000) * scale} y1={y + (start / 1000) * scale} x2={x + (center / 1000) * scale} y2={y + (end / 1000) * scale} />,
+            <g {...common}>
+              <line x1={xc} y1={y1} x2={xc} y2={y2} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
+              {Array.from({ length: grooveCount }, (_, groove) => {
+                const offset = (((groove + 1) / (grooveCount + 1)) - 0.5) * boardWidthPx * 0.78;
+                return <line key={groove} x1={xc + offset} y1={y1} x2={xc + offset} y2={y2} stroke="rgba(49,42,35,.34)" strokeWidth=".55" />;
+              })}
+            </g>,
           );
         }
       });
@@ -60,30 +86,59 @@ export function Plan2D({
     }
   }
 
-  const deckingOpacity = exploded ? 0.58 : 1;
+  const deckingOpacity = exploded ? 0.62 : 1;
+  const tint = texture.tintColor ?? '#ffffff';
+  const tintOpacity = texture.tintOpacity ?? 0;
 
   return (
     <div className="visual-card construction-plan-card">
       <div className="visual-title">
         <span>Vue de dessus</span>
-        <code>IB-TERR-UI-2D-014</code>
+        <code>IB-TERR-UI-2D-0142</code>
       </div>
       <svg viewBox={`0 0 ${maxW} ${maxH}`} className="plan" role="img" aria-label="Plan 2D de la construction de terrasse">
         <defs>
           <clipPath id={clipId}><polygon points={points} /></clipPath>
-          <pattern id={patternId} width="140" height="70" patternUnits="userSpaceOnUse">
-            {visual?.imageStatus === 'verified-media' && visual.imageUrl ? (
-              <>
-                <rect width="140" height="70" fill="#eef1f3" />
-                <image href={visual.imageUrl} x="0" y="0" width="140" height="70" preserveAspectRatio="xMidYMid slice" opacity="1" />
-              </>
-            ) : (
-              <>
-                <rect width="140" height="70" fill="#edf1f3" />
-                <path d="M0 0 L140 70 M-35 0 L105 70 M35 0 L175 70" fill="none" stroke="#d5dde2" strokeWidth="8" opacity="0.8" />
-              </>
-            )}
-          </pattern>
+          {patternIds.map((patternId, index) => (
+            <pattern
+              key={patternId}
+              id={patternId}
+              width={textureWidthPx}
+              height={textureHeightPx}
+              patternUnits="userSpaceOnUse"
+              x={-(index * textureWidthPx * 0.23)}
+              y={-(index * textureHeightPx * 0.17)}
+              patternTransform={input.orientation === 'width' ? 'rotate(90)' : undefined}
+            >
+              {texture.textureImageUrl ? (
+                <>
+                  <rect width={textureWidthPx} height={textureHeightPx} fill="#d8d2ca" />
+                  <image
+                    href={texture.textureImageUrl}
+                    x="0"
+                    y="0"
+                    width={textureWidthPx}
+                    height={textureHeightPx}
+                    preserveAspectRatio="xMidYMid slice"
+                  />
+                  {tintOpacity > 0 && (
+                    <rect
+                      width={textureWidthPx}
+                      height={textureHeightPx}
+                      fill={tint}
+                      opacity={tintOpacity}
+                      style={{ mixBlendMode: 'multiply' }}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <rect width={textureWidthPx} height={textureHeightPx} fill="#edf1f3" />
+                  <path d={`M0 0 L${textureWidthPx} ${textureHeightPx} M-${textureWidthPx / 2} 0 L${textureWidthPx / 2} ${textureHeightPx}`} stroke="#d2dbe0" strokeWidth="5" />
+                </>
+              )}
+            </pattern>
+          ))}
         </defs>
 
         {layers.support && (
@@ -130,21 +185,21 @@ export function Plan2D({
         ))}
 
         {layers.decking && (
-          <g opacity={deckingOpacity}>
-            <polygon points={points} fill={`url(#${patternId})`} />
-            <g clipPath={`url(#${clipId})`} className="board-lines">{boardLines}</g>
-            {visual?.imageStatus !== 'verified-media' && (
-              <g className="visual-placeholder-label">
-                <rect x={maxW / 2 - 86} y={maxH / 2 - 16} width="172" height="32" rx="8" fill="rgba(255,255,255,.92)" stroke="#cfd8de" />
-                <text x={maxW / 2} y={maxH / 2 - 2} textAnchor="middle" fontSize="10" fontWeight="800" fill="#526979">Photo officielle IDEA Bois</text>
-                <text x={maxW / 2} y={maxH / 2 + 10} textAnchor="middle" fontSize="9" fill="#7d8e9a">texture média à intégrer</text>
-              </g>
-            )}
+          <g opacity={deckingOpacity} clipPath={`url(#${clipId})`}>
+            <polygon points={points} fill="#f4f1ed" />
+            {boardLines}
           </g>
         )}
 
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && (
-          <polygon points={points} fill="none" stroke={`url(#${patternId})`} strokeWidth="11" strokeLinejoin="round" opacity="0.96" />
+          <polygon
+            points={points}
+            fill="none"
+            stroke={`url(#${patternIds[1]})`}
+            strokeWidth={Math.max(7, boardWidthPx * 0.78)}
+            strokeLinejoin="round"
+            opacity="0.98"
+          />
         )}
 
         {layers.obstacles && input.obstacles.map((obstacle) => {
@@ -176,11 +231,13 @@ export function Plan2D({
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
       </div>
-      {visual?.imageStatus === 'verified-media'
-        ? <div className="texture-source-note verified">Photo produit IDEA Bois vérifiée utilisée comme base visuelle.</div>
-        : visual?.imageStatus === 'verified-product-page'
-          ? <div className="texture-source-note pending">Page produit IDEA Bois vérifiée — média direct non encore mappé, aucun faux rendu appliqué.</div>
-          : <div className="texture-source-note pending">Visuel produit non encore vérifié — rendu neutre volontaire.</div>}
+
+      <div className={`texture-quality-note ${texture.status}`}>
+        <strong>{textureStatusLabel(texture)}</strong>
+        <span>{texture.label}</span>
+        {texture.status === 'close' && <small>Rendu de projection, pas une photographie contractuelle du produit exact.</small>}
+        {texture.status === 'neutral' && <small>Aucune texture suffisamment fiable n’est encore associée à cette lame.</small>}
+      </div>
     </div>
   );
 }

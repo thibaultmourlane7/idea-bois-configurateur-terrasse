@@ -15,6 +15,7 @@ import { runConfigurator, VERSION_TAG } from './engine/configurator';
 import { restoreProjectFromUrl } from './commercial/share';
 import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
 import { FINISHED_LAYERS, layersForStep, type ConstructionLayers, type VisualPreset } from './visual/layers';
+import { resolveBoardTexture, textureStatusLabel } from './visual/resolveBoardTexture';
 
 const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027') ?? ideaBoisBoards[0];
 
@@ -55,6 +56,16 @@ const steps = [
 ];
 
 const euro = (value: number) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6) return `rgba(0,0,0,${alpha})`;
+  const value = Number.parseInt(clean, 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 type ProductFilter = 'all' | 'resineux' | 'exotique' | 'bambou' | 'composite' | 'autre';
 type ProductReadinessFilter = 'all' | ProductReadiness;
@@ -183,7 +194,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Construction progressive • photos officielles uniquement • structure • rives</div>
+          <div className="header-note">Construction progressive • textures réalistes • structure • rives</div>
         </div>
       </header>
 
@@ -239,24 +250,25 @@ export default function App() {
               <div className="product-grid real-catalog-grid">
                 {filteredBoards.map((board) => {
                   const readiness = getProductReadiness(board);
+                  const texture = resolveBoardTexture(board);
                   const comparing = compareIds.includes(board.id);
                   return (
                     <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
                       <button type="button" className="product-select" onClick={() => setProject({ ...project, board })}>
                         <div
-                          className={`product-swatch ${board.technical.materialFamily} ${board.visual?.imageStatus === 'verified-media' ? 'verified-media' : 'visual-pending'}`}
-                          style={board.visual?.imageStatus === 'verified-media' && board.visual.imageUrl
+                          className={`product-swatch ${board.technical.materialFamily} texture-${texture.status} ${texture.grooveCount ? 'has-grooves' : ''}`}
+                          style={texture.textureImageUrl
                             ? {
-                                backgroundImage: `url("${board.visual.imageUrl}")`,
+                                backgroundImage: `linear-gradient(${hexToRgba(texture.tintColor ?? '#ffffff', texture.tintOpacity ?? 0)}, ${hexToRgba(texture.tintColor ?? '#ffffff', texture.tintOpacity ?? 0)}), url("${texture.previewImageUrl ?? texture.textureImageUrl}")`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
                               }
                             : undefined}
                         >
-                          {board.visual?.imageStatus !== 'verified-media' && (
+                          {texture.status === 'neutral' && (
                             <span>
-                              <b>Photo IDEA Bois</b>
-                              <small>{board.visual?.imageStatus === 'verified-product-page' ? 'page produit vérifiée' : 'à intégrer'}</small>
+                              <b>Texture à compléter</b>
+                              <small>aucun rendu approximatif imposé</small>
                             </span>
                           )}
                         </div>
@@ -264,12 +276,8 @@ export default function App() {
                           <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
                           <strong>{board.label}</strong>
                           <span>{board.subtitle}</span>
-                          <small className={`visual-status ${board.visual?.imageStatus ?? 'unmapped'}`}>
-                            {board.visual?.imageStatus === 'verified-media'
-                              ? 'Photo produit IDEA Bois vérifiée'
-                              : board.visual?.imageStatus === 'verified-product-page'
-                                ? 'Page produit officielle vérifiée • photo à mapper'
-                                : 'Visuel officiel à intégrer'}
+                          <small className={`visual-status texture-${texture.status}`}>
+                            {textureStatusLabel(texture)}{texture.status === 'close' ? ' • rendu de projection' : ''}
                           </small>
                           {board.gapRangeMm && <small className="gap-info">Jeu publié : {board.gapRangeMm[0]}–{board.gapRangeMm[1]} mm</small>}
                           <div className="product-meta">

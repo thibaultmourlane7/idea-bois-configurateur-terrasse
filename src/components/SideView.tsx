@@ -1,6 +1,8 @@
+import { useId } from 'react';
 import type { BasketResult, ProjectInput } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
+import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 
 export function SideView({
   input,
@@ -11,7 +13,9 @@ export function SideView({
   basket?: BasketResult;
   layers?: ConstructionLayers;
 }) {
+  const patternId = `side-texture-${useId().replace(/:/g, '')}`;
   const construction = buildConstructionVisual(input, basket);
+  const texture = resolveBoardTexture(input.board);
   const totalHeightCm = Math.max(8, input.heightCm);
   const deckThicknessCm = input.board.thicknessMm / 10;
   const joistHeightCm = 4;
@@ -23,12 +27,27 @@ export function SideView({
   const joistY = deckY + deckThicknessCm * scaleY + 3;
   const supportTopY = joistY + joistHeightCm * scaleY;
   const claddingBottomY = deckY + claddingHeightCm * scaleY;
-  const visual = input.board.visual;
+  const tintOpacity = texture.tintOpacity ?? 0;
+  const textureFill = texture.textureImageUrl ? `url(#${patternId})` : '#edf1f3';
 
   return (
     <div className="visual-card side-view-card">
-      <div className="visual-title"><span>Vue de côté</span><code>IB-TERR-SIDE-014</code></div>
+      <div className="visual-title"><span>Vue de côté</span><code>IB-TERR-SIDE-0142</code></div>
       <svg viewBox="0 0 640 210" className="side-view-svg" role="img" aria-label="Coupe latérale de la terrasse">
+        <defs>
+          <pattern id={patternId} width="160" height="44" patternUnits="userSpaceOnUse">
+            {texture.textureImageUrl ? (
+              <>
+                <rect width="160" height="44" fill="#d8d2ca" />
+                <image href={texture.textureImageUrl} x="0" y="0" width="160" height="44" preserveAspectRatio="xMidYMid slice" />
+                {tintOpacity > 0 && <rect width="160" height="44" fill={texture.tintColor ?? '#ffffff'} opacity={tintOpacity} style={{ mixBlendMode: 'multiply' }} />}
+              </>
+            ) : (
+              <rect width="160" height="44" fill="#edf1f3" />
+            )}
+          </pattern>
+        </defs>
+
         {layers.support && (
           <>
             <rect x="52" y={groundY} width="530" height="18" rx="3" fill="#e8ecee" />
@@ -74,14 +93,14 @@ export function SideView({
               y={deckY + 2}
               width="494"
               height={Math.max(5, claddingHeightCm * scaleY)}
-              fill={visual?.baseColor ?? '#9a7554'}
-              stroke={visual?.grainColor ?? '#644a34'}
-              opacity="0.94"
+              fill={textureFill}
+              stroke="#6d5b4b"
+              opacity="0.97"
             />
             {Array.from({ length: Math.max(1, construction.cladding.rowCount ?? 1) }, (_, index) => {
               const rows = Math.max(1, construction.cladding.rowCount ?? 1);
               const rowH = (claddingHeightCm * scaleY) / rows;
-              return <line key={index} x1="70" x2="564" y1={deckY + rowH * (index + 1)} y2={deckY + rowH * (index + 1)} stroke={visual?.grainColor ?? '#644a34'} opacity="0.65" />;
+              return <line key={index} x1="70" x2="564" y1={deckY + rowH * (index + 1)} y2={deckY + rowH * (index + 1)} stroke="rgba(55,45,38,.45)" opacity="0.75" />;
             })}
           </g>
         )}
@@ -93,8 +112,8 @@ export function SideView({
             width="510"
             height={Math.max(5, deckThicknessCm * scaleY)}
             rx="2"
-            fill={visual?.baseColor ?? '#b4936d'}
-            stroke={visual?.grainColor ?? '#72583f'}
+            fill={textureFill}
+            stroke="#6d5b4b"
           />
         )}
 
@@ -109,6 +128,10 @@ export function SideView({
           {layers.plots && <text x="74" y="190" fill="#768895" fontSize="9">Hauteur utile appui ≈ {usefulSupportCm.toFixed(1)} cm</text>}
         </g>
       </svg>
+      <div className={`texture-quality-note compact ${texture.status}`}>
+        <strong>{textureStatusLabel(texture)}</strong>
+        <span>{texture.label}</span>
+      </div>
     </div>
   );
 }

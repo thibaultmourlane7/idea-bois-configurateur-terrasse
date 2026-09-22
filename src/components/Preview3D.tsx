@@ -3,6 +3,7 @@ import type { BasketResult, ProjectInput, TerraceObstacle } from '../domain/type
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
+import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 
 function obstacleColor(kind: TerraceObstacle['kind']) {
   if (kind === 'pool') return '#bfe8fb';
@@ -24,7 +25,7 @@ export function Preview3D({
   exploded?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const visual = input.board.visual;
+  const texture = resolveBoardTexture(input.board);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -159,9 +160,18 @@ export function Preview3D({
           ctx.moveTo(face[0].x, face[0].y);
           face.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
           ctx.closePath();
-          ctx.fillStyle = visual?.imageStatus === 'verified-media' && photo ? '#d7d7d7' : '#e7ecef';
+          const edgePattern = photo ? ctx.createPattern(photo, 'repeat') : null;
+          ctx.fillStyle = edgePattern ?? '#e7ecef';
           ctx.fill();
-          ctx.strokeStyle = visual?.imageStatus === 'verified-media' ? '#807060' : '#c4cfd5';
+          if (photo && (texture.tintOpacity ?? 0) > 0) {
+            ctx.save();
+            ctx.globalAlpha = texture.tintOpacity ?? 0;
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.fillStyle = texture.tintColor ?? '#ffffff';
+            ctx.fill();
+            ctx.restore();
+          }
+          ctx.strokeStyle = photo ? '#786553' : '#c4cfd5';
           ctx.lineWidth = 1;
           ctx.stroke();
         });
@@ -169,16 +179,22 @@ export function Preview3D({
 
       if (layers.decking) {
         let fill: string | CanvasPattern = '#edf1f3';
-        if (visual?.imageStatus === 'verified-media' && photo) {
+        if (photo) {
           const pattern = ctx.createPattern(photo, 'repeat');
           if (pattern) fill = pattern;
         }
         drawPolygon(outline, fill, '#173e65', 2, deckLift, exploded ? 0.78 : 1);
+        if (photo && (texture.tintOpacity ?? 0) > 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'multiply';
+          drawPolygon(outline, texture.tintColor ?? '#ffffff', 'transparent', 0, deckLift, texture.tintOpacity ?? 0);
+          ctx.restore();
+        }
 
         const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
         const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
         if (pitchMm > 0) {
-          ctx.strokeStyle = visual?.imageStatus === 'verified-media' ? 'rgba(78,61,43,.55)' : '#ccd5da';
+          ctx.strokeStyle = photo ? 'rgba(78,61,43,.55)' : '#ccd5da';
           ctx.lineWidth = 1;
           for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
             const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
@@ -220,17 +236,18 @@ export function Preview3D({
 
     paint();
 
-    if (layers.decking && visual?.imageStatus === 'verified-media' && visual.imageUrl) {
+    if ((layers.decking || layers.edgeCladding) && texture.textureImageUrl) {
       const image = new Image();
+      image.crossOrigin = 'anonymous';
       image.onload = () => paint(image);
       image.onerror = () => paint();
-      image.src = visual.imageUrl;
+      image.src = texture.textureImageUrl;
     }
-  }, [input, basket, layers, exploded]);
+  }, [input, basket, layers, exploded, texture]);
 
   return (
     <div className="visual-card">
-      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-014</code></div>
+      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-0142</code></div>
       <canvas ref={ref} />
       <div className="construction-legend">
         {layers.decking && <span><i className="legend-decking" />Lames</span>}
@@ -239,11 +256,11 @@ export function Preview3D({
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
       </div>
-      {visual?.imageStatus === 'verified-media'
-        ? <div className="texture-source-note verified">Photo produit IDEA Bois vérifiée utilisée comme base visuelle.</div>
-        : visual?.imageStatus === 'verified-product-page'
-          ? <div className="texture-source-note pending">Page produit IDEA Bois vérifiée — média direct non encore mappé, rendu neutre.</div>
-          : <div className="texture-source-note pending">Visuel produit non encore vérifié — rendu neutre volontaire.</div>}
+      <div className={`texture-quality-note ${texture.status}`}>
+        <strong>{textureStatusLabel(texture)}</strong>
+        <span>{texture.label}</span>
+        {texture.status === 'close' && <small>Rendu de projection ; la V0.14.2-B améliorera le PBR et l’échelle 3D.</small>}
+      </div>
     </div>
   );
 }

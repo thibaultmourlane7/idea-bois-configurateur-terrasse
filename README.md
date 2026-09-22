@@ -1,37 +1,47 @@
-# IDEA Bois — Configurateur Terrasse V0.14.1
+# IDEA Bois — Configurateur Terrasse V0.14.2-A
 
-## Correctif visuels produit
+## Bibliothèque de textures réalistes
 
-La V0.14.1 corrige le défaut principal de la V0.14 : les couleurs et veinages simulés ne sont plus utilisés pour représenter un produit réel IDEA Bois.
+La V0.14.2-A remplace le rendu global de la V0.14.1 par une bibliothèque indépendante de matériaux.
 
-### Règle visuelle stricte
-Un produit peut avoir trois états :
+### États de texture
+- **exact** : texture du produit exact, source vérifiée ;
+- **close** : texture de projection proche, source et licence explicites ;
+- **neutral** : aucune texture suffisamment fiable.
 
-- `verified-media` : URL média IDEA Bois directement vérifiée ; la photo peut être utilisée comme base visuelle.
-- `verified-product-page` : la fiche produit officielle IDEA Bois est identifiée et vérifiée, mais l'URL directe du média n'est pas encore mappée ; le configurateur affiche volontairement un rendu neutre.
-- `unmapped` : aucune fiche visuelle précise n'est encore reliée à ce groupe ; rendu neutre.
+Une texture proche n'est jamais présentée comme la photo contractuelle du produit.
 
-Aucun bois artificiel, aucune fausse couleur et aucun faux veinage ne sont affichés lorsqu'un média officiel n'est pas vérifié.
-
-## Mapping prioritaire V0.14.1
-Les pages produit officielles sont désormais identifiées pour :
-- Pin du Nord lisse Classe 4 vert ;
-- Pin du Nord strié Classe 4 vert ;
-- Pin du Nord lisse Classe 4 marron ;
-- Pin du Nord strié Classe 4 marron ;
-- Pin du Nord qualité US marron ;
-- Cumaru 145x21 ;
-- Garapa 145x21 ;
-- Ipé 140x20 ;
-- Padouk 120x21 ;
+## 8 finitions prioritaires couvertes
+- Pin du Nord strié vert ;
+- Pin du Nord strié marron ;
+- Cumaru ;
+- Padouk ;
+- Ipé ;
+- Garapa ;
 - SILVADEC Atmosphère Gris Ushuaia ;
 - SILVADEC Atmosphère Nuances Ipé.
 
-Le Padouk conserve le premier média direct déjà vérifié.
-Les autres références ci-dessus restent neutres tant que leur URL média directe n'est pas reliée.
+Les variantes Pin lisse vert/marron sont également mappées pour cohérence catalogue.
 
-## V0.14 conservée
-La construction progressive, les lambourdes, plots, rives, supports verticaux, vue de côté et couches 2D/3D restent inchangés.
+## Nouveau rendu 2D
+La texture n'est plus projetée comme une grande image sur toute la terrasse.
+
+Chaque lame est maintenant dessinée séparément :
+- largeur réelle de lame ;
+- jeu réel entre lames ;
+- orientation longueur/largeur ;
+- coupure réelle autour des réservations ;
+- décalage de texture entre les rangées ;
+- stries longitudinales visibles pour les profils striés ;
+- même matière utilisée pour les rives lorsque l'habillage est réalisé avec la même lame.
+
+## Sources de base
+Les textures de projection utilisées dans ce lot viennent de Poly Haven, sous licence CC0.
+Les pages produit IDEA Bois ou bibliothèques spécialisées servent de référence visuelle pour la teinte/essence, sans être revendiquées comme texture exacte.
+
+## 3D
+La vue 3D utilise désormais le même résolveur de matériau.
+Le PBR avancé (normal, roughness, relief des stries, éclairage) reste prévu pour V0.14.2-B.
 
 ## Règle ferme
 Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.

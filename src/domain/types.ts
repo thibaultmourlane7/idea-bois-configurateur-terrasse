@@ -61,6 +61,33 @@ export interface BoardCatalogData {
   sourceStatus: string;
 }
 
+export type TextureQualityStatus = 'exact' | 'close' | 'neutral';
+export type TextureFinishType = 'smooth' | 'grooved' | 'brushed' | 'structured' | 'reversible' | 'other';
+export type TextureMaterialFamily = 'wood' | 'composite' | 'bamboo' | 'other';
+
+export interface ProductTextureAsset {
+  id: string;
+  boardIds: string[];
+  label: string;
+  materialFamily: TextureMaterialFamily;
+  finishType: TextureFinishType;
+  tone: string;
+  status: TextureQualityStatus;
+  previewImageUrl?: string;
+  textureImageUrl?: string;
+  sourceLabel: string;
+  sourceUrl?: string;
+  sourceLicense?: string;
+  referenceSourceUrl?: string;
+  textureScaleMmX: number;
+  textureScaleMmY: number;
+  repeatMode: 'repeat' | 'cover';
+  tintColor?: string;
+  tintOpacity?: number;
+  grooveCount?: number;
+  notes?: string;
+}
+
 export interface BoardVisualData {
   baseColor: string;
   grainColor: string;

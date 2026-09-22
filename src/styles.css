@@ -320,3 +320,86 @@
 .texture-source-note.pending{color:#7a6a42;background:#fff8e8;border-top:1px solid #f0e2bd;padding-top:8px}
 .texture-source-note.verified{color:#34744f;background:#f3faf6;border-top:1px solid #d7ebdf;padding-top:8px}
 .visual-placeholder-label{pointer-events:none}
+
+
+/* V0.14.2-A — bibliothèque de textures réalistes */
+.product-swatch.texture-close,
+.product-swatch.texture-exact{
+  min-height:96px;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:cover!important;
+  position:relative;
+}
+.product-swatch.texture-neutral{
+  min-height:96px;
+  display:grid;
+  place-items:center;
+  background:#edf1f3!important;
+  background-image:
+    linear-gradient(135deg,rgba(207,216,222,.78) 25%,transparent 25%),
+    linear-gradient(315deg,rgba(207,216,222,.78) 25%,transparent 25%)!important;
+  background-position:0 0,12px 12px!important;
+  background-size:24px 24px!important;
+}
+.product-swatch.texture-neutral>span{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  padding:8px 11px;
+  border-radius:9px;
+  background:rgba(255,255,255,.94);
+  border:1px solid #d4dde2;
+  text-align:center;
+}
+.product-swatch.texture-neutral b{font-size:10px;color:#4e6677}
+.product-swatch.texture-neutral small{font-size:8px;color:#8796a1}
+.product-swatch.has-grooves::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(45,38,31,.20) 0,
+    rgba(45,38,31,.20) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+  mix-blend-mode:multiply;
+}
+.visual-status.texture-exact{color:#187245!important}
+.visual-status.texture-close{color:#9a6a12!important}
+.visual-status.texture-neutral{color:#778996!important}
+.texture-quality-note{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:3px 8px;
+  align-items:center;
+  padding:9px 11px 11px;
+  border-top:1px solid #e5ecef;
+  font-size:9px;
+  line-height:1.4;
+}
+.texture-quality-note strong{
+  grid-row:1/3;
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:9px;
+  white-space:nowrap;
+}
+.texture-quality-note span{font-weight:800;color:#536b7d}
+.texture-quality-note small{color:#7d8c97}
+.texture-quality-note.exact{background:#f2faf5}
+.texture-quality-note.exact strong{background:#ddf3e6;color:#187245}
+.texture-quality-note.close{background:#fff9ec}
+.texture-quality-note.close strong{background:#ffedc7;color:#8d6418}
+.texture-quality-note.neutral{background:#f6f8f9}
+.texture-quality-note.neutral strong{background:#e8edf0;color:#657887}
+.texture-quality-note.compact{padding:7px 9px;font-size:8px}
+.texture-quality-note.compact strong{font-size:8px;padding:4px 7px}
+@media(max-width:700px){
+  .texture-quality-note{grid-template-columns:1fr}
+  .texture-quality-note strong{grid-row:auto;width:max-content}
+}

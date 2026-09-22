@@ -1,33 +1,27 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.14
-Le configurateur dispose maintenant de :
-- formes avancées et réservations V0.13 ;
-- construction visuelle progressive ;
-- lambourdes visibles selon les entraxes documentés ;
-- visualisation des plots ;
-- habillage bois avec la même lame ;
-- lambourdes verticales d'habillage calculées selon la hauteur ;
-- optimisation des découpes d'habillage et de structure verticale ;
-- vue 2D, 3D et coupe de côté ;
-- couches activables et modes Fini / Structure / Éclaté ;
-- architecture de textures produit avec médias vérifiés et fallback catalogue ;
-- catalogue, comparateur, panier, PDF, partage et parcours commercial conservés.
+## Présent V0.14.2-A
+- construction progressive V0.14 ;
+- habillage bois et supports verticaux ;
+- bibliothèque de textures indépendante ;
+- 8 finitions prioritaires en rendu de projection ;
+- statuts exact / proche / neutre ;
+- rendu 2D lame par lame ;
+- sens de pose et jeu conservés ;
+- profils striés différenciés ;
+- même matériau sur les rives ;
+- 3D branchée sur le même résolveur.
 
-## Prochaine grosse version
-### V0.15 — éditeur visuel interactif + forme libre
-- déplacement des réservations à la souris ;
-- poignées de redimensionnement ;
-- cotations et distances visibles ;
-- zoom/pan ;
-- annuler/rétablir ;
-- forme libre polygonale ;
-- ajout/suppression/déplacement de sommets ;
-- préparation import plan/photo ;
-- recalcul continu des couches de construction.
+## V0.14.2-B
+- héberger localement les textures validées ;
+- ajouter normal maps / roughness / relief ;
+- calibrer précisément l'échelle PBR ;
+- améliorer le composite SILVADEC ;
+- ajouter plusieurs variantes de grain par essence ;
+- remplacer progressivement les textures proches par des textures exactes lorsque disponibles et autorisées.
+
+## V0.15
+Éditeur visuel interactif, déplacement/redimensionnement des réservations, cotations, zoom/pan et forme libre.
 
 ## V0.16
-Structure technique avancée, hauteurs multiples, pente, implantation technique des plots, carte de hauteurs, doubles lambourdes et panier plus proche d'une commande réelle.
-
-## Règle permanente
-Aucun calcul de main-d'œuvre.
+Structure technique avancée, hauteurs multiples, pente, implantation structurelle des plots et panier plus proche d'une commande réelle.

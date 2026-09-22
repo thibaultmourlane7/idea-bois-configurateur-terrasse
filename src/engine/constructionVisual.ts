@@ -135,6 +135,7 @@ function edgeSupportPoints(input: ProjectInput, spacingMm: number): VisualPoint[
 export function buildConstructionVisual(input: ProjectInput, basket?: BasketResult, supportPlan?: SupportPlanResult): ConstructionVisualModel {
   const rule = getCommercialConstructionRule(input);
   const planned = supportPlan && supportPlan.status !== 'unavailable' && supportPlan.joistSegments.length > 0;
+  const validatedFallbackRule = rule?.status === 'validated' && rule.joistSpacingMm > 0 ? rule : undefined;
   const joists = planned
     ? supportPlan.joistSegments.map((segment) => ({
         id: segment.id,
@@ -146,7 +147,7 @@ export function buildConstructionVisual(input: ProjectInput, basket?: BasketResu
         buttJointSupport: segment.buttJointSupport,
         role: segment.role,
       }))
-    : rule ? joistSegments(input, rule) : [];
+    : validatedFallbackRule ? joistSegments(input, validatedFallbackRule) : [];
 
   const supportLine = basket?.lines.find((line) => line.id === 'supports');
   const exactPlotCount = supportLine?.status === 'exact' ? supportLine.quantity ?? 0 : 0;
@@ -164,8 +165,8 @@ export function buildConstructionVisual(input: ProjectInput, basket?: BasketResu
       : [];
 
   const cladding = computeEdgeCladding(input);
-  const verticalJoists = rule && cladding.mode === 'same-decking' && input.edgeFinishMode === 'full-perimeter'
-    ? edgeSupportPoints(input, rule.joistSpacingMm)
+  const verticalJoists = validatedFallbackRule && cladding.mode === 'same-decking' && input.edgeFinishMode === 'full-perimeter'
+    ? edgeSupportPoints(input, validatedFallbackRule.joistSpacingMm)
     : [];
 
   return {

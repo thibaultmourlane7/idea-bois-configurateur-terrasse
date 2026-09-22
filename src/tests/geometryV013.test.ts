@@ -93,10 +93,13 @@ describe('Géométrie avancée V0.13', () => {
     expect(computeLayout({ ...base, obstacles: [tree] }).requiredPieces.length).toBeGreaterThan(0);
   });
 
-  it('bloque une réservation qui sort de la terrasse', () => {
-    const invalid: TerraceObstacle = { ...pool, xM: 5.2, yM: 3.2 };
-    const diagnostics = validateProject({ ...base, obstacles: [invalid] });
-    expect(diagnostics.some((item) => item.tag === 'SA-TERR-GEO-OBS-002' && item.severity === 'blocking')).toBe(true);
+  it('autorise une réservation qui sort de la terrasse et ne retire que l’intersection réelle', () => {
+    const straddling: TerraceObstacle = { ...pool, xM: 5.2, yM: 3.2 };
+    const project = { ...base, obstacles: [straddling] };
+    const diagnostics = validateProject(project);
+    expect(diagnostics.some((item) => item.severity === 'blocking')).toBe(false);
+    expect(computeGeometry(project).excludedAreaM2).toBeGreaterThan(0);
+    expect(computeGeometry(project).excludedAreaM2).toBeLessThan(2);
   });
 
   it('bloque deux réservations qui se chevauchent', () => {

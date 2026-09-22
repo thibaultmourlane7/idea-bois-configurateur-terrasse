@@ -135,7 +135,15 @@ export interface BoardSpec {
   isDemo: boolean;
   visual?: BoardVisualData;
   catalog?: BoardCatalogData;
-  commercialRecipeId?: 'idea-pin-nord-145x27' | 'idea-cumaru-145x21' | 'idea-garapa-145x21' | 'idea-padouk-120x21' | 'idea-ipe-140x20' | 'silvadec-atmosphere-138x23';
+  commercialRecipeId?:
+    | 'idea-pin-nord-145x27'
+    | 'idea-resineux-class4'
+    | 'idea-cumaru-145x21'
+    | 'idea-garapa-145x21'
+    | 'idea-padouk-120x21'
+    | 'idea-ipe-140x20'
+    | 'idea-bamboo-137x20'
+    | 'silvadec-atmosphere-138x23';
   technical: BoardTechnicalData;
 }
 

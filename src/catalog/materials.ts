@@ -26,6 +26,16 @@ export const PIN_JOIST_60X40_2400: CommercialMaterial = {
   sourceDate: '2026-09-21',
 };
 
+export const EXOTIC_JOIST_65X42_3950: CommercialMaterial = {
+  id: 'IDEA-WEB-LEX-3950-65X42',
+  productRef: 'LEX395065042',
+  label: 'Lambourde bois exotique — 65 × 42 mm — L. 3,95 m',
+  unit: 'pièce',
+  unitPriceTtc: 21.32,
+  sourceUrl: 'https://www.idea-bois.com/art-lambourde-bois-exotique-65x42-mm-pour-terrasse-long-3-95-m-3221.htm',
+  sourceDate: '2026-09-22',
+};
+
 export const PGB_SCREWS_5X60_200: CommercialMaterial = {
   id: 'IDEA-WEB-VIS-5X60-200',
   productRef: '5410439211611',

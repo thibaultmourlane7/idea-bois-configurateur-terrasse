@@ -16,9 +16,6 @@ export const SUPPORT_PLAN_TAG = 'SA-TERR-SUPPORT-PLAN-016';
 export const SUPPORT_PLAN_SOURCE_URL = 'https://www.idea-bois.com/art-plot-lambourde-terrasse-r-glable-40-60-mm-jouplast-2182.htm';
 export const SUPPORT_PLAN_SOURCE_LABEL = 'IDEA Bois / JOUPLAST — plots bois : espacement 70 cm, lambourdes bois naturel 50 cm selon produit';
 
-const PLOT_SPACING_MM = 700;
-const JOIST_HEIGHT_MM = 40;
-const JOIST_STOCK_LENGTH_MM = 2400;
 const GEOMETRY_EPS_M = 0.001;
 
 function round2(value: number): number {
@@ -276,9 +273,12 @@ function pointsForSegment(
   input: ProjectInput,
   segment: PlannedJoistSegment,
   startIndex: number,
+  joistHeightMm: number,
+  plotSpacingMm: number,
+  plotCatalogueValidated: boolean,
 ): SupportPlanPoint[] {
   const lengthM = Math.hypot(segment.x2M - segment.x1M, segment.y2M - segment.y1M);
-  const intervalCount = Math.max(1, Math.ceil((lengthM * 1000) / PLOT_SPACING_MM));
+  const intervalCount = Math.max(1, Math.ceil((lengthM * 1000) / plotSpacingMm));
   const points: SupportPlanPoint[] = [];
 
   for (let i = 0; i <= intervalCount; i += 1) {
@@ -291,8 +291,8 @@ function pointsForSegment(
       + finishedDeltaMm
       - surfaceDeltaMm
       - input.board.thicknessMm
-      - JOIST_HEIGHT_MM;
-    const plot = choosePlot(requiredPlotHeightMm);
+      - joistHeightMm;
+    const plot = plotCatalogueValidated ? choosePlot(requiredPlotHeightMm) : undefined;
 
     points.push({
       id: `SP${startIndex + i}`,
@@ -357,25 +357,8 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     };
   }
 
-  if (input.board.commercialRecipeId !== 'idea-pin-nord-145x27') {
-    return {
-      status: 'unavailable',
-      joistSegments: [],
-      joistLinearM: 0,
-      doubleJoistLinearM: 0,
-      joistStockBoards: [],
-      buttJointAxisPositionsMm: [],
-      supportPoints: [],
-      plotGroups: [],
-      unsupportedPointCount: 0,
-      sourceLabel: SUPPORT_PLAN_SOURCE_LABEL,
-      sourceUrl: SUPPORT_PLAN_SOURCE_URL,
-      note: 'La V0.16 n’étend pas automatiquement le plan de plots à cette gamme : la section de lambourde / règle fabricant doit être validée.',
-    };
-  }
-
   const rule = getCommercialConstructionRule(input);
-  if (!rule) {
+  if (!rule || rule.status !== 'validated' || rule.joistSpacingMm <= 0 || rule.plotSpacingMm <= 0 || !rule.joistStockLengthsMm.length) {
     return {
       status: 'unavailable',
       joistSegments: [],
@@ -386,13 +369,15 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
       supportPoints: [],
       plotGroups: [],
       unsupportedPointCount: 0,
-      note: 'Aucune règle de structure commerciale validée pour cette lame.',
+      sourceLabel: rule?.sourceLabel,
+      sourceUrl: rule?.sourceUrl,
+      note: rule?.sourceNote ?? 'Aucune règle de structure commerciale validée pour cette lame.',
     };
   }
 
   const { segments, buttJointAxisPositionsMm, pendingCurvedPerimeter } = plannedJoistSegments(input, layout);
   const pieces = joistRequiredPieces(segments);
-  const joistStockBoards = optimizeCuts(pieces, [JOIST_STOCK_LENGTH_MM]);
+  const joistStockBoards = optimizeCuts(pieces, rule.joistStockLengthsMm);
   const joistLinearM = segments.reduce((sum, segment) => sum + segment.lengthMm * segment.multiplicity, 0) / 1000;
   const doubleJoistLinearM = input.doubleJoistsAtButtJoints
     ? segments
@@ -403,7 +388,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
   const supportPoints: SupportPlanPoint[] = [];
   let nextId = 1;
   for (const segment of segments) {
-    const points = pointsForSegment(input, segment, nextId);
+    const points = pointsForSegment(input, segment, nextId, rule.joistHeightMm, rule.plotSpacingMm, rule.plotCatalogueValidated);
     supportPoints.push(...points);
     nextId += points.length;
   }
@@ -418,7 +403,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
   return {
     status: unsupportedPointCount > 0 ? 'partial' : 'exact',
     joistSpacingMm: rule.joistSpacingMm,
-    plotSpacingMm: PLOT_SPACING_MM,
+    plotSpacingMm: rule.plotSpacingMm,
     joistSegments: segments,
     joistLinearM,
     doubleJoistLinearM,
@@ -429,8 +414,8 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     unsupportedPointCount,
     minRequiredPlotHeightMm: heights.length ? Math.min(...heights) : undefined,
     maxRequiredPlotHeightMm: heights.length ? Math.max(...heights) : undefined,
-    sourceLabel: SUPPORT_PLAN_SOURCE_LABEL,
-    sourceUrl: SUPPORT_PLAN_SOURCE_URL,
+    sourceLabel: rule.sourceLabel,
+    sourceUrl: rule.sourceUrl,
     pendingCurvedPerimeter,
     note: `${perimeterCount} segment(s) de lambourde périphérique droite calculé(s). ${pendingCurvedPerimeter ? 'Contour courbe détecté : la solution de lambourde périphérique sur arc reste à confirmer et n’est pas comptée. ' : ''}${buttJointAxisPositionsMm.length
       ? input.doubleJoistsAtButtJoints

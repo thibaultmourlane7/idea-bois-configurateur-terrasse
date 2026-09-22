@@ -2,6 +2,7 @@ import type { Diagnostic, ProjectInput } from '../domain/types';
 import { RULE_TAGS } from '../domain/rules';
 import { NF_DTU_51_4_2018 } from '../referentials/nf-dtu-51-4-2018';
 import { getDeckBoundingSizeM } from './geometry';
+import { getCommercialConstructionRule } from './constructionRules';
 
 export interface TechnicalSizing {
   boardMaxSupportSpacingMm: number;
@@ -11,15 +12,31 @@ export interface TechnicalSizing {
 
 export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | null {
   const diagnostics: Diagnostic[] = [];
-  const technical = input.board.technical;
+  const commercial = getCommercialConstructionRule(input);
 
+  if (commercial?.status === 'validated') {
+    diagnostics.push({
+      tag: RULE_TAGS.manufacturerRules,
+      severity: 'info',
+      message: 'Structure calculée avec la règle commerciale/fabricant documentée pour cette gamme.',
+      technicalMessage: commercial.sourceNote,
+      source: commercial.sourceUrl,
+    });
+    return {
+      boardMaxSupportSpacingMm: commercial.joistSpacingMm,
+      joistMaxSupportSpacingMm: commercial.plotSpacingMm,
+      diagnostics,
+    };
+  }
+
+  const technical = input.board.technical;
   if (technical.technicalEngine === 'manufacturer-rules') {
     diagnostics.push({
       tag: RULE_TAGS.manufacturerRules,
       severity: 'blocking',
       message: 'Les données techniques du fabricant sont nécessaires pour calculer ce modèle.',
-      technicalMessage: 'Produit composite / système propriétaire : aucun tableau bois du NF DTU 51.4 ne doit être extrapolé.',
-      source: 'Règles fabricant / évaluation technique requise',
+      technicalMessage: commercial?.sourceNote ?? 'Produit composite / système propriétaire : aucune règle bois ne doit être extrapolée.',
+      source: commercial?.sourceUrl ?? 'Règles fabricant / évaluation technique requise',
     });
     return { boardMaxSupportSpacingMm: 0, joistMaxSupportSpacingMm: 0, diagnostics };
   }
@@ -36,8 +53,8 @@ export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | n
       tag: RULE_TAGS.boardSpan,
       severity: 'blocking',
       message: 'Ce profil de lame doit être vérifié avant de calculer la structure.',
-      technicalMessage: 'Aucune ligne validée du référentiel V0.6 ne correspond exactement à cette lame. Aucune interpolation n’est autorisée.',
-      source: 'NF DTU 51.4 / Guide terrasse bois V4',
+      technicalMessage: commercial?.sourceNote ?? 'Aucune ligne validée du référentiel ne correspond exactement à cette lame. Aucune interpolation n’est autorisée.',
+      source: commercial?.sourceUrl ?? 'NF DTU 51.4 / Guide terrasse bois V4',
     });
     return { boardMaxSupportSpacingMm: 0, joistMaxSupportSpacingMm: 0, diagnostics };
   }
@@ -60,7 +77,7 @@ export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | n
       tag: RULE_TAGS.joistSpan,
       severity: 'blocking',
       message: 'La structure sélectionnée doit être vérifiée avant de continuer.',
-      technicalMessage: 'Aucune ligne validée du référentiel V0.6 ne correspond à cette combinaison entraxe/section/classe de lambourde.',
+      technicalMessage: 'Aucune ligne validée du référentiel ne correspond à cette combinaison entraxe/section/classe de lambourde.',
       source: 'NF DTU 51.4 / Guide terrasse bois V4',
     });
     return { boardMaxSupportSpacingMm: boardRule.maxSpacingMm, joistMaxSupportSpacingMm: 0, diagnostics };

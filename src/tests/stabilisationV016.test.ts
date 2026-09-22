@@ -115,6 +115,54 @@ describe('Stabilisation V0.16 — forme libre cotée', () => {
 });
 
 describe('Stabilisation V0.16 — raccords et contour structurel', () => {
+  it('n’explose plus les axes de lambourdes sur une forme libre à rive diagonale', () => {
+    const project: ProjectInput = {
+      ...base,
+      shape: 'freeform',
+      layingPattern: 'straight',
+      freeformPoints: [
+        { xM: 0, yM: 0 },
+        { xM: 6.27, yM: 0 },
+        { xM: 6.27, yM: 4 },
+        { xM: 2, yM: 4 },
+      ],
+      obstacles: [{
+        id: 'POOL-WIDE',
+        kind: 'pool',
+        label: 'Piscine',
+        shape: 'rectangle',
+        xM: 2.2,
+        yM: 1,
+        widthM: 4.8,
+        heightM: 2,
+      }],
+    };
+
+    const layout = computeLayout(project);
+    const axes = [...new Set(layout.buttJoints.map((joint) => Math.round(joint.axisPositionMm)))];
+    const plan = computeSupportPlan(project, layout);
+    const fieldAxes = new Set(
+      plan.joistSegments
+        .filter((segment) => segment.role !== 'perimeter')
+        .map((segment) => Math.round(segment.axisPositionMm)),
+    );
+
+    expect(axes).toEqual([5400]);
+    expect(fieldAxes.size).toBeLessThan(20);
+    expect(plan.buttJointAxisPositionsMm).toEqual([5400]);
+    expect(plan.supportPoints.length).toBeLessThan(220);
+  });
+
+  it('applique les cycles CALPI entière, 1/2 et 1/3 avec des axes globaux cohérents', () => {
+    const straight = computeLayout({ ...base, layingPattern: 'straight' });
+    const half = computeLayout({ ...base, layingPattern: 'half' });
+    const third = computeLayout({ ...base, layingPattern: 'third' });
+
+    expect([...new Set(straight.buttJoints.map((joint) => joint.axisPositionMm))]).toEqual([5400]);
+    expect([...new Set(half.buttJoints.map((joint) => joint.axisPositionMm))].sort((a,b) => a-b)).toEqual([2700, 5400]);
+    expect([...new Set(third.buttJoints.map((joint) => joint.axisPositionMm))].sort((a,b) => a-b)).toEqual([1800, 3600, 5400]);
+  });
+
   it('conserve les raccords rangée par rangée pour le rendu 2D', () => {
     const layout = computeLayout(base);
     expect(layout.hasButtJoints).toBe(true);

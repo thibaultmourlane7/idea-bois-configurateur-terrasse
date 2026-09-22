@@ -181,6 +181,7 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     const project: ProjectInput = {
       ...base,
       doubleJoistsAtButtJoints: true,
+      layingPattern: 'half',
       supportLevelProfile: {
         mode: 'four-corners',
         topLeftDeltaMm: 0,
@@ -195,6 +196,7 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     const restored = projectFromShareToken(token, base);
     expect(restored.supportLevelProfile).toEqual(project.supportLevelProfile);
     expect(restored.doubleJoistsAtButtJoints).toBe(true);
+    expect(restored.layingPattern).toBe('half');
   });
 
   it('n’active pas le plan précis pour une gamme dont la structure compatible reste à valider', () => {

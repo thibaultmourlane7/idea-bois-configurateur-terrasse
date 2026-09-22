@@ -42,8 +42,8 @@ export function toSpeedArtiPayload(input: ProjectInput, result: ConfiguratorResu
       perimeterM: result.geometry.perimeterM,
       purchasedAreaM2: result.layout?.purchasedAreaM2,
       stockBoards: result.layout?.stockBoards.length,
-      joistLinearM: result.supportPlan?.status !== 'unavailable' ? result.supportPlan?.joistLinearM : result.structure?.joistLinearM,
-      supportPointCount: result.supportPlan?.status !== 'unavailable'
+      joistLinearM: result.supportPlan && result.supportPlan.status !== 'unavailable' ? result.supportPlan.joistLinearM : result.structure?.joistLinearM,
+      supportPointCount: result.supportPlan && result.supportPlan.status !== 'unavailable'
         ? result.supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)
         : result.structure?.supportPointCount,
       fixingCount: result.structure?.fixingCount,

@@ -365,7 +365,7 @@ export default function App() {
                       onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
                     />
                     <ChoiceCard
-                      active={project.doubleJoistsAtButtJoints}
+                      active={Boolean(project.doubleJoistsAtButtJoints)}
                       title="Double lambourdage"
                       subtitle="Ajoute une seconde lambourde et recalcule les plots et le panier"
                       onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}

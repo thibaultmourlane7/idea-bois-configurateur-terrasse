@@ -135,7 +135,7 @@ function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefi
     axisLengthMm,
     rule.joistSpacingMm,
     buttJointAxisPositionsMm,
-    input.doubleJoistsAtButtJoints,
+    Boolean(input.doubleJoistsAtButtJoints),
   );
 
   const segments: PlannedJoistSegment[] = [];

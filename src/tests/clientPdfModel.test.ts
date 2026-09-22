@@ -42,6 +42,12 @@ describe('PDF client V0.10', () => {
     expect(model.lines.length).toBe(result.basket?.lines.length);
     expect(model.budgetValue).toContain('EUR');
     expect(model.generatedAt).toBe('21/09/2026');
+    expect(model.layingPattern).toBe('Pose entiere / droite');
+    expect(model.edgeDimensions).toContain('AB : 6 m');
+    expect(model.boardLayout).toContain('rangees');
+    expect(model.structureSummary).toContain('lambourdes');
+    expect(model.plotSummary).toContain('appuis');
+    expect(model.sources.length).toBeGreaterThan(0);
   });
 
   it('signale les lignes a confirmer sans les transformer en prix', () => {

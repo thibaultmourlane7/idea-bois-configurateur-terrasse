@@ -130,7 +130,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
   const boardTotalTtc = round2(boardPurchasedAreaM2 * input.board.priceTtcPerM2);
 
   const rule = getCommercialConstructionRule(input);
-  if (!rule) {
+  if (!rule || rule.status !== 'validated' || rule.joistSpacingMm <= 0) {
     return {
       status: 'partial',
       mode: 'same-decking',

@@ -1,4 +1,5 @@
 import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
+import { referencePlanDiagnostics } from './referencePlan';
 import { isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';

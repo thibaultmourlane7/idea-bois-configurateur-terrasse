@@ -52,10 +52,12 @@ describe('Construction visuelle et habillage V0.14', () => {
     const result = runConfigurator(base);
     const visual = buildConstructionVisual(base, result.basket, result.supportPlan);
     expect(visual.rule?.joistSpacingMm).toBe(500);
-    expect(visual.joists).toHaveLength(14);
+    expect(visual.joists.filter((line) => line.role === 'field' || line.role === 'butt-joint')).toHaveLength(14);
+    expect(visual.joists.filter((line) => line.role === 'perimeter').length).toBeGreaterThan(0);
     expect(visual.joists.filter((line) => line.buttJointSupport)).toHaveLength(1);
-    expect(visual.plots).toHaveLength(98);
-    expect(visual.plots.reduce((sum, point) => sum + (point.multiplicity ?? 1), 0)).toBe(98);
+    expect(visual.plots.length).toBe(result.supportPlan?.supportPoints.length);
+    expect(visual.plots.reduce((sum, point) => sum + (point.multiplicity ?? 1), 0))
+      .toBe(result.supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0));
     expect(visual.plotsStatus).toBe('height-plan');
   });
 

@@ -14,12 +14,23 @@ export interface PointM {
   y: number;
 }
 
+export interface BoundarySegmentM {
+  x1M: number;
+  y1M: number;
+  x2M: number;
+  y2M: number;
+  role: 'outer' | 'obstacle';
+  /** true lorsque le segment approxime un arc : aucune lambourde droite n'est déduite automatiquement. */
+  curved?: boolean;
+}
+
 export type IntervalMm = [number, number];
 
 const EPS = 1e-7;
 const mm = (m: number) => m * 1000;
 
 export function polygonArea(points: PointM[]): number {
+  if (points.length < 3) return 0;
   let sum = 0;
   for (let i = 0; i < points.length; i += 1) {
     const a = points[i];
@@ -259,7 +270,12 @@ function segmentsIntersect(a1: PointM, a2: PointM, b1: PointM, b2: PointM): bool
   const o2 = orientation(a1, a2, b2);
   const o3 = orientation(b1, b2, a1);
   const o4 = orientation(b1, b2, a2);
-  return o1 !== o2 && o3 !== o4;
+  if (o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0 && o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && pointOnSegment(b1, a1, a2)) return true;
+  if (o2 === 0 && pointOnSegment(b2, a1, a2)) return true;
+  if (o3 === 0 && pointOnSegment(a1, b1, b2)) return true;
+  if (o4 === 0 && pointOnSegment(a2, b1, b2)) return true;
+  return false;
 }
 
 export function isSimplePolygon(points: TerracePoint[]): boolean {
@@ -279,6 +295,173 @@ export function isSimplePolygon(points: TerracePoint[]): boolean {
   return polygonArea(mapped) > EPS;
 }
 
+function clipPolygon(
+  polygon: PointM[],
+  inside: (point: PointM) => boolean,
+  intersection: (a: PointM, b: PointM) => PointM,
+): PointM[] {
+  if (!polygon.length) return [];
+  const out: PointM[] = [];
+  for (let i = 0; i < polygon.length; i += 1) {
+    const current = polygon[i];
+    const previous = polygon[(i + polygon.length - 1) % polygon.length];
+    const currentInside = inside(current);
+    const previousInside = inside(previous);
+    if (currentInside) {
+      if (!previousInside) out.push(intersection(previous, current));
+      out.push(current);
+    } else if (previousInside) {
+      out.push(intersection(previous, current));
+    }
+  }
+  return out;
+}
+
+function clipPolygonToRect(polygon: PointM[], minX: number, maxX: number, minY: number, maxY: number): PointM[] {
+  let out = polygon;
+  out = clipPolygon(out, (p) => p.x >= minX - EPS, (a, b) => {
+    const t = Math.abs(b.x - a.x) <= EPS ? 0 : (minX - a.x) / (b.x - a.x);
+    return { x: minX, y: a.y + (b.y - a.y) * t };
+  });
+  out = clipPolygon(out, (p) => p.x <= maxX + EPS, (a, b) => {
+    const t = Math.abs(b.x - a.x) <= EPS ? 0 : (maxX - a.x) / (b.x - a.x);
+    return { x: maxX, y: a.y + (b.y - a.y) * t };
+  });
+  out = clipPolygon(out, (p) => p.y >= minY - EPS, (a, b) => {
+    const t = Math.abs(b.y - a.y) <= EPS ? 0 : (minY - a.y) / (b.y - a.y);
+    return { x: a.x + (b.x - a.x) * t, y: minY };
+  });
+  out = clipPolygon(out, (p) => p.y <= maxY + EPS, (a, b) => {
+    const t = Math.abs(b.y - a.y) <= EPS ? 0 : (maxY - a.y) / (b.y - a.y);
+    return { x: a.x + (b.x - a.x) * t, y: maxY };
+  });
+  return out;
+}
+
+function pointAt(a: PointM, b: PointM, t: number): PointM {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+function cross(a: PointM, b: PointM): number {
+  return a.x * b.y - a.y * b.x;
+}
+
+function dot(a: PointM, b: PointM): number {
+  return a.x * b.x + a.y * b.y;
+}
+
+function circleSegmentContribution(a: PointM, b: PointM, radius: number): number {
+  const d = { x: b.x - a.x, y: b.y - a.y };
+  const aa = dot(d, d);
+  const bb = 2 * dot(a, d);
+  const cc = dot(a, a) - radius * radius;
+  const ts = [0, 1];
+
+  if (aa > EPS) {
+    const discriminant = bb * bb - 4 * aa * cc;
+    if (discriminant > EPS) {
+      const root = Math.sqrt(discriminant);
+      const t1 = (-bb - root) / (2 * aa);
+      const t2 = (-bb + root) / (2 * aa);
+      if (t1 > EPS && t1 < 1 - EPS) ts.push(t1);
+      if (t2 > EPS && t2 < 1 - EPS) ts.push(t2);
+    } else if (Math.abs(discriminant) <= EPS) {
+      const t = -bb / (2 * aa);
+      if (t > EPS && t < 1 - EPS) ts.push(t);
+    }
+  }
+
+  ts.sort((x, y) => x - y);
+  let total = 0;
+  for (let i = 0; i < ts.length - 1; i += 1) {
+    const p = pointAt(a, b, ts[i]);
+    const q = pointAt(a, b, ts[i + 1]);
+    const mid = pointAt(a, b, (ts[i] + ts[i + 1]) / 2);
+    if (Math.hypot(mid.x, mid.y) <= radius + EPS) {
+      total += cross(p, q) / 2;
+    } else {
+      total += radius * radius * Math.atan2(cross(p, q), dot(p, q)) / 2;
+    }
+  }
+  return total;
+}
+
+function circlePolygonIntersectionArea(polygon: PointM[], centerX: number, centerY: number, radius: number): number {
+  if (polygon.length < 3 || radius <= 0) return 0;
+  const translated = polygon.map((point) => ({ x: point.x - centerX, y: point.y - centerY }));
+  let area = 0;
+  for (let i = 0; i < translated.length; i += 1) {
+    area += circleSegmentContribution(translated[i], translated[(i + 1) % translated.length], radius);
+  }
+  return Math.abs(area);
+}
+
+function circleCircleIntersectionArea(x1: number, y1: number, r1: number, x2: number, y2: number, r2: number): number {
+  if (r1 <= 0 || r2 <= 0) return 0;
+  const d = Math.hypot(x2 - x1, y2 - y1);
+  if (d >= r1 + r2 - EPS) return 0;
+  if (d <= Math.abs(r1 - r2) + EPS) return Math.PI * Math.min(r1, r2) ** 2;
+
+  const alpha = 2 * Math.acos(Math.max(-1, Math.min(1, (r1 * r1 + d * d - r2 * r2) / (2 * r1 * d))));
+  const beta = 2 * Math.acos(Math.max(-1, Math.min(1, (r2 * r2 + d * d - r1 * r1) / (2 * r2 * d))));
+  return 0.5 * r1 * r1 * (alpha - Math.sin(alpha))
+    + 0.5 * r2 * r2 * (beta - Math.sin(beta));
+}
+
+function obstacleRectanglePolygon(obstacle: TerraceObstacle): PointM[] {
+  const w = obstacle.widthM ?? 0;
+  const h = obstacle.heightM ?? 0;
+  return [
+    { x: obstacle.xM, y: obstacle.yM },
+    { x: obstacle.xM + w, y: obstacle.yM },
+    { x: obstacle.xM + w, y: obstacle.yM + h },
+    { x: obstacle.xM, y: obstacle.yM + h },
+  ];
+}
+
+/**
+ * Surface réellement retirée par une réservation.
+ * Une réservation peut dépasser du contour : seule l'intersection avec la terrasse est comptée.
+ */
+export function obstacleIntersectionAreaM2(input: ProjectInput, obstacle: TerraceObstacle): number {
+  if (input.shape === 'circle') {
+    const deckR = input.dimensions.circleDiameterM / 2;
+    const deckCx = deckR;
+    const deckCy = deckR;
+    if (obstacle.shape === 'circle') {
+      const obstacleR = (obstacle.diameterM ?? 0) / 2;
+      return circleCircleIntersectionArea(
+        deckCx,
+        deckCy,
+        deckR,
+        obstacle.xM + obstacleR,
+        obstacle.yM + obstacleR,
+        obstacleR,
+      );
+    }
+    return circlePolygonIntersectionArea(obstacleRectanglePolygon(obstacle), deckCx, deckCy, deckR);
+  }
+
+  const deckPolygon = getDeckPolygonM(input) ?? [];
+  if (obstacle.shape === 'circle') {
+    const r = (obstacle.diameterM ?? 0) / 2;
+    return circlePolygonIntersectionArea(deckPolygon, obstacle.xM + r, obstacle.yM + r, r);
+  }
+
+  const clipped = clipPolygonToRect(
+    deckPolygon,
+    obstacle.xM,
+    obstacle.xM + (obstacle.widthM ?? 0),
+    obstacle.yM,
+    obstacle.yM + (obstacle.heightM ?? 0),
+  );
+  return polygonArea(clipped);
+}
+
+export function obstacleIntersectsBaseDeck(input: ProjectInput, obstacle: TerraceObstacle): boolean {
+  return obstacleIntersectionAreaM2(input, obstacle) > 1e-8;
+}
+
 export function computeGeometry(input: ProjectInput): GeometryResult {
   let grossAreaM2 = 0;
   let outerPerimeterM = 0;
@@ -293,7 +476,7 @@ export function computeGeometry(input: ProjectInput): GeometryResult {
     outerPerimeterM = polygonPerimeter(polygon);
   }
 
-  const excludedAreaM2 = input.obstacles.reduce((sum, obstacle) => sum + obstacleAreaM2(obstacle), 0);
+  const excludedAreaM2 = input.obstacles.reduce((sum, obstacle) => sum + obstacleIntersectionAreaM2(input, obstacle), 0);
   const totalObstaclePerimeterM = input.obstacles.reduce((sum, obstacle) => sum + obstaclePerimeterM(obstacle), 0);
 
   return {
@@ -411,4 +594,151 @@ export function getDeckIntervalsAtMm(
   }
 
   return intervals;
+}
+
+function lineCircleIntersectionTs(a: PointM, b: PointM, cx: number, cy: number, radius: number): number[] {
+  const ax = a.x - cx;
+  const ay = a.y - cy;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const aa = dx * dx + dy * dy;
+  if (aa <= EPS) return [];
+  const bb = 2 * (ax * dx + ay * dy);
+  const cc = ax * ax + ay * ay - radius * radius;
+  const disc = bb * bb - 4 * aa * cc;
+  if (disc < -EPS) return [];
+  if (Math.abs(disc) <= EPS) {
+    const t = -bb / (2 * aa);
+    return t > EPS && t < 1 - EPS ? [t] : [];
+  }
+  const root = Math.sqrt(Math.max(0, disc));
+  return [(-bb - root) / (2 * aa), (-bb + root) / (2 * aa)]
+    .filter((t) => t > EPS && t < 1 - EPS);
+}
+
+function lineLineIntersectionT(a: PointM, b: PointM, c: PointM, d: PointM): number | undefined {
+  const r = { x: b.x - a.x, y: b.y - a.y };
+  const s = { x: d.x - c.x, y: d.y - c.y };
+  const denom = r.x * s.y - r.y * s.x;
+  if (Math.abs(denom) <= EPS) return undefined;
+  const q = { x: c.x - a.x, y: c.y - a.y };
+  const t = (q.x * s.y - q.y * s.x) / denom;
+  const u = (q.x * r.y - q.y * r.x) / denom;
+  if (t > EPS && t < 1 - EPS && u >= -EPS && u <= 1 + EPS) return t;
+  return undefined;
+}
+
+function segmentObstacleBoundaryTs(a: PointM, b: PointM, obstacle: TerraceObstacle): number[] {
+  if (obstacle.shape === 'circle') {
+    const r = (obstacle.diameterM ?? 0) / 2;
+    return lineCircleIntersectionTs(a, b, obstacle.xM + r, obstacle.yM + r, r);
+  }
+  const p = obstacleRectanglePolygon(obstacle);
+  const out: number[] = [];
+  for (let i = 0; i < p.length; i += 1) {
+    const t = lineLineIntersectionT(a, b, p[i], p[(i + 1) % p.length]);
+    if (t != null) out.push(t);
+  }
+  return out;
+}
+
+function segmentDeckBoundaryTs(input: ProjectInput, a: PointM, b: PointM): number[] {
+  if (input.shape === 'circle') {
+    const r = input.dimensions.circleDiameterM / 2;
+    return lineCircleIntersectionTs(a, b, r, r, r);
+  }
+  const polygon = getDeckPolygonM(input) ?? [];
+  const out: number[] = [];
+  for (let i = 0; i < polygon.length; i += 1) {
+    const t = lineLineIntersectionT(a, b, polygon[i], polygon[(i + 1) % polygon.length]);
+    if (t != null) out.push(t);
+  }
+  return out;
+}
+
+function splitSegment(
+  a: PointM,
+  b: PointM,
+  extraTs: number[],
+  keep: (mid: PointM) => boolean,
+  role: BoundarySegmentM['role'],
+  curved = false,
+): BoundarySegmentM[] {
+  const ts = [...new Set([0, 1, ...extraTs].map((value) => Math.round(value * 1e9) / 1e9))].sort((x, y) => x - y);
+  const out: BoundarySegmentM[] = [];
+  for (let i = 0; i < ts.length - 1; i += 1) {
+    const t1 = ts[i];
+    const t2 = ts[i + 1];
+    if (t2 - t1 <= EPS) continue;
+    const p = pointAt(a, b, t1);
+    const q = pointAt(a, b, t2);
+    const mid = pointAt(a, b, (t1 + t2) / 2);
+    if (!keep(mid)) continue;
+    if (Math.hypot(q.x - p.x, q.y - p.y) <= 0.001) continue;
+    out.push({ x1M: p.x, y1M: p.y, x2M: q.x, y2M: q.y, role, curved });
+  }
+  return out;
+}
+
+/**
+ * Contour utile de la terrasse après réservations.
+ * Sert à implanter les lambourdes périphériques sans traverser une réservation qui mord le bord.
+ */
+export function getEffectiveBoundarySegmentsM(input: ProjectInput): BoundarySegmentM[] {
+  const out: BoundarySegmentM[] = [];
+  const deckOutline = getDeckOutlinePointsM(input, input.shape === 'circle' ? 180 : 48);
+
+  for (let i = 0; i < deckOutline.length; i += 1) {
+    const a = deckOutline[i];
+    const b = deckOutline[(i + 1) % deckOutline.length];
+    const cuts = input.obstacles.flatMap((obstacle) => segmentObstacleBoundaryTs(a, b, obstacle));
+    out.push(...splitSegment(
+      a,
+      b,
+      cuts,
+      (mid) => !input.obstacles.some((obstacle) => isPointInsideObstacle(obstacle, mid.x, mid.y)),
+      'outer',
+      input.shape === 'circle',
+    ));
+  }
+
+  for (const obstacle of input.obstacles) {
+    if (obstacle.shape === 'rectangle') {
+      const boundary = obstacleRectanglePolygon(obstacle);
+      for (let i = 0; i < boundary.length; i += 1) {
+        const a = boundary[i];
+        const b = boundary[(i + 1) % boundary.length];
+        out.push(...splitSegment(
+          a,
+          b,
+          segmentDeckBoundaryTs(input, a, b),
+          (mid) => isPointInsideBaseDeck(input, mid.x, mid.y),
+          'obstacle',
+        ));
+      }
+      continue;
+    }
+
+    const r = (obstacle.diameterM ?? 0) / 2;
+    if (r <= 0) continue;
+    const cx = obstacle.xM + r;
+    const cy = obstacle.yM + r;
+    const segments = 180;
+    for (let i = 0; i < segments; i += 1) {
+      const a1 = (Math.PI * 2 * i) / segments;
+      const a2 = (Math.PI * 2 * (i + 1)) / segments;
+      const a = { x: cx + Math.cos(a1) * r, y: cy + Math.sin(a1) * r };
+      const b = { x: cx + Math.cos(a2) * r, y: cy + Math.sin(a2) * r };
+      out.push(...splitSegment(
+        a,
+        b,
+        segmentDeckBoundaryTs(input, a, b),
+        (mid) => isPointInsideBaseDeck(input, mid.x, mid.y),
+        'obstacle',
+        true,
+      ));
+    }
+  }
+
+  return out;
 }

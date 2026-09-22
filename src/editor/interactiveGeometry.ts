@@ -1,6 +1,7 @@
 import type { ProjectInput, TerraceObstacle, TerracePoint } from '../domain/types';
 
 const MIN_SIZE_M = 0.05;
+const EPS = 1e-9;
 
 export function defaultFreeformPoints(project: ProjectInput): TerracePoint[] {
   if (project.freeformPoints && project.freeformPoints.length >= 3) {
@@ -56,11 +57,14 @@ export function removeVertex(points: TerracePoint[], index: number): TerracePoin
   return points.filter((_, currentIndex) => currentIndex !== index);
 }
 
+/**
+ * Une réservation peut dépasser du contour de la terrasse. On ne borne donc pas x/y à zéro.
+ */
 export function moveObstacle(obstacle: TerraceObstacle, xM: number, yM: number): TerraceObstacle {
   return {
     ...obstacle,
-    xM: Math.max(0, xM),
-    yM: Math.max(0, yM),
+    xM,
+    yM,
   };
 }
 
@@ -77,10 +81,90 @@ export function resizeObstacle(obstacle: TerraceObstacle, pointerXM: number, poi
   };
 }
 
+
+export function isOrthogonalPolygon(points: TerracePoint[], tolerance = 1e-7): boolean {
+  if (points.length < 3) return false;
+  return points.every((point, index) => {
+    const next = points[(index + 1) % points.length];
+    return Math.abs(next.xM - point.xM) <= tolerance || Math.abs(next.yM - point.yM) <= tolerance;
+  });
+}
+
 export function polygonEdgeLengths(points: TerracePoint[]): number[] {
   if (points.length < 2) return [];
   return points.map((point, index) => {
     const next = points[(index + 1) % points.length];
     return Math.hypot(next.xM - point.xM, next.yM - point.yM);
   });
+}
+
+/**
+ * Modifie la longueur du côté index -> index+1.
+ * Le premier sommet reste fixe et le second se déplace dans la direction actuelle du côté.
+ * Aucun angle n'est inventé.
+ */
+export function resizeFreeformEdge(points: TerracePoint[], edgeIndex: number, targetLengthM: number): TerracePoint[] {
+  if (!Number.isFinite(targetLengthM) || targetLengthM < MIN_SIZE_M || points.length < 3) return points;
+  const startIndex = ((edgeIndex % points.length) + points.length) % points.length;
+  const endIndex = (startIndex + 1) % points.length;
+  const start = points[startIndex];
+  const end = points[endIndex];
+  const dx = end.xM - start.xM;
+  const dy = end.yM - start.yM;
+  const currentLength = Math.hypot(dx, dy);
+  if (currentLength <= EPS) return points;
+
+  const ratio = targetLengthM / currentLength;
+  const nextEnd = {
+    xM: start.xM + dx * ratio,
+    yM: start.yM + dy * ratio,
+  };
+  if (nextEnd.xM < 0 || nextEnd.yM < 0) return points;
+
+  return points.map((point, index) => index === endIndex ? nextEnd : point);
+}
+
+
+/**
+ * Variante pour un contour orthogonal : le premier sommet du côté reste fixe,
+ * le second et le sommet suivant sont translatés sur l'axe du côté.
+ * Cela conserve les angles droits sans inventer d'angle.
+ */
+export function resizeOrthogonalFreeformEdge(points: TerracePoint[], edgeIndex: number, targetLengthM: number): TerracePoint[] {
+  if (!Number.isFinite(targetLengthM) || targetLengthM < MIN_SIZE_M || points.length < 4 || !isOrthogonalPolygon(points)) return points;
+  const startIndex = ((edgeIndex % points.length) + points.length) % points.length;
+  const endIndex = (startIndex + 1) % points.length;
+  const nextIndex = (endIndex + 1) % points.length;
+  const start = points[startIndex];
+  const end = points[endIndex];
+  const horizontal = Math.abs(end.yM - start.yM) <= 1e-7;
+  const vertical = Math.abs(end.xM - start.xM) <= 1e-7;
+  if (!horizontal && !vertical) return points;
+
+  const currentLength = Math.hypot(end.xM - start.xM, end.yM - start.yM);
+  if (currentLength <= EPS) return points;
+  const sign = horizontal
+    ? Math.sign(end.xM - start.xM) || 1
+    : Math.sign(end.yM - start.yM) || 1;
+  const targetEnd = horizontal
+    ? { xM: start.xM + sign * targetLengthM, yM: start.yM }
+    : { xM: start.xM, yM: start.yM + sign * targetLengthM };
+  const deltaX = targetEnd.xM - end.xM;
+  const deltaY = targetEnd.yM - end.yM;
+
+  const next = points.map((point) => ({ ...point }));
+  next[endIndex] = targetEnd;
+  next[nextIndex] = {
+    xM: next[nextIndex].xM + deltaX,
+    yM: next[nextIndex].yM + deltaY,
+  };
+  if (next.some((point) => point.xM < -EPS || point.yM < -EPS)) return points;
+  return next;
+}
+
+export function vertexLabel(index: number): string {
+  // A..Z puis A1..Z1 pour rester lisible sans dépendre d'une donnée implicite.
+  const letter = String.fromCharCode(65 + (index % 26));
+  const cycle = Math.floor(index / 26);
+  return cycle === 0 ? letter : `${letter}${cycle}`;
 }

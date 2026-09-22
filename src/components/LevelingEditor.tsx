@@ -1,4 +1,5 @@
 import type { ProjectInput, SupportLevelProfile } from '../domain/types';
+import { computeLayout } from '../engine/layout';
 
 export function LevelingEditor({
   project,
@@ -16,6 +17,8 @@ export function LevelingEditor({
     targetSlopeXPercent: 0,
     targetSlopeYPercent: 0,
   };
+  const canResolveLayout = project.board.gapMm != null && Number.isFinite(project.board.gapMm) && project.board.gapMm >= 0;
+  const hasButtJoints = canResolveLayout ? computeLayout(project).hasButtJoints : false;
 
   const patch = (patchValue: Partial<SupportLevelProfile>) => {
     onChange({
@@ -29,6 +32,31 @@ export function LevelingEditor({
 
   return (
     <div className="leveling-editor">
+      {!hasButtJoints && (
+        <div className="double-joist-visible-setting">
+          <div>
+            <h3>Renfort aux jonctions de lames</h3>
+            <p>{canResolveLayout ? 'Aucune jonction de lames n’est détectée avec le calepinage actuel.' : 'Le jeu de pose n’est pas encore validé : les jonctions ne peuvent pas encore être calculées.'} Vous pouvez néanmoins mémoriser votre préférence : elle sera appliquée automatiquement si un raccord apparaît après une modification du projet.</p>
+          </div>
+          <div className="segmented">
+            <button
+              type="button"
+              className={!project.doubleJoistsAtButtJoints ? 'active' : ''}
+              onClick={() => onChange({ ...project, doubleJoistsAtButtJoints: false })}
+            >
+              Lambourde simple
+            </button>
+            <button
+              type="button"
+              className={project.doubleJoistsAtButtJoints ? 'active' : ''}
+              onClick={() => onChange({ ...project, doubleJoistsAtButtJoints: true })}
+            >
+              Double lambourdage
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="leveling-heading">
         <div>
           <h3>Niveaux du support</h3>

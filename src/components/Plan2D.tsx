@@ -1,12 +1,14 @@
 import { useId, type ReactNode } from 'react';
-import type { BasketResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
+import type { BasketResult, LayoutResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
+import { computeLayout } from '../engine/layout';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
 import { resolveTextureVariant } from '../visual/textureVariants';
 import { boardOffsetFromRatio, buildGrooveLines, shouldRenderKnots } from '../visual/texturePainter';
+import { vertexLabel } from '../editor/interactiveGeometry';
 
 function obstacleFill(kind: TerraceObstacle['kind']) {
   if (kind === 'pool') return '#cfeeff';
@@ -16,16 +18,30 @@ function obstacleFill(kind: TerraceObstacle['kind']) {
   return '#f4f5f7';
 }
 
+function obstacleSize(obstacle: TerraceObstacle) {
+  if (obstacle.shape === 'circle') {
+    const diameterM = obstacle.diameterM ?? 0;
+    return { widthM: diameterM, heightM: diameterM };
+  }
+  return { widthM: obstacle.widthM ?? 0, heightM: obstacle.heightM ?? 0 };
+}
+
+function edgeLength(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
 export function Plan2D({
   input,
   basket,
   supportPlan,
+  layout,
   layers = FINISHED_LAYERS,
   exploded = false,
 }: {
   input: ProjectInput;
   basket?: BasketResult;
   supportPlan?: SupportPlanResult;
+  layout?: LayoutResult;
   layers?: ConstructionLayers;
   exploded?: boolean;
 }) {
@@ -34,17 +50,45 @@ export function Plan2D({
   const bounds = getDeckBoundingSizeM(input);
   const outline = getDeckOutlinePointsM(input);
   const construction = buildConstructionVisual(input, basket, supportPlan);
+  const effectiveLayout = layout ?? (input.board.gapMm != null && Number.isFinite(input.board.gapMm) && input.board.gapMm >= 0
+    ? computeLayout(input)
+    : undefined);
   const texture = resolveBoardTexture(input.board);
   const materialProfile = resolveMaterialProfile(input.board);
   const grooveLines = buildGrooveLines(materialProfile);
   const variantCount = materialProfile?.variantCount ?? 4;
 
-  const pad = 34;
+  const viewport = (() => {
+    let minX = 0;
+    let minY = 0;
+    let maxX = bounds.lengthM;
+    let maxY = bounds.widthM;
+    for (const obstacle of input.obstacles) {
+      const size = obstacleSize(obstacle);
+      minX = Math.min(minX, obstacle.xM);
+      minY = Math.min(minY, obstacle.yM);
+      maxX = Math.max(maxX, obstacle.xM + size.widthM);
+      maxY = Math.max(maxY, obstacle.yM + size.heightM);
+    }
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      widthM: Math.max(0.1, maxX - minX),
+      heightM: Math.max(0.1, maxY - minY),
+    };
+  })();
+
+  const pad = 58;
   const maxW = 640;
   const maxH = 390;
-  const scale = Math.min((maxW - pad * 2) / Math.max(0.1, bounds.lengthM), (maxH - pad * 2) / Math.max(0.1, bounds.widthM));
-  const x = pad + (maxW - pad * 2 - bounds.lengthM * scale) / 2;
-  const y = pad + (maxH - pad * 2 - bounds.widthM * scale) / 2;
+  const scale = Math.min(
+    (maxW - pad * 2) / viewport.widthM,
+    (maxH - pad * 2) / viewport.heightM,
+  );
+  const x = pad + (maxW - pad * 2 - viewport.widthM * scale) / 2 - viewport.minX * scale;
+  const y = pad + (maxH - pad * 2 - viewport.heightM * scale) / 2 - viewport.minY * scale;
   const points = outline.map((point) => `${x + point.x * scale},${y + point.y * scale}`).join(' ');
   const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
   const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
@@ -137,14 +181,17 @@ export function Plan2D({
   const deckingOpacity = exploded ? 0.62 : 1;
   const tint = texture.tintColor ?? '#ffffff';
   const tintOpacity = texture.tintOpacity ?? 0;
+  const centroid = outline.length
+    ? outline.reduce((acc, point) => ({ x: acc.x + point.x / outline.length, y: acc.y + point.y / outline.length }), { x: 0, y: 0 })
+    : { x: bounds.lengthM / 2, y: bounds.widthM / 2 };
 
   return (
     <div className="visual-card construction-plan-card">
       <div className="visual-title">
         <span>Vue de dessus</span>
-        <code>IB-TERR-UI-2D-016</code>
+        <code>IB-TERR-UI-2D-016-STAB</code>
       </div>
-      <svg viewBox={`0 0 ${maxW} ${maxH}`} className="plan" role="img" aria-label="Plan 2D de la construction de terrasse">
+      <svg viewBox={`0 0 ${maxW} ${maxH}`} className="plan" role="img" aria-label="Plan 2D coté de la construction de terrasse">
         <defs>
           <clipPath id={clipId}><polygon points={points} /></clipPath>
           {patternIds.map((patternId, index) => {
@@ -164,31 +211,9 @@ export function Plan2D({
                 {texture.textureImageUrl ? (
                   <>
                     <rect width={textureWidthPx} height={textureHeightPx} fill="#d8d2ca" />
-                    <image
-                      href={texture.textureImageUrl}
-                      x="0"
-                      y="0"
-                      width={textureWidthPx}
-                      height={textureHeightPx}
-                      preserveAspectRatio="xMidYMid slice"
-                    />
-                    {tintOpacity > 0 && (
-                      <rect
-                        width={textureWidthPx}
-                        height={textureHeightPx}
-                        fill={tint}
-                        opacity={tintOpacity}
-                        style={{ mixBlendMode: 'multiply' }}
-                      />
-                    )}
-                    {bright !== 0 && (
-                      <rect
-                        width={textureWidthPx}
-                        height={textureHeightPx}
-                        fill={bright > 0 ? '#ffffff' : '#000000'}
-                        opacity={Math.abs(bright)}
-                      />
-                    )}
+                    <image href={texture.textureImageUrl} x="0" y="0" width={textureWidthPx} height={textureHeightPx} preserveAspectRatio="xMidYMid slice" />
+                    {tintOpacity > 0 && <rect width={textureWidthPx} height={textureHeightPx} fill={tint} opacity={tintOpacity} style={{ mixBlendMode: 'multiply' }} />}
+                    {bright !== 0 && <rect width={textureWidthPx} height={textureHeightPx} fill={bright > 0 ? '#ffffff' : '#000000'} opacity={Math.abs(bright)} />}
                   </>
                 ) : (
                   <>
@@ -214,55 +239,47 @@ export function Plan2D({
               strokeWidth="1.8"
             />
             <circle cx={x + plot.xM * scale} cy={y + plot.yM * scale} r="2" fill={plot.status === 'unsupported' ? '#ffd2ce' : '#8fa1ad'} />
-            {plot.multiplicity === 2 && (
-              <text x={x + plot.xM * scale + 7} y={y + plot.yM * scale - 5} fontSize="7" fontWeight="900" fill="#7a4b27">×2</text>
-            )}
+            {plot.multiplicity === 2 && <text x={x + plot.xM * scale + 7} y={y + plot.yM * scale - 5} fontSize="7" fontWeight="900" fill="#7a4b27">×2</text>}
           </g>
         ))}
 
         {layers.joists && (
           <g className="joist-lines">
-            {construction.joists.map((joist) => (
-              <g key={joist.id}>
-                <line
-                  x1={x + joist.x1M * scale}
-                  y1={y + joist.y1M * scale}
-                  x2={x + joist.x2M * scale}
-                  y2={y + joist.y2M * scale}
-                  stroke={joist.multiplicity === 2 ? '#9b5f2f' : '#6c4d31'}
-                  strokeWidth={Math.max(4, Math.min(joist.multiplicity === 2 ? 12 : 8, scale * (joist.multiplicity === 2 ? 0.07 : 0.045)))}
-                  strokeLinecap="square"
-                  opacity="0.88"
-                />
-                {joist.multiplicity === 2 && (
+            {construction.joists.map((joist) => {
+              const isPerimeter = joist.role === 'perimeter';
+              const isDouble = joist.multiplicity === 2;
+              return (
+                <g key={joist.id}>
                   <line
                     x1={x + joist.x1M * scale}
                     y1={y + joist.y1M * scale}
                     x2={x + joist.x2M * scale}
                     y2={y + joist.y2M * scale}
-                    stroke="#f0c38f"
-                    strokeWidth="1.4"
-                    strokeDasharray="4 3"
+                    stroke={isPerimeter ? '#365f7a' : isDouble ? '#9b5f2f' : '#6c4d31'}
+                    strokeWidth={Math.max(4, Math.min(isPerimeter ? 9 : isDouble ? 12 : 8, scale * (isDouble ? 0.07 : 0.045)))}
+                    strokeLinecap="square"
                     opacity="0.9"
                   />
-                )}
-              </g>
-            ))}
+                  {isDouble && (
+                    <line
+                      x1={x + joist.x1M * scale}
+                      y1={y + joist.y1M * scale}
+                      x2={x + joist.x2M * scale}
+                      y2={y + joist.y2M * scale}
+                      stroke="#f0c38f"
+                      strokeWidth="1.4"
+                      strokeDasharray="4 3"
+                      opacity="0.9"
+                    />
+                  )}
+                </g>
+              );
+            })}
           </g>
         )}
 
         {layers.verticalJoists && construction.verticalJoists.map((support) => (
-          <rect
-            key={support.id}
-            x={x + support.xM * scale - 3.5}
-            y={y + support.yM * scale - 3.5}
-            width="7"
-            height="7"
-            rx="1"
-            fill="#4f3826"
-            stroke="#fff"
-            strokeWidth="1"
-          />
+          <rect key={support.id} x={x + support.xM * scale - 3.5} y={y + support.yM * scale - 3.5} width="7" height="7" rx="1" fill="#4f3826" stroke="#fff" strokeWidth="1" />
         ))}
 
         {layers.decking && (
@@ -272,42 +289,88 @@ export function Plan2D({
           </g>
         )}
 
+        {layers.decking && (effectiveLayout?.buttJoints ?? []).map((joint) => {
+          const cx = x + (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000 * scale;
+          const cy = y + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
+          const half = Math.max(3, boardWidthPx * 0.58);
+          return input.orientation === 'length'
+            ? <line key={joint.id} x1={cx} y1={cy - half} x2={cx} y2={cy + half} className="board-butt-joint" />
+            : <line key={joint.id} x1={cx - half} y1={cy} x2={cx + half} y2={cy} className="board-butt-joint" />;
+        })}
+
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && (
-          <polygon
-            points={points}
-            fill="none"
-            stroke={`url(#${patternIds[1 % patternIds.length]})`}
-            strokeWidth={Math.max(7, boardWidthPx * 0.78)}
-            strokeLinejoin="round"
-            opacity="0.98"
-          />
+          <polygon points={points} fill="none" stroke={`url(#${patternIds[1 % patternIds.length]})`} strokeWidth={Math.max(7, boardWidthPx * 0.78)} strokeLinejoin="round" opacity="0.98" />
         )}
 
         {layers.obstacles && input.obstacles.map((obstacle) => {
           const fill = obstacleFill(obstacle.kind);
+          const posLabel = `X ${obstacle.xM.toFixed(2)} • Y ${obstacle.yM.toFixed(2)} m`;
           if (obstacle.shape === 'circle') {
             const d = obstacle.diameterM ?? 0;
+            const cx = x + (obstacle.xM + d / 2) * scale;
+            const cy = y + (obstacle.yM + d / 2) * scale;
             return (
               <g key={obstacle.id}>
-                <circle cx={x + (obstacle.xM + d / 2) * scale} cy={y + (obstacle.yM + d / 2) * scale} r={(d / 2) * scale} fill={fill} className="obstacle-shape" />
-                <text x={x + (obstacle.xM + d / 2) * scale} y={y + (obstacle.yM + d / 2) * scale} className="obstacle-label">{obstacle.label}</text>
+                <circle cx={cx} cy={cy} r={(d / 2) * scale} fill={fill} className="obstacle-shape" />
+                <text x={cx} y={cy - 6} className="obstacle-label">{obstacle.label}</text>
+                <text x={cx} y={cy + 7} className="obstacle-plan-dimension">Ø {d.toFixed(2)} m</text>
+                <text x={cx} y={cy + 18} className="obstacle-plan-position">{posLabel}</text>
               </g>
             );
           }
+          const widthM = obstacle.widthM ?? 0;
+          const heightM = obstacle.heightM ?? 0;
+          const cx = x + (obstacle.xM + widthM / 2) * scale;
+          const cy = y + (obstacle.yM + heightM / 2) * scale;
           return (
             <g key={obstacle.id}>
-              <rect x={x + obstacle.xM * scale} y={y + obstacle.yM * scale} width={(obstacle.widthM ?? 0) * scale} height={(obstacle.heightM ?? 0) * scale} fill={fill} className="obstacle-shape" />
-              <text x={x + (obstacle.xM + (obstacle.widthM ?? 0) / 2) * scale} y={y + (obstacle.yM + (obstacle.heightM ?? 0) / 2) * scale} className="obstacle-label">{obstacle.label}</text>
+              <rect x={x + obstacle.xM * scale} y={y + obstacle.yM * scale} width={widthM * scale} height={heightM * scale} fill={fill} className="obstacle-shape" />
+              <text x={cx} y={cy - 6} className="obstacle-label">{obstacle.label}</text>
+              <text x={cx} y={cy + 7} className="obstacle-plan-dimension">{widthM.toFixed(2)} × {heightM.toFixed(2)} m</text>
+              <text x={cx} y={cy + 18} className="obstacle-plan-position">{posLabel}</text>
             </g>
           );
         })}
 
         <polygon points={points} className="deck-outline" fill="none" />
+
+        {input.shape === 'circle' ? (
+          <g className="plan-dimensions">
+            <line x1={x} y1={y + bounds.widthM * scale / 2} x2={x + bounds.lengthM * scale} y2={y + bounds.widthM * scale / 2} />
+            <line x1={x} y1={y + bounds.widthM * scale / 2 - 5} x2={x} y2={y + bounds.widthM * scale / 2 + 5} />
+            <line x1={x + bounds.lengthM * scale} y1={y + bounds.widthM * scale / 2 - 5} x2={x + bounds.lengthM * scale} y2={y + bounds.widthM * scale / 2 + 5} />
+            <text x={x + bounds.lengthM * scale / 2} y={y + bounds.widthM * scale / 2 - 7}>Ø {input.dimensions.circleDiameterM.toFixed(2)} m</text>
+          </g>
+        ) : (
+          <g className="plan-dimensions">
+            {outline.map((point, index) => {
+              const next = outline[(index + 1) % outline.length];
+              const mx = (point.x + next.x) / 2;
+              const my = (point.y + next.y) / 2;
+              const dx = mx - centroid.x;
+              const dy = my - centroid.y;
+              const norm = Math.hypot(dx, dy) || 1;
+              const offsetPx = 17;
+              const tx = x + mx * scale + (dx / norm) * offsetPx;
+              const ty = y + my * scale + (dy / norm) * offsetPx;
+              const a = vertexLabel(index);
+              const b = vertexLabel((index + 1) % outline.length);
+              return (
+                <g key={`dim-${index}`}>
+                  <text x={tx} y={ty} className="plan-edge-dimension">{a}{b} {edgeLength(point, next).toFixed(2)} m</text>
+                  <text x={x + point.x * scale + 7} y={y + point.y * scale - 7} className="plan-vertex-label">{a}</text>
+                </g>
+              );
+            })}
+          </g>
+        )}
       </svg>
 
       <div className="construction-legend">
         {layers.decking && <span><i className="legend-decking" />Lames</span>}
+        {layers.decking && (effectiveLayout?.buttJoints?.length ?? 0) > 0 && <span><i className="legend-joint" />Raccords de lames</span>}
         {layers.joists && <span><i className="legend-joist" />Lambourdes</span>}
+        {layers.joists && construction.joists.some((joist) => joist.role === 'perimeter') && <span><i className="legend-perimeter" />Lambourdes de contour</span>}
         {layers.plots && <span><i className="legend-plot" />Plots</span>}
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}

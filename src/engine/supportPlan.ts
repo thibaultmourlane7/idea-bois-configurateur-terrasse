@@ -7,10 +7,10 @@ import type {
   SupportPlanResult,
   SupportPlanGroup,
 } from '../domain/types';
-import { PIN_JOIST_60X40_2400, PLOT_OPTIONS, type PlotMaterial } from '../catalog/materials';
+import { PLOT_OPTIONS, type PlotMaterial } from '../catalog/materials';
 import { optimizeCuts } from './cuts';
 import { getCommercialConstructionRule } from './constructionRules';
-import { getDeckBoundingSizeM, getDeckIntervalsAtMm } from './geometry';
+import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getEffectiveBoundarySegmentsM } from './geometry';
 
 export const SUPPORT_PLAN_TAG = 'SA-TERR-SUPPORT-PLAN-016';
 export const SUPPORT_PLAN_SOURCE_URL = 'https://www.idea-bois.com/art-plot-lambourde-terrasse-r-glable-40-60-mm-jouplast-2182.htm';
@@ -19,6 +19,7 @@ export const SUPPORT_PLAN_SOURCE_LABEL = 'IDEA Bois / JOUPLAST — plots bois : 
 const PLOT_SPACING_MM = 700;
 const JOIST_HEIGHT_MM = 40;
 const JOIST_STOCK_LENGTH_MM = 2400;
+const GEOMETRY_EPS_M = 0.001;
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
@@ -66,7 +67,11 @@ function targetFinishedDeltaMm(input: ProjectInput, xM: number, yM: number): num
 
 function boardButtJointAxisPositionsMm(input: ProjectInput, layout: LayoutResult | undefined): number[] {
   if (!layout?.hasButtJoints) return [];
+  if (layout.buttJoints?.length) {
+    return uniqueSorted(layout.buttJoints.map((joint) => joint.axisPositionMm));
+  }
 
+  // Compatibilité avec un LayoutResult ancien : reconstitution déterministe à partir de la longueur commerciale max.
   const stockLengths = input.board.availableLengthsMm?.length
     ? input.board.availableLengthsMm
     : [input.board.lengthMm];
@@ -120,7 +125,7 @@ function axisPositionsWithMandatoryJoints(
   });
 }
 
-function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefined): {
+function fieldJoistSegments(input: ProjectInput, layout: LayoutResult | undefined): {
   segments: PlannedJoistSegment[];
   buttJointAxisPositionsMm: number[];
 } {
@@ -162,6 +167,7 @@ function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefi
           lengthMm,
           multiplicity: axis.multiplicity,
           buttJointSupport: axis.buttJointSupport,
+          role: axis.buttJointSupport ? 'butt-joint' : 'field',
         });
       } else {
         segments.push({
@@ -174,12 +180,79 @@ function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefi
           lengthMm,
           multiplicity: axis.multiplicity,
           buttJointSupport: axis.buttJointSupport,
+          role: axis.buttJointSupport ? 'butt-joint' : 'field',
         });
       }
     }
   }
 
   return { segments, buttJointAxisPositionsMm };
+}
+
+function collinearAndCovered(candidate: PlannedJoistSegment, existing: PlannedJoistSegment): boolean {
+  const cdx = candidate.x2M - candidate.x1M;
+  const cdy = candidate.y2M - candidate.y1M;
+  const edx = existing.x2M - existing.x1M;
+  const edy = existing.y2M - existing.y1M;
+  const crossDirection = cdx * edy - cdy * edx;
+  if (Math.abs(crossDirection) > GEOMETRY_EPS_M) return false;
+
+  const crossOffset = (candidate.x1M - existing.x1M) * edy - (candidate.y1M - existing.y1M) * edx;
+  if (Math.abs(crossOffset) > GEOMETRY_EPS_M) return false;
+
+  const existingLengthSq = edx * edx + edy * edy;
+  if (existingLengthSq <= GEOMETRY_EPS_M ** 2) return false;
+  const t1 = ((candidate.x1M - existing.x1M) * edx + (candidate.y1M - existing.y1M) * edy) / existingLengthSq;
+  const t2 = ((candidate.x2M - existing.x1M) * edx + (candidate.y2M - existing.y1M) * edy) / existingLengthSq;
+  return Math.min(t1, t2) >= -0.002 && Math.max(t1, t2) <= 1.002;
+}
+
+function perimeterJoistSegments(input: ProjectInput, fieldSegments: PlannedJoistSegment[]): { segments: PlannedJoistSegment[]; pendingCurved: boolean } {
+  const boundary = getEffectiveBoundarySegmentsM(input);
+  const out: PlannedJoistSegment[] = [];
+  let id = 1;
+  let pendingCurved = false;
+
+  for (const segment of boundary) {
+    if (segment.curved) {
+      pendingCurved = true;
+      continue;
+    }
+    const lengthM = Math.hypot(segment.x2M - segment.x1M, segment.y2M - segment.y1M);
+    if (lengthM <= GEOMETRY_EPS_M) continue;
+    const candidate: PlannedJoistSegment = {
+      id: `PJ${id}`,
+      axisPositionMm: -1,
+      x1M: segment.x1M,
+      y1M: segment.y1M,
+      x2M: segment.x2M,
+      y2M: segment.y2M,
+      lengthMm: lengthM * 1000,
+      multiplicity: 1,
+      buttJointSupport: false,
+      role: 'perimeter',
+    };
+    // Les deux lignes extrêmes du réseau principal peuvent déjà couvrir une partie du contour.
+    if (fieldSegments.some((existing) => collinearAndCovered(candidate, existing))) continue;
+    out.push(candidate);
+    id += 1;
+  }
+
+  return { segments: out, pendingCurved };
+}
+
+function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefined): {
+  segments: PlannedJoistSegment[];
+  buttJointAxisPositionsMm: number[];
+  pendingCurvedPerimeter: boolean;
+} {
+  const field = fieldJoistSegments(input, layout);
+  const perimeter = perimeterJoistSegments(input, field.segments);
+  return {
+    segments: [...field.segments, ...perimeter.segments],
+    buttJointAxisPositionsMm: field.buttJointAxisPositionsMm,
+    pendingCurvedPerimeter: perimeter.pendingCurved,
+  };
 }
 
 function joistRequiredPieces(segments: PlannedJoistSegment[]): RequiredPiece[] {
@@ -196,7 +269,6 @@ function joistRequiredPieces(segments: PlannedJoistSegment[]): RequiredPiece[] {
       rowIndex += 1;
     }
   }
-
   return pieces;
 }
 
@@ -318,7 +390,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     };
   }
 
-  const { segments, buttJointAxisPositionsMm } = plannedJoistSegments(input, layout);
+  const { segments, buttJointAxisPositionsMm, pendingCurvedPerimeter } = plannedJoistSegments(input, layout);
   const pieces = joistRequiredPieces(segments);
   const joistStockBoards = optimizeCuts(pieces, [JOIST_STOCK_LENGTH_MM]);
   const joistLinearM = segments.reduce((sum, segment) => sum + segment.lengthMm * segment.multiplicity, 0) / 1000;
@@ -341,6 +413,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     .reduce((sum, point) => sum + point.multiplicity, 0);
   const plotGroups = groupPlots(supportPoints);
   const heights = supportPoints.map((point) => point.requiredPlotHeightMm);
+  const perimeterCount = segments.filter((segment) => segment.role === 'perimeter').length;
 
   return {
     status: unsupportedPointCount > 0 ? 'partial' : 'exact',
@@ -358,10 +431,11 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     maxRequiredPlotHeightMm: heights.length ? Math.max(...heights) : undefined,
     sourceLabel: SUPPORT_PLAN_SOURCE_LABEL,
     sourceUrl: SUPPORT_PLAN_SOURCE_URL,
-    note: buttJointAxisPositionsMm.length
+    pendingCurvedPerimeter,
+    note: `${perimeterCount} segment(s) de lambourde périphérique droite calculé(s). ${pendingCurvedPerimeter ? 'Contour courbe détecté : la solution de lambourde périphérique sur arc reste à confirmer et n’est pas comptée. ' : ''}${buttJointAxisPositionsMm.length
       ? input.doubleJoistsAtButtJoints
         ? 'Les axes de jonction de lames sont repérés et l’option double lambourdage est activée.'
         : 'Les axes de jonction de lames sont repérés. Le double lambourdage est désactivé : une seule lambourde est comptée sur chaque axe.'
-      : 'Aucun axe de jonction longitudinal de lame n’est détecté avec le calepinage courant.',
+      : 'Aucun axe de jonction longitudinal de lame n’est détecté avec le calepinage courant.'}`,
   };
 }

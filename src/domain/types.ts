@@ -48,7 +48,9 @@ export interface TerraceObstacle {
   kind: ObstacleKind;
   label: string;
   shape: ObstacleShape;
+  /** Position X en mètres par rapport à l'origine de la terrasse. Peut être négative si la réservation déborde à gauche. */
   xM: number;
+  /** Position Y en mètres par rapport à l'origine de la terrasse. Peut être négative si la réservation déborde en haut. */
   yM: number;
   widthM?: number;
   heightM?: number;
@@ -183,6 +185,7 @@ export interface GeometryResult {
   /** Périmètre extérieur, conservé pour compatibilité avec les finitions de rive. */
   perimeterM: number;
   grossAreaM2: number;
+  /** Somme des surfaces de réservations qui intersectent réellement la terrasse. */
   excludedAreaM2: number;
   outerPerimeterM: number;
   obstaclePerimeterM: number;
@@ -208,9 +211,33 @@ export interface StockBoard {
   remainingMm: number;
 }
 
+/** Segment réellement posé dans une rangée, utilisé pour rendre les raccords visibles. */
+export interface LayoutBoardSegment {
+  id: string;
+  rowIndex: number;
+  intervalIndex: number;
+  segmentIndex: number;
+  transverseCenterMm: number;
+  startMm: number;
+  endMm: number;
+  lengthMm: number;
+}
+
+/** Raccord entre deux morceaux de lame dans une rangée donnée. */
+export interface LayoutButtJoint {
+  id: string;
+  rowIndex: number;
+  transverseCenterMm: number;
+  axisPositionMm: number;
+}
+
 export interface LayoutResult {
   rowCount: number;
   requiredPieces: RequiredPiece[];
+  /** Segments de lames réellement positionnés, rangée par rangée. */
+  boardSegments: LayoutBoardSegment[];
+  /** Raccords de lames réels, rangée par rangée. */
+  buttJoints: LayoutButtJoint[];
   totalRequiredLinearM: number;
   stockBoards: StockBoard[];
   purchasedLinearM: number;
@@ -254,6 +281,8 @@ export interface SupportPlanGroup {
   sourceUrl: string;
 }
 
+export type PlannedJoistRole = 'field' | 'perimeter' | 'butt-joint';
+
 export interface PlannedJoistSegment {
   id: string;
   axisPositionMm: number;
@@ -264,6 +293,8 @@ export interface PlannedJoistSegment {
   lengthMm: number;
   multiplicity: 1 | 2;
   buttJointSupport: boolean;
+  /** Rôle métier du segment. */
+  role?: PlannedJoistRole;
 }
 
 export interface SupportPlanResult {
@@ -282,6 +313,8 @@ export interface SupportPlanResult {
   maxRequiredPlotHeightMm?: number;
   sourceLabel?: string;
   sourceUrl?: string;
+  /** Un contour courbe a été détecté ; la lambourde périphérique droite reste à confirmer pour cette portion. */
+  pendingCurvedPerimeter?: boolean;
   note?: string;
 }
 

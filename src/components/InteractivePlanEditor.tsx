@@ -538,17 +538,23 @@ export function InteractivePlanEditor({
         <rect x="0" y="0" width={WIDTH} height={HEIGHT} className="editor-hitbox" onPointerDown={startBackgroundPointer} />
 
         <g transform={`translate(${originX + pan.x} ${originY + pan.y}) scale(${zoom})`}>
-          {referenceImageUrl && (
-            <image
-              href={referenceImageUrl}
-              x="0"
-              y="0"
-              width={bounds.lengthM * baseScale}
-              height={bounds.widthM * baseScale}
-              preserveAspectRatio="none"
-              opacity={referenceOpacity}
-              pointerEvents="none"
-            />
+          {referenceImageUrl && referencePlan && referencePlan.imageWidthPx && referencePlan.imageHeightPx && (
+            <g
+              className={`reference-plan-layer ${referencePlan.locked ? 'locked' : ''}`}
+              transform={`translate(${referencePlan.offsetXM * baseScale} ${referencePlan.offsetYM * baseScale}) rotate(${referencePlan.rotationDeg})`}
+            >
+              <image
+                href={referenceImageUrl}
+                x="0"
+                y="0"
+                width={referencePlan.imageWidthPx * referencePlan.scaleMmPerPixel / 1000 * baseScale}
+                height={referencePlan.imageHeightPx * referencePlan.scaleMmPerPixel / 1000 * baseScale}
+                preserveAspectRatio="none"
+                opacity={referencePlan.opacity}
+                pointerEvents={tool === 'reference' && !referencePlan.locked ? 'auto' : 'none'}
+                onPointerDown={startReferenceMove}
+              />
+            </g>
           )}
 
           <g className="editor-grid" pointerEvents="none">
@@ -666,6 +672,25 @@ export function InteractivePlanEditor({
             );
           })}
 
+          {calibrationPoints.length > 0 && (
+            <g className="reference-calibration-markers" pointerEvents="none">
+              {calibrationPoints.map((point, index) => (
+                <g key={index}>
+                  <circle cx={point.xM * baseScale} cy={point.yM * baseScale} r={7 / zoom} />
+                  <text x={point.xM * baseScale + 9 / zoom} y={point.yM * baseScale - 9 / zoom}>{index === 0 ? 'P1' : 'P2'}</text>
+                </g>
+              ))}
+              {calibrationPoints.length === 2 && (
+                <line
+                  x1={calibrationPoints[0].xM * baseScale}
+                  y1={calibrationPoints[0].yM * baseScale}
+                  x2={calibrationPoints[1].xM * baseScale}
+                  y2={calibrationPoints[1].yM * baseScale}
+                />
+              )}
+            </g>
+          )}
+
           {tool !== 'draw' && selectedObstacle && (
             <g className="obstacle-distance-guides" pointerEvents="none">
               <line x1="0" y1={selectedObstacle.yM * baseScale} x2={selectedObstacle.xM * baseScale} y2={selectedObstacle.yM * baseScale} />
@@ -675,6 +700,16 @@ export function InteractivePlanEditor({
             </g>
           )}
         </g>
+        {tool === 'calibrate' && referenceImageUrl && referencePlan && (
+          <rect
+            x="0"
+            y="0"
+            width={WIDTH}
+            height={HEIGHT}
+            className="reference-calibration-hitbox"
+            onPointerDown={startBackgroundPointer}
+          />
+        )}
       </svg>
 
       <div className="editor-help">

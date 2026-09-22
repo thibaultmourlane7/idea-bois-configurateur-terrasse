@@ -1,5 +1,5 @@
 import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
-import { isObstacleInsideBaseDeck, isSimplePolygon, obstaclesOverlap, polygonArea } from '../engine/geometry';
+import { isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -7,8 +7,9 @@ function validateObstacle(obstacle: TerraceObstacle): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const base = { tag: 'SA-TERR-GEO-OBS-001', severity: 'blocking' as const };
 
-  if (!Number.isFinite(obstacle.xM) || obstacle.xM < 0 || !Number.isFinite(obstacle.yM) || obstacle.yM < 0) {
-    diagnostics.push({ ...base, message: `${obstacle.label || 'Réservation'} : la position doit être positive.` });
+  // Une réservation peut volontairement déborder de la terrasse : xM/yM peuvent être négatifs.
+  if (!Number.isFinite(obstacle.xM) || !Number.isFinite(obstacle.yM)) {
+    diagnostics.push({ ...base, message: `${obstacle.label || 'Réservation'} : la position doit être renseignée avec des nombres valides.` });
   }
 
   if (obstacle.shape === 'circle') {
@@ -138,12 +139,13 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
   for (const obstacle of input.obstacles) diagnostics.push(...validateObstacle(obstacle));
 
   if (!diagnostics.some((item) => item.severity === 'blocking')) {
+    // Une réservation totalement hors terrasse est autorisée et n'impacte aucun calcul.
     for (const obstacle of input.obstacles) {
-      if (!isObstacleInsideBaseDeck(input, obstacle)) {
+      if (!obstacleIntersectsBaseDeck(input, obstacle)) {
         diagnostics.push({
-          tag: 'SA-TERR-GEO-OBS-002',
-          severity: 'blocking',
-          message: `${obstacle.label || 'Réservation'} doit rester entièrement à l’intérieur de la terrasse.`,
+          tag: 'SA-TERR-GEO-OBS-004',
+          severity: 'info',
+          message: `${obstacle.label || 'Réservation'} est actuellement hors de la terrasse et n’impacte pas le calcul.`,
           field: `obstacles.${obstacle.id}`,
         });
       }

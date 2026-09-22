@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ProjectInput, ShapeType, TerraceObstacle } from '../domain/types';
-import { defaultFreeformPoints } from '../editor/interactiveGeometry';
+import { isSimplePolygon } from '../engine/geometry';
+import {
+  defaultFreeformPoints,
+  isOrthogonalPolygon,
+  polygonEdgeLengths,
+  resizeFreeformEdge,
+  resizeOrthogonalFreeformEdge,
+  vertexLabel,
+} from '../editor/interactiveGeometry';
 import { InteractivePlanEditor } from './InteractivePlanEditor';
 
 type Props = {
@@ -36,7 +44,7 @@ const shapeOptions: Array<{ value: ShapeType; title: string; subtitle: string }>
   { value: 't-shape', title: 'Forme en T', subtitle: 'Une avancée centrale' },
   { value: 'u-shape', title: 'Forme en U', subtitle: 'Une ouverture centrale' },
   { value: 'circle', title: 'Cercle', subtitle: 'Terrasse ronde' },
-  { value: 'freeform', title: 'Forme libre', subtitle: 'Sommets déplaçables' },
+  { value: 'freeform', title: 'Forme libre', subtitle: 'Dessin + cotes exactes' },
 ];
 
 const obstaclePresets: Array<{ kind: TerraceObstacle['kind']; label: string; shape: TerraceObstacle['shape'] }> = [
@@ -47,13 +55,23 @@ const obstaclePresets: Array<{ kind: TerraceObstacle['kind']; label: string; sha
   { kind: 'other', label: 'Autre réservation', shape: 'rectangle' },
 ];
 
-const numberOrZero = (value: string) => Number(value.replace(',', '.')) || 0;
+function parseNumber(value: string): number | undefined {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) return undefined;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+const numberOrZero = (value: string) => parseNumber(value) ?? 0;
 
 export function GeometryEditor({ project, onChange }: Props) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [undoStack, setUndoStack] = useState<ProjectInput[]>([]);
   const [redoStack, setRedoStack] = useState<ProjectInput[]>([]);
+  const [freeformMessage, setFreeformMessage] = useState<string | null>(null);
   const g = project.dimensions;
+  const freeformPoints = project.freeformPoints ?? [];
+  const freeformLengths = useMemo(() => polygonEdgeLengths(freeformPoints), [freeformPoints]);
 
   const commit = (next: ProjectInput) => {
     setUndoStack((current) => [...current, project].slice(-60));
@@ -130,6 +148,25 @@ export function GeometryEditor({ project, onChange }: Props) {
     commit({ ...project, shape });
   };
 
+  const updateFreeformEdge = (edgeIndex: number, rawValue: string) => {
+    const targetLengthM = parseNumber(rawValue);
+    if (targetLengthM == null || targetLengthM < 0.05) {
+      setFreeformMessage('La longueur du côté doit être au moins de 0,05 m.');
+      return;
+    }
+
+    const next = isOrthogonalPolygon(freeformPoints)
+      ? resizeOrthogonalFreeformEdge(freeformPoints, edgeIndex, targetLengthM)
+      : resizeFreeformEdge(freeformPoints, edgeIndex, targetLengthM);
+    if (next === freeformPoints || !isSimplePolygon(next)) {
+      setFreeformMessage('Cette mesure créerait un contour invalide ou croisé. La modification est refusée.');
+      return;
+    }
+
+    setFreeformMessage(null);
+    commit({ ...project, freeformPoints: next });
+  };
+
   const updateObstacle = (id: string, patch: Partial<TerraceObstacle>) => {
     commit({
       ...project,
@@ -142,7 +179,9 @@ export function GeometryEditor({ project, onChange }: Props) {
   };
 
   const canAdd = useMemo(() => {
-    if (!draft.label.trim() || numberOrZero(draft.x) < 0 || numberOrZero(draft.y) < 0) return false;
+    const x = parseNumber(draft.x);
+    const y = parseNumber(draft.y);
+    if (!draft.label.trim() || x == null || y == null) return false;
     if (draft.shape === 'circle') return numberOrZero(draft.diameter) > 0;
     return numberOrZero(draft.width) > 0 && numberOrZero(draft.height) > 0;
   }, [draft]);
@@ -200,7 +239,36 @@ export function GeometryEditor({ project, onChange }: Props) {
       {project.shape === 'freeform' ? (
         <div className="soft-panel geometry-subpanel freeform-intro">
           <h3>Contour libre</h3>
-          <p>Déplacez les sommets numérotés sur le plan, ajoutez-en ou supprimez-en. Les longueurs des arêtes sont recalculées en direct.</p>
+          <p>Dessinez votre contour directement sur le plan ou déplacez les sommets A, B, C… puis entrez les mesures exactes des côtés.</p>
+          {freeformPoints.length >= 3 && (
+            <div className="freeform-dimension-grid">
+              {freeformPoints.map((_, index) => {
+                const nextIndex = (index + 1) % freeformPoints.length;
+                const edgeLabel = `${vertexLabel(index)}${vertexLabel(nextIndex)}`;
+                const lengthM = freeformLengths[index] ?? 0;
+                return (
+                  <label key={edgeLabel}>{edgeLabel}
+                    <div className="input-unit compact">
+                      <input
+                        key={`${edgeLabel}-${lengthM.toFixed(4)}`}
+                        type="number"
+                        min="0.05"
+                        step="0.01"
+                        defaultValue={lengthM.toFixed(2)}
+                        onBlur={(event) => updateFreeformEdge(index, event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') event.currentTarget.blur();
+                        }}
+                      />
+                      <span>m</span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+          {freeformMessage && <div className="freeform-dimension-message">{freeformMessage}</div>}
+          <small>Contour orthogonal : la modification conserve automatiquement les angles droits. Contour incliné : le premier sommet reste fixe et le suivant se déplace dans la direction actuelle. Aucun angle n’est inventé.</small>
         </div>
       ) : project.shape === 'circle' ? (
         <div className="form-grid geometry-fields">
@@ -304,7 +372,7 @@ export function GeometryEditor({ project, onChange }: Props) {
         <div className="obstacle-heading">
           <div>
             <h3>Zones à exclure</h3>
-            <p>Piscine, arbre, poteau, regard… Déplacez-les directement sur le plan ou ajustez précisément les valeurs ci-dessous.</p>
+            <p>Piscine, arbre, poteau, regard… Une réservation peut dépasser du contour : seule sa partie située dans la terrasse impacte les calculs.</p>
           </div>
           <span>{project.obstacles.length} réservation{project.obstacles.length > 1 ? 's' : ''}</span>
         </div>
@@ -321,12 +389,12 @@ export function GeometryEditor({ project, onChange }: Props) {
                   <label>Nom
                     <input value={obstacle.label} onChange={(event) => updateObstacle(obstacle.id, { label: event.target.value })} />
                   </label>
-                  <label>Distance depuis la gauche
-                    <input type="number" min="0" step="0.1" value={obstacle.xM} onChange={(event) => updateObstacle(obstacle.id, { xM: +event.target.value })} />
+                  <label>Position X depuis le bord gauche
+                    <input type="number" step="0.1" value={obstacle.xM} onChange={(event) => updateObstacle(obstacle.id, { xM: +event.target.value })} />
                     <span>m</span>
                   </label>
-                  <label>Distance depuis le haut
-                    <input type="number" min="0" step="0.1" value={obstacle.yM} onChange={(event) => updateObstacle(obstacle.id, { yM: +event.target.value })} />
+                  <label>Position Y depuis le bord haut
+                    <input type="number" step="0.1" value={obstacle.yM} onChange={(event) => updateObstacle(obstacle.id, { yM: +event.target.value })} />
                     <span>m</span>
                   </label>
                   {obstacle.shape === 'circle' ? (
@@ -347,7 +415,7 @@ export function GeometryEditor({ project, onChange }: Props) {
                     </>
                   )}
                 </div>
-                <small className="obstacle-index">Réservation {index + 1} • {obstacle.shape === 'circle' ? 'circulaire' : 'rectangulaire'}</small>
+                <small className="obstacle-index">Réservation {index + 1} • {obstacle.shape === 'circle' ? 'circulaire' : 'rectangulaire'} • X/Y négatifs autorisés pour dépasser à gauche ou en haut</small>
               </article>
             ))}
           </div>
@@ -369,8 +437,8 @@ export function GeometryEditor({ project, onChange }: Props) {
           </div>
           <div className="obstacle-draft-grid">
             <label>Nom<input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} /></label>
-            <label>Depuis la gauche<input type="number" min="0" step="0.1" value={draft.x} onChange={(event) => setDraft({ ...draft, x: event.target.value })} /><span>m</span></label>
-            <label>Depuis le haut<input type="number" min="0" step="0.1" value={draft.y} onChange={(event) => setDraft({ ...draft, y: event.target.value })} /><span>m</span></label>
+            <label>Position X<input type="number" step="0.1" value={draft.x} onChange={(event) => setDraft({ ...draft, x: event.target.value })} /><span>m</span></label>
+            <label>Position Y<input type="number" step="0.1" value={draft.y} onChange={(event) => setDraft({ ...draft, y: event.target.value })} /><span>m</span></label>
             {draft.shape === 'circle' ? (
               <label>Diamètre<input type="number" min="0.05" step="0.05" value={draft.diameter} onChange={(event) => setDraft({ ...draft, diameter: event.target.value })} /><span>m</span></label>
             ) : (
@@ -381,7 +449,7 @@ export function GeometryEditor({ project, onChange }: Props) {
             )}
           </div>
           <button type="button" className="add-obstacle-button" disabled={!canAdd} onClick={addObstacle}>Ajouter au plan</button>
-          <small>Les réservations doivent rester entièrement à l’intérieur de la terrasse et ne pas se chevaucher.</small>
+          <small>Les réservations peuvent être à cheval sur le contour ou totalement à l’extérieur. Seule leur intersection avec la terrasse retire de la surface et coupe les lames/lambourdes. Les réservations ne doivent pas se chevaucher entre elles.</small>
         </div>
       </div>
     </div>

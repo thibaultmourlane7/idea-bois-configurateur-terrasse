@@ -1,4 +1,4 @@
-import type { BasketResult, ProjectInput, SupportPlanResult } from '../domain/types';
+import type { BasketResult, PlannedJoistRole, ProjectInput, SupportPlanResult } from '../domain/types';
 import { getCommercialConstructionRule, type CommercialConstructionRule } from './constructionRules';
 import { computeEdgeCladding, type EdgeCladdingCalculation } from './edgeCladding';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from './geometry';
@@ -11,6 +11,7 @@ export interface VisualLineSegment {
   y2M: number;
   multiplicity?: number;
   buttJointSupport?: boolean;
+  role?: PlannedJoistRole;
 }
 
 export interface VisualPoint {
@@ -54,6 +55,7 @@ function joistSegments(input: ProjectInput, rule: CommercialConstructionRule): V
           y1M: startMm / 1000,
           x2M: positionM,
           y2M: endMm / 1000,
+          role: 'field',
         });
       } else {
         segments.push({
@@ -62,6 +64,7 @@ function joistSegments(input: ProjectInput, rule: CommercialConstructionRule): V
           y1M: positionM,
           x2M: endMm / 1000,
           y2M: positionM,
+          role: 'field',
         });
       }
     }
@@ -141,6 +144,7 @@ export function buildConstructionVisual(input: ProjectInput, basket?: BasketResu
         y2M: segment.y2M,
         multiplicity: segment.multiplicity,
         buttJointSupport: segment.buttJointSupport,
+        role: segment.role,
       }))
     : rule ? joistSegments(input, rule) : [];
 

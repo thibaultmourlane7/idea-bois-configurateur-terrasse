@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ProjectInput, TerraceObstacle } from '../domain/types';
-import { getDeckBoundingSizeM, getDeckOutlinePointsM } from '../engine/geometry';
+import type { ProjectInput, TerraceObstacle, TerracePoint } from '../domain/types';
+import { getDeckBoundingSizeM, getDeckOutlinePointsM, isSimplePolygon } from '../engine/geometry';
 import {
   addVertexOnLongestEdge,
+  isOrthogonalPolygon,
   moveObstacle,
   moveVertex,
   polygonEdgeLengths,
   removeVertex,
+  resizeFreeformEdge,
+  resizeOrthogonalFreeformEdge,
   resizeObstacle,
+  vertexLabel,
 } from '../editor/interactiveGeometry';
 
-type Tool = 'select' | 'pan';
+type Tool = 'select' | 'pan' | 'draw';
 
 type DragState =
   | { kind: 'move-obstacle'; id: string; offsetXM: number; offsetYM: number }
@@ -41,6 +45,7 @@ function obstacleFill(kind: TerraceObstacle['kind']) {
   return '#efe9dc';
 }
 
+
 export function InteractivePlanEditor({
   project,
   onChange,
@@ -59,6 +64,9 @@ export function InteractivePlanEditor({
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [referenceOpacity, setReferenceOpacity] = useState(0.34);
+  const [drawPoints, setDrawPoints] = useState<TerracePoint[]>([]);
+  const [orthogonalMode, setOrthogonalMode] = useState(false);
+  const [editorMessage, setEditorMessage] = useState<string | null>(null);
 
   useEffect(() => () => {
     if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
@@ -66,12 +74,26 @@ export function InteractivePlanEditor({
 
   const bounds = getDeckBoundingSizeM(project);
   const outline = getDeckOutlinePointsM(project);
+  const viewport = useMemo(() => {
+    // Marge fixe autour du contour : le repère ne saute pas pendant le déplacement d'une réservation.
+    // Le panoramique permet d'aller chercher une réservation volontairement placée plus loin.
+    const marginM = Math.max(0.75, Math.max(bounds.lengthM, bounds.widthM) * 0.25);
+    return {
+      minX: -marginM,
+      minY: -marginM,
+      maxX: bounds.lengthM + marginM,
+      maxY: bounds.widthM + marginM,
+      widthM: Math.max(0.1, bounds.lengthM + marginM * 2),
+      heightM: Math.max(0.1, bounds.widthM + marginM * 2),
+    };
+  }, [bounds.lengthM, bounds.widthM]);
+
   const baseScale = Math.min(
-    (WIDTH - PAD * 2) / Math.max(0.1, bounds.lengthM),
-    (HEIGHT - PAD * 2) / Math.max(0.1, bounds.widthM),
+    (WIDTH - PAD * 2) / viewport.widthM,
+    (HEIGHT - PAD * 2) / viewport.heightM,
   );
-  const originX = (WIDTH - bounds.lengthM * baseScale) / 2;
-  const originY = (HEIGHT - bounds.widthM * baseScale) / 2;
+  const originX = (WIDTH - viewport.widthM * baseScale) / 2 - viewport.minX * baseScale;
+  const originY = (HEIGHT - viewport.heightM * baseScale) / 2 - viewport.minY * baseScale;
   const edgeLengths = useMemo(() => polygonEdgeLengths(project.freeformPoints ?? []), [project.freeformPoints]);
   const selectedObstacle = project.obstacles.find((obstacle) => obstacle.id === selectedObstacleId) ?? null;
 
@@ -90,8 +112,8 @@ export function InteractivePlanEditor({
   const modelPoint = (event: React.PointerEvent<SVGSVGElement | SVGElement>) => {
     const point = screenPoint(event);
     return {
-      xM: Math.max(0, (point.x - originX - pan.x) / (baseScale * zoom)),
-      yM: Math.max(0, (point.y - originY - pan.y) / (baseScale * zoom)),
+      xM: (point.x - originX - pan.x) / (baseScale * zoom),
+      yM: (point.y - originY - pan.y) / (baseScale * zoom),
     };
   };
 
@@ -141,6 +163,24 @@ export function InteractivePlanEditor({
   const startBackgroundPointer = (event: React.PointerEvent<SVGRectElement>) => {
     setSelectedObstacleId(null);
     setSelectedVertexIndex(null);
+
+    if (tool === 'draw' && project.shape === 'freeform') {
+      const raw = modelPoint(event);
+      const point = { xM: Math.max(0, raw.xM), yM: Math.max(0, raw.yM) };
+      setDrawPoints((current) => {
+        if (!orthogonalMode || current.length === 0) return [...current, point];
+        const previous = current[current.length - 1];
+        const dx = Math.abs(point.xM - previous.xM);
+        const dy = Math.abs(point.yM - previous.yM);
+        const snapped = dx >= dy
+          ? { xM: point.xM, yM: previous.yM }
+          : { xM: previous.xM, yM: point.yM };
+        return [...current, snapped];
+      });
+      setEditorMessage(null);
+      return;
+    }
+
     if (tool !== 'pan') return;
     const point = screenPoint(event);
     setDrag({ kind: 'pan', startX: point.x, startY: point.y, panX: pan.x, panY: pan.y });
@@ -171,7 +211,12 @@ export function InteractivePlanEditor({
   };
 
   const startVertexMove = (event: React.PointerEvent<SVGCircleElement>, index: number) => {
+    if (tool !== 'select') return;
     event.stopPropagation();
+    if (orthogonalMode) {
+      setEditorMessage('Mode 90° actif : modifiez les longueurs des côtés ou désactivez ce mode pour déplacer librement un sommet.');
+      return;
+    }
     onBeginEdit();
     setSelectedVertexIndex(index);
     setSelectedObstacleId(null);
@@ -196,6 +241,63 @@ export function InteractivePlanEditor({
     setSelectedVertexIndex(null);
   };
 
+  const beginDrawing = () => {
+    onBeginEdit();
+    setDrawPoints([]);
+    setEditorMessage('Cliquez successivement sur le plan pour créer les sommets A, B, C…');
+    setTool('draw');
+    setSelectedObstacleId(null);
+    setSelectedVertexIndex(null);
+  };
+
+  const finishDrawing = () => {
+    if (drawPoints.length < 3) {
+      setEditorMessage('Ajoutez au moins trois sommets avant de fermer le contour.');
+      return;
+    }
+    if (!isSimplePolygon(drawPoints)) {
+      setEditorMessage('Le contour dessiné se croise ou n’est pas valide. Corrigez le dessin avant de le valider.');
+      return;
+    }
+    if (orthogonalMode && !isOrthogonalPolygon(drawPoints)) {
+      setEditorMessage('Mode 90° : le dernier côté doit lui aussi être horizontal ou vertical. Ajoutez un sommet pour fermer le contour sans angle inventé.');
+      return;
+    }
+    onChange({ ...project, freeformPoints: drawPoints.map((point) => ({ ...point })) });
+    setDrawPoints([]);
+    setTool('select');
+    setEditorMessage(null);
+  };
+
+  const cancelDrawing = () => {
+    setDrawPoints([]);
+    setTool('select');
+    setEditorMessage(null);
+  };
+
+  const setEdgeLength = (edgeIndex: number, rawValue: string) => {
+    const target = Number(rawValue.replace(',', '.'));
+    if (!Number.isFinite(target) || target < 0.05) {
+      setEditorMessage('La longueur du côté doit être au moins de 0,05 m.');
+      return;
+    }
+    const current = project.freeformPoints ?? [];
+    if (orthogonalMode && !isOrthogonalPolygon(current)) {
+      setEditorMessage('Le contour actuel contient des côtés inclinés. Désactivez le mode 90° pour modifier cette cote sans inventer d’angle.');
+      return;
+    }
+    const next = orthogonalMode
+      ? resizeOrthogonalFreeformEdge(current, edgeIndex, target)
+      : resizeFreeformEdge(current, edgeIndex, target);
+    if (next === current || !isSimplePolygon(next)) {
+      setEditorMessage('Cette cote créerait un contour invalide ou croisé. La modification est refusée.');
+      return;
+    }
+    onBeginEdit();
+    onChange({ ...project, freeformPoints: next });
+    setEditorMessage(null);
+  };
+
   const setReference = (file?: File) => {
     if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
     setReferenceImageUrl(file ? URL.createObjectURL(file) : null);
@@ -204,6 +306,7 @@ export function InteractivePlanEditor({
   const gridX = Array.from({ length: Math.floor(bounds.lengthM / 0.5) + 1 }, (_, index) => index * 0.5);
   const gridY = Array.from({ length: Math.floor(bounds.widthM / 0.5) + 1 }, (_, index) => index * 0.5);
   const outlinePoints = outline.map((point) => `${point.x * baseScale},${point.y * baseScale}`).join(' ');
+  const draftPolyline = drawPoints.map((point) => `${point.xM * baseScale},${point.yM * baseScale}`).join(' ');
 
   return (
     <section className="interactive-editor">
@@ -211,6 +314,12 @@ export function InteractivePlanEditor({
         <div className="editor-tool-group">
           <button type="button" className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')}>Sélection</button>
           <button type="button" className={tool === 'pan' ? 'active' : ''} onClick={() => setTool('pan')}>Déplacer le plan</button>
+          {project.shape === 'freeform' && <button type="button" className={tool === 'draw' ? 'active' : ''} onClick={beginDrawing}>Dessiner un nouveau contour</button>}
+          {project.shape === 'freeform' && (
+            <button type="button" className={orthogonalMode ? 'active' : ''} onClick={() => setOrthogonalMode((value) => !value)}>
+              Angles à 90° {orthogonalMode ? 'ON' : 'OFF'}
+            </button>
+          )}
         </div>
         <div className="editor-tool-group">
           <button type="button" onClick={() => setZoom((value) => Math.max(0.65, +(value - 0.2).toFixed(2)))}>−</button>
@@ -243,11 +352,23 @@ export function InteractivePlanEditor({
       {project.shape === 'freeform' && (
         <div className="freeform-toolbar">
           <strong>Forme libre</strong>
-          <button type="button" onClick={addVertex}>+ Ajouter un sommet</button>
-          <button type="button" disabled={selectedVertexIndex == null || (project.freeformPoints?.length ?? 0) <= 3} onClick={deleteVertex}>Supprimer le sommet</button>
-          <span>{project.freeformPoints?.length ?? 0} sommets</span>
+          {tool === 'draw' ? (
+            <>
+              <button type="button" disabled={drawPoints.length < 3} onClick={finishDrawing}>Fermer et utiliser ce contour</button>
+              <button type="button" onClick={cancelDrawing}>Annuler le dessin</button>
+              <span>{drawPoints.length} sommet{drawPoints.length > 1 ? 's' : ''} placé{drawPoints.length > 1 ? 's' : ''}</span>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={addVertex}>+ Ajouter un sommet</button>
+              <button type="button" disabled={selectedVertexIndex == null || (project.freeformPoints?.length ?? 0) <= 3} onClick={deleteVertex}>Supprimer le sommet</button>
+              <span>{project.freeformPoints?.length ?? 0} sommets</span>
+            </>
+          )}
         </div>
       )}
+
+      {editorMessage && <div className="editor-message">{editorMessage}</div>}
 
       <svg
         ref={svgRef}
@@ -278,30 +399,70 @@ export function InteractivePlanEditor({
             {gridY.map((meter) => <line key={`y-${meter}`} x1="0" y1={meter * baseScale} x2={bounds.lengthM * baseScale} y2={meter * baseScale} />)}
           </g>
 
-          {outline.length >= 3 && (
+          {outline.length >= 3 && tool !== 'draw' && (
             <polygon points={outlinePoints} className="editor-deck-shape" />
           )}
 
-          <g className="overall-dimensions" pointerEvents="none">
-            <line x1="0" y1={-22 / zoom} x2={bounds.lengthM * baseScale} y2={-22 / zoom} />
-            <line x1="0" y1={-28 / zoom} x2="0" y2={-16 / zoom} />
-            <line x1={bounds.lengthM * baseScale} y1={-28 / zoom} x2={bounds.lengthM * baseScale} y2={-16 / zoom} />
-            <text x={bounds.lengthM * baseScale / 2} y={-27 / zoom}>{bounds.lengthM.toFixed(2)} m</text>
+          {tool === 'draw' && drawPoints.length > 0 && (
+            <g className="draw-freeform-preview">
+              <polyline points={draftPolyline} fill="none" />
+              {drawPoints.map((point, index) => (
+                <g key={index}>
+                  <circle cx={point.xM * baseScale} cy={point.yM * baseScale} r={5 / zoom} />
+                  <text x={point.xM * baseScale + 7 / zoom} y={point.yM * baseScale - 7 / zoom}>{vertexLabel(index)}</text>
+                </g>
+              ))}
+            </g>
+          )}
 
-            <line x1={-22 / zoom} y1="0" x2={-22 / zoom} y2={bounds.widthM * baseScale} />
-            <line x1={-28 / zoom} y1="0" x2={-16 / zoom} y2="0" />
-            <line x1={-28 / zoom} y1={bounds.widthM * baseScale} x2={-16 / zoom} y2={bounds.widthM * baseScale} />
-            <text x={-29 / zoom} y={bounds.widthM * baseScale / 2} transform={`rotate(-90 ${-29 / zoom} ${bounds.widthM * baseScale / 2})`}>{bounds.widthM.toFixed(2)} m</text>
-          </g>
+          {tool !== 'draw' && (
+            <g className="overall-dimensions" pointerEvents="none">
+              <line x1="0" y1={-22 / zoom} x2={bounds.lengthM * baseScale} y2={-22 / zoom} />
+              <line x1="0" y1={-28 / zoom} x2="0" y2={-16 / zoom} />
+              <line x1={bounds.lengthM * baseScale} y1={-28 / zoom} x2={bounds.lengthM * baseScale} y2={-16 / zoom} />
+              <text x={bounds.lengthM * baseScale / 2} y={-27 / zoom}>{bounds.lengthM.toFixed(2)} m</text>
 
-          {project.shape === 'freeform' && (project.freeformPoints ?? []).map((point, index) => {
-            const next = project.freeformPoints?.[(index + 1) % (project.freeformPoints?.length ?? 1)];
-            const length = edgeLengths[index];
-            const mx = next ? ((point.xM + next.xM) / 2) * baseScale : point.xM * baseScale;
-            const my = next ? ((point.yM + next.yM) / 2) * baseScale : point.yM * baseScale;
+              <line x1={-22 / zoom} y1="0" x2={-22 / zoom} y2={bounds.widthM * baseScale} />
+              <line x1={-28 / zoom} y1="0" x2={-16 / zoom} y2="0" />
+              <line x1={-28 / zoom} y1={bounds.widthM * baseScale} x2={-16 / zoom} y2={bounds.widthM * baseScale} />
+              <text x={-29 / zoom} y={bounds.widthM * baseScale / 2} transform={`rotate(-90 ${-29 / zoom} ${bounds.widthM * baseScale / 2})`}>{bounds.widthM.toFixed(2)} m</text>
+            </g>
+          )}
+
+          {tool !== 'draw' && project.shape === 'freeform' && (project.freeformPoints ?? []).map((point, index) => {
+            const points = project.freeformPoints ?? [];
+            const next = points[(index + 1) % points.length];
+            const length = edgeLengths[index] ?? 0;
+            const mx = ((point.xM + next.xM) / 2) * baseScale;
+            const my = ((point.yM + next.yM) / 2) * baseScale;
+            const label = `${vertexLabel(index)}${vertexLabel((index + 1) % points.length)}`;
             return (
               <g key={index}>
-                <text className="edge-dimension" x={mx} y={my - 6 / zoom} pointerEvents="none">{length?.toFixed(2)} m</text>
+                <foreignObject
+                  x={mx - 34 / zoom}
+                  y={my - 15 / zoom}
+                  width={68 / zoom}
+                  height={28 / zoom}
+                  className="edge-dimension-editor"
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  <div className="edge-dimension-input-wrap">
+                    <b>{label}</b>
+                    <input
+                      key={`${label}-${length.toFixed(3)}`}
+                      type="number"
+                      min="0.05"
+                      step="0.01"
+                      defaultValue={length.toFixed(2)}
+                      aria-label={`Longueur ${label} en mètres`}
+                      onBlur={(event) => setEdgeLength(index, event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') event.currentTarget.blur();
+                      }}
+                    />
+                    <span>m</span>
+                  </div>
+                </foreignObject>
                 <circle
                   cx={point.xM * baseScale}
                   cy={point.yM * baseScale}
@@ -309,12 +470,12 @@ export function InteractivePlanEditor({
                   className={selectedVertexIndex === index ? 'vertex-handle selected' : 'vertex-handle'}
                   onPointerDown={(event) => startVertexMove(event, index)}
                 />
-                <text className="vertex-index" x={point.xM * baseScale + 8 / zoom} y={point.yM * baseScale - 8 / zoom} pointerEvents="none">{index + 1}</text>
+                <text className="vertex-index" x={point.xM * baseScale + 8 / zoom} y={point.yM * baseScale - 8 / zoom} pointerEvents="none">{vertexLabel(index)}</text>
               </g>
             );
           })}
 
-          {project.obstacles.map((obstacle) => {
+          {tool !== 'draw' && project.obstacles.map((obstacle) => {
             const selected = obstacle.id === selectedObstacleId;
             const width = obstacle.shape === 'circle' ? obstacle.diameterM ?? 0 : obstacle.widthM ?? 0;
             const height = obstacle.shape === 'circle' ? obstacle.diameterM ?? 0 : obstacle.heightM ?? 0;
@@ -348,21 +509,21 @@ export function InteractivePlanEditor({
             );
           })}
 
-          {selectedObstacle && (
+          {tool !== 'draw' && selectedObstacle && (
             <g className="obstacle-distance-guides" pointerEvents="none">
               <line x1="0" y1={selectedObstacle.yM * baseScale} x2={selectedObstacle.xM * baseScale} y2={selectedObstacle.yM * baseScale} />
-              <text x={(selectedObstacle.xM * baseScale) / 2} y={selectedObstacle.yM * baseScale - 5 / zoom}>gauche {selectedObstacle.xM.toFixed(2)} m</text>
+              <text x={(selectedObstacle.xM * baseScale) / 2} y={selectedObstacle.yM * baseScale - 5 / zoom}>X {selectedObstacle.xM.toFixed(2)} m</text>
               <line x1={selectedObstacle.xM * baseScale} y1="0" x2={selectedObstacle.xM * baseScale} y2={selectedObstacle.yM * baseScale} />
-              <text x={selectedObstacle.xM * baseScale + 5 / zoom} y={(selectedObstacle.yM * baseScale) / 2}>haut {selectedObstacle.yM.toFixed(2)} m</text>
+              <text x={selectedObstacle.xM * baseScale + 5 / zoom} y={(selectedObstacle.yM * baseScale) / 2}>Y {selectedObstacle.yM.toFixed(2)} m</text>
             </g>
           )}
         </g>
       </svg>
 
       <div className="editor-help">
-        <span>Glissez une réservation pour la déplacer.</span>
-        <span>Sélectionnez-la puis utilisez la poignée ronde pour la redimensionner.</span>
-        {project.shape === 'freeform' && <span>Glissez directement les sommets numérotés pour modifier le contour.</span>}
+        <span>Une réservation peut dépasser du contour de la terrasse : seule la partie en intersection impacte les calculs.</span>
+        <span>Glissez une réservation pour la déplacer et utilisez la poignée ronde pour la redimensionner.</span>
+        {project.shape === 'freeform' && <span>Modifiez les cotes directement sur le plan ou dessinez un nouveau contour point par point. Le mode 90° aligne les nouveaux côtés horizontalement/verticalement et verrouille le déplacement libre des sommets.</span>}
       </div>
     </section>
   );

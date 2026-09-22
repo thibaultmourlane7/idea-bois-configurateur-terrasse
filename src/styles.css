@@ -285,3 +285,38 @@
   .layer-toggles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .layer-presets{overflow:auto}
 }
+
+
+/* V0.14.1 — correction visuels produit : aucun faux bois */
+.product-swatch.visual-pending{
+  background:#edf1f3!important;
+  background-image:
+    linear-gradient(135deg,rgba(207,216,222,.8) 25%,transparent 25%),
+    linear-gradient(315deg,rgba(207,216,222,.8) 25%,transparent 25%)!important;
+  background-position:0 0,12px 12px!important;
+  background-size:24px 24px!important;
+  display:grid;
+  place-items:center;
+  min-height:96px;
+}
+.product-swatch.visual-pending>span{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  padding:8px 11px;
+  border-radius:9px;
+  background:rgba(255,255,255,.93);
+  border:1px solid #d4dde2;
+  text-align:center;
+}
+.product-swatch.visual-pending b{font-size:10px;color:#4e6677}
+.product-swatch.visual-pending small{font-size:8px;color:#8796a1}
+.product-swatch.verified-media{min-height:96px}
+.visual-status{display:block!important;margin-top:7px!important;font-size:9px!important;font-weight:800!important;line-height:1.35!important}
+.visual-status.verified-media{color:#2f7a50!important}
+.visual-status.verified-product-page{color:#8a681f!important}
+.visual-status.unmapped{color:#7d8c97!important}
+.texture-source-note.pending{color:#7a6a42;background:#fff8e8;border-top:1px solid #f0e2bd;padding-top:8px}
+.texture-source-note.verified{color:#34744f;background:#f3faf6;border-top:1px solid #d7ebdf;padding-top:8px}
+.visual-placeholder-label{pointer-events:none}

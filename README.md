@@ -1,63 +1,37 @@
-# IDEA Bois — Configurateur Terrasse V0.14
+# IDEA Bois — Configurateur Terrasse V0.14.1
 
-## Gros lot V0.14 — construction visuelle progressive
+## Correctif visuels produit
 
-La terrasse se construit désormais visuellement au fil du parcours.
+La V0.14.1 corrige le défaut principal de la V0.14 : les couleurs et veinages simulés ne sont plus utilisés pour représenter un produit réel IDEA Bois.
 
-### Nouveau parcours
-1. Dimensions / forme / réservations
-2. Lames et sens de pose
-3. Support, hauteur et plots
-4. Finitions / rives
-5. Projet final
+### Règle visuelle stricte
+Un produit peut avoir trois états :
 
-### Construction progressive
-- étape 1 : contour et réservations ;
-- étape 2 : lambourdes calculées selon la règle documentée de la lame ;
-- étape 3 : plots/appuis visualisés sous les lambourdes lorsque le panier fournit une quantité exacte ;
-- étape 4 : rives + supports verticaux d'habillage ;
-- étape 5 : lames visibles et structure masquée par défaut.
+- `verified-media` : URL média IDEA Bois directement vérifiée ; la photo peut être utilisée comme base visuelle.
+- `verified-product-page` : la fiche produit officielle IDEA Bois est identifiée et vérifiée, mais l'URL directe du média n'est pas encore mappée ; le configurateur affiche volontairement un rendu neutre.
+- `unmapped` : aucune fiche visuelle précise n'est encore reliée à ce groupe ; rendu neutre.
 
-### Couches 2D / 3D
-La vue finale propose :
-- Lames
-- Rives
-- Lambourdes
-- Lambourdes verticales
-- Plots
-- Réservations
-- Support
+Aucun bois artificiel, aucune fausse couleur et aucun faux veinage ne sont affichés lorsqu'un média officiel n'est pas vérifié.
 
-Raccourcis :
-- Fini
-- Structure
-- Éclaté
+## Mapping prioritaire V0.14.1
+Les pages produit officielles sont désormais identifiées pour :
+- Pin du Nord lisse Classe 4 vert ;
+- Pin du Nord strié Classe 4 vert ;
+- Pin du Nord lisse Classe 4 marron ;
+- Pin du Nord strié Classe 4 marron ;
+- Pin du Nord qualité US marron ;
+- Cumaru 145x21 ;
+- Garapa 145x21 ;
+- Ipé 140x20 ;
+- Padouk 120x21 ;
+- SILVADEC Atmosphère Gris Ushuaia ;
+- SILVADEC Atmosphère Nuances Ipé.
 
-Une vue de côté complète la vue de dessus et l'aperçu 3D.
+Le Padouk conserve le premier média direct déjà vérifié.
+Les autres références ci-dessus restent neutres tant que leur URL média directe n'est pas reliée.
 
-## Habillage bois intelligent
-Pour une terrasse bois sans accessoire de rive dédié :
-- la même lame que le platelage est utilisée ;
-- la hauteur d'habillage est saisie explicitement ;
-- le nombre de rangs est calculé ;
-- les longueurs de rive sont optimisées dans les longueurs commerciales ;
-- les lambourdes verticales sont ajoutées ;
-- chaque morceau vertical a la longueur de la hauteur d'habillage ;
-- l'entraxe horizontal suit la règle documentée de la gamme ;
-- les extrémités de chaque rive sont supportées ;
-- les morceaux de lambourde sont optimisés dans des longueurs commerciales de 2,40 m.
-
-Le composite conserve ses accessoires de finition dédiés lorsqu'ils existent.
-
-## Textures produit
-Le modèle visuel distingue :
-- `verified-media` : image produit IDEA Bois directement vérifiée ;
-- `catalog-described` : rendu visuel basé sur l'essence, le profil et la teinte publiés, sans inventer une photo.
-
-La V0.14 intègre une première texture photo vérifiée sur la gamme Padouk et prépare le même mécanisme pour toutes les autres références dès que leurs médias sont mappés de façon fiable.
-
-## Important
-La position des plots en V0.14 est une représentation visuelle répartissant la quantité commerciale exacte du panier sur les lambourdes. Le positionnement structurel définitif des plots fait partie du moteur technique avancé V0.16.
+## V0.14 conservée
+La construction progressive, les lambourdes, plots, rives, supports verticaux, vue de côté et couches 2D/3D restent inchangés.
 
 ## Règle ferme
 Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.

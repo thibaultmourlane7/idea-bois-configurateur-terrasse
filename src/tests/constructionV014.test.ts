@@ -96,11 +96,40 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(diagnostics.some((item) => item.tag === 'SA-TERR-EDGE-HEIGHT-002' && item.severity === 'blocking')).toBe(true);
   });
 
-  it('associe une vraie image produit vérifiée au Padouk et garde un fallback catalogué pour les autres', () => {
+  it('n’utilise plus de fausse texture pour les produits sans média direct vérifié', () => {
     const padouk = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G015')!;
     expect(padouk.visual?.imageStatus).toBe('verified-media');
     expect(padouk.visual?.imageUrl).toContain('idea-bois.com/media/cache/');
-    expect(pinStrie.visual?.imageStatus).toBe('catalog-described');
-    expect(pinStrie.visual?.baseColor).toBeTruthy();
+    expect(pinStrie.visual?.imageStatus).toBe('verified-product-page');
+    expect(pinStrie.visual?.imageUrl).toBeUndefined();
+    expect(pinStrie.visual?.officialProductCode).toBe('TSS300145027E');
+    expect(pinStrie.visual?.baseColor).toBe('#e9eef1');
+  });
+});
+
+
+describe('Visuels correctifs V0.14.1', () => {
+  it('distingue le pin strié vert du pin strié marron avec deux pages produit officielles différentes', () => {
+    const green = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G028')!;
+    const brown = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G030')!;
+    expect(green.visual?.officialProductCode).toBe('TSS300145027E');
+    expect(brown.visual?.officialProductCode).toBe('TSS300145027M');
+    expect(green.visual?.imageSourcePageUrl).not.toBe(brown.visual?.imageSourcePageUrl);
+    expect(green.visual?.imageUrl).toBeUndefined();
+    expect(brown.visual?.imageUrl).toBeUndefined();
+  });
+
+  it('mappe les pages produit prioritaires sans inventer de média direct', () => {
+    const ids = ['IDEA-TERR-G005','IDEA-TERR-G008','IDEA-TERR-G011','IDEA-TERR-G037','IDEA-TERR-G038'];
+    for (const id of ids) {
+      const board = ideaBoisBoards.find((item) => item.id === id)!;
+      expect(board.visual?.imageStatus).toBe('verified-product-page');
+      expect(board.visual?.imageSourcePageUrl).toContain('idea-bois.com');
+      expect(board.visual?.imageUrl).toBeUndefined();
+    }
+  });
+
+  it('n’utilise plus le statut de rendu couleur simulé', () => {
+    expect(ideaBoisBoards.every((board) => board.visual?.imageStatus !== ('catalog-described' as never))).toBe(true);
   });
 });

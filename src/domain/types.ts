@@ -67,7 +67,8 @@ export interface BoardVisualData {
   accentColor?: string;
   imageUrl?: string;
   imageSourcePageUrl?: string;
-  imageStatus: 'verified-media' | 'catalog-described';
+  officialProductCode?: string;
+  imageStatus: 'verified-media' | 'verified-product-page' | 'unmapped';
 }
 
 export interface BoardSpec {

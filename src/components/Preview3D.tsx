@@ -159,17 +159,17 @@ export function Preview3D({
           ctx.moveTo(face[0].x, face[0].y);
           face.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
           ctx.closePath();
-          ctx.fillStyle = visual?.baseColor ?? '#9c7453';
+          ctx.fillStyle = visual?.imageStatus === 'verified-media' && photo ? '#d7d7d7' : '#e7ecef';
           ctx.fill();
-          ctx.strokeStyle = visual?.grainColor ?? '#604832';
+          ctx.strokeStyle = visual?.imageStatus === 'verified-media' ? '#807060' : '#c4cfd5';
           ctx.lineWidth = 1;
           ctx.stroke();
         });
       }
 
       if (layers.decking) {
-        let fill: string | CanvasPattern = visual?.baseColor ?? '#d7ae7d';
-        if (photo) {
+        let fill: string | CanvasPattern = '#edf1f3';
+        if (visual?.imageStatus === 'verified-media' && photo) {
           const pattern = ctx.createPattern(photo, 'repeat');
           if (pattern) fill = pattern;
         }
@@ -178,7 +178,7 @@ export function Preview3D({
         const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
         const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
         if (pitchMm > 0) {
-          ctx.strokeStyle = visual?.grainColor ?? 'rgba(78,61,43,.55)';
+          ctx.strokeStyle = visual?.imageStatus === 'verified-media' ? 'rgba(78,61,43,.55)' : '#ccd5da';
           ctx.lineWidth = 1;
           for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
             const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
@@ -220,7 +220,7 @@ export function Preview3D({
 
     paint();
 
-    if (layers.decking && visual?.imageUrl) {
+    if (layers.decking && visual?.imageStatus === 'verified-media' && visual.imageUrl) {
       const image = new Image();
       image.onload = () => paint(image);
       image.onerror = () => paint();
@@ -239,6 +239,11 @@ export function Preview3D({
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
       </div>
+      {visual?.imageStatus === 'verified-media'
+        ? <div className="texture-source-note verified">Photo produit IDEA Bois vérifiée utilisée comme base visuelle.</div>
+        : visual?.imageStatus === 'verified-product-page'
+          ? <div className="texture-source-note pending">Page produit IDEA Bois vérifiée — média direct non encore mappé, rendu neutre.</div>
+          : <div className="texture-source-note pending">Visuel produit non encore vérifié — rendu neutre volontaire.</div>}
     </div>
   );
 }

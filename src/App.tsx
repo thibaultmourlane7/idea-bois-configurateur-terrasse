@@ -183,7 +183,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Construction progressive • textures • structure • rives • panier</div>
+          <div className="header-note">Construction progressive • photos officielles uniquement • structure • rives</div>
         </div>
       </header>
 
@@ -244,19 +244,33 @@ export default function App() {
                     <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
                       <button type="button" className="product-select" onClick={() => setProject({ ...project, board })}>
                         <div
-                          className={`product-swatch ${board.technical.materialFamily}`}
-                          style={{
-                            backgroundColor: board.visual?.baseColor,
-                            backgroundImage: board.visual?.imageUrl
-                              ? `linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.04)), url("${board.visual.imageUrl}")`
-                              : `linear-gradient(105deg, ${board.visual?.baseColor ?? '#b4936d'}, ${board.visual?.accentColor ?? '#d0ad82'}, ${board.visual?.baseColor ?? '#b4936d'})`,
-                            backgroundSize: board.visual?.imageUrl ? 'cover' : '100% 100%',
-                          }}
-                        />
+                          className={`product-swatch ${board.technical.materialFamily} ${board.visual?.imageStatus === 'verified-media' ? 'verified-media' : 'visual-pending'}`}
+                          style={board.visual?.imageStatus === 'verified-media' && board.visual.imageUrl
+                            ? {
+                                backgroundImage: `url("${board.visual.imageUrl}")`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }
+                            : undefined}
+                        >
+                          {board.visual?.imageStatus !== 'verified-media' && (
+                            <span>
+                              <b>Photo IDEA Bois</b>
+                              <small>{board.visual?.imageStatus === 'verified-product-page' ? 'page produit vérifiée' : 'à intégrer'}</small>
+                            </span>
+                          )}
+                        </div>
                         <div className="product-copy">
                           <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
                           <strong>{board.label}</strong>
                           <span>{board.subtitle}</span>
+                          <small className={`visual-status ${board.visual?.imageStatus ?? 'unmapped'}`}>
+                            {board.visual?.imageStatus === 'verified-media'
+                              ? 'Photo produit IDEA Bois vérifiée'
+                              : board.visual?.imageStatus === 'verified-product-page'
+                                ? 'Page produit officielle vérifiée • photo à mapper'
+                                : 'Visuel officiel à intégrer'}
+                          </small>
                           {board.gapRangeMm && <small className="gap-info">Jeu publié : {board.gapRangeMm[0]}–{board.gapRangeMm[1]} mm</small>}
                           <div className="product-meta">
                             <b>{board.priceTtcPerM2 != null ? `${euro(board.priceTtcPerM2)} / m²` : 'Prix à confirmer'}</b>

@@ -1,63 +1,99 @@
 import type { BoardVisualData } from '../domain/types';
 
+const NEUTRAL = {
+  baseColor: '#e9eef1',
+  grainColor: '#c7d1d7',
+  accentColor: '#f7f9fa',
+};
+
 const PADOUK_MEDIA = 'https://www.idea-bois.com/media/cache/app_shop_product_zoom_fancy/c6/25/04f5795ef003b5fc1f6d719d9e9f.jpg';
+
+type VerifiedProductPage = {
+  productCode?: string;
+  pageUrl: string;
+};
+
+const VERIFIED_PRODUCT_PAGES: Partial<Record<string, VerifiedProductPage>> = {
+  'IDEA-TERR-G027': {
+    productCode: 'TSL300145027E',
+    pageUrl: 'https://www.idea-bois.com/art-lame-de-terrasse-en-pin-du-nord-lisse-long-3-00-m-27x145-mm-classe-4-2490.htm',
+  },
+  'IDEA-TERR-G028': {
+    productCode: 'TSS300145027E',
+    pageUrl: 'https://www.idea-bois.com/art-terrasse-en-pin-du-nord-stri-3-00m-145x27-mm-3215.htm',
+  },
+  'IDEA-TERR-G029': {
+    productCode: 'TSL300145027M',
+    pageUrl: 'https://www.idea-bois.com/art-lame-pin-du-nord-lisse-marron-l-3-00-m-145x27mm-traitement-classe-4-2172.htm',
+  },
+  'IDEA-TERR-G030': {
+    productCode: 'TSS300145027M',
+    pageUrl: 'https://www.idea-bois.com/art-lame-de-terrasse-en-pin-du-nord-strie-classe-4-marron-l-3-00-m-145x27-mm.htm',
+  },
+  'IDEA-TERR-G031': {
+    productCode: 'T420145027USM',
+    pageUrl: 'https://www.idea-bois.com/art-lame-terrasse-4-20-m-pin-du-nord-us-marron-145-x-27-mm-2941.htm',
+  },
+  'IDEA-TERR-G005': {
+    productCode: 'TCL490145021',
+    pageUrl: 'https://www.idea-bois.com/art-lame-terrasse-cumaru-l-4-90m-145x21-mm-2867.htm',
+  },
+  'IDEA-TERR-G008': {
+    productCode: 'TGL215145021',
+    pageUrl: 'https://www.idea-bois.com/art-lame-terrasse-bois-exotique-garapa-lisse-l-2-15-m-145x21-mm-visser-3468.htm',
+  },
+  'IDEA-TERR-G011': {
+    pageUrl: 'https://www.idea-bois.com/art-lame-de-terrasse-ip-lisse-l-1-85-m-140x20-mm-visser-2774.htm',
+  },
+  'IDEA-TERR-G015': {
+    productCode: 'TPAD27512021',
+    pageUrl: 'https://idea-bois.com/art-lame-terrasse-bois-exotique-padouk-lisse-longueur-2-75-m-120-x-21-mm.htm',
+  },
+  'IDEA-TERR-G037': {
+    productCode: 'SILVAGRIS',
+    pageUrl: 'https://www.idea-bois.com/art-lame-composite-atmosph-re-bross-e-23x138x4000-mm-gris-ushuaia-silvadec-1845.htm',
+  },
+  'IDEA-TERR-G038': {
+    productCode: 'SILVAIPE',
+    pageUrl: 'https://www.idea-bois.com/art-lame-composite-atmosph-re-nuances-ip-23x138x4000-mm-silvadec-3416.htm',
+  },
+};
+
+function neutralVisual(sourcePageUrl: string): BoardVisualData {
+  return {
+    ...NEUTRAL,
+    imageSourcePageUrl: sourcePageUrl,
+    imageStatus: 'unmapped',
+  };
+}
 
 export function boardVisual(
   id: string,
-  material: string,
-  profile: string,
-  color: string,
+  _material: string,
+  _profile: string,
+  _color: string,
   sourcePageUrl: string,
 ): BoardVisualData {
-  const normalized = `${material} ${profile} ${color}`.toLowerCase();
-
-  if (id.startsWith('IDEA-TERR-G014') || id.startsWith('IDEA-TERR-G015') || id.startsWith('IDEA-TERR-G016')) {
+  if (id === 'IDEA-TERR-G014' || id === 'IDEA-TERR-G015' || id === 'IDEA-TERR-G016') {
     return {
-      baseColor: '#b65232',
-      grainColor: '#7d2f1d',
-      accentColor: '#dc7a4c',
+      ...NEUTRAL,
       imageUrl: PADOUK_MEDIA,
-      imageSourcePageUrl: 'https://www.idea-bois.com/art-lame-terrasse-bois-exotique-padouk-lisse-longueur-1-55-m-120-x-21-mm-4355.htm',
+      imageSourcePageUrl: VERIFIED_PRODUCT_PAGES['IDEA-TERR-G015']?.pageUrl
+        ?? 'https://www.idea-bois.com/art-lame-terrasse-bois-exotique-padouk-lisse-longueur-1-55-m-120-x-21-mm-4355.htm',
+      officialProductCode: id === 'IDEA-TERR-G015' ? 'TPAD27512021' : undefined,
       imageStatus: 'verified-media',
     };
   }
 
-  if (normalized.includes('silvadec') || normalized.includes('composite')) {
-    if (normalized.includes('gris')) {
-      return { baseColor: '#7f8280', grainColor: '#656967', accentColor: '#9a9c99', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-    }
-    return { baseColor: '#7a5944', grainColor: '#5a3f31', accentColor: '#9a7660', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
+  const verifiedPage = VERIFIED_PRODUCT_PAGES[id];
+  if (verifiedPage) {
+    return {
+      ...NEUTRAL,
+      imageSourcePageUrl: verifiedPage.pageUrl,
+      officialProductCode: verifiedPage.productCode,
+      imageStatus: 'verified-product-page',
+    };
   }
 
-  if (normalized.includes('garapa')) {
-    return { baseColor: '#c99a4a', grainColor: '#9a6f2f', accentColor: '#e0bb72', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  if (normalized.includes('cumaru')) {
-    return { baseColor: '#8b4f35', grainColor: '#60321f', accentColor: '#b06b47', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  if (normalized.includes('ipé') || normalized.includes('ipe')) {
-    return { baseColor: '#6b4635', grainColor: '#442b23', accentColor: '#8c6047', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  if (normalized.includes('merbau')) {
-    return { baseColor: '#8c553c', grainColor: '#623522', accentColor: '#aa6b4a', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  if (normalized.includes('bambou')) {
-    return normalized.includes('foncé')
-      ? { baseColor: '#795541', grainColor: '#513729', accentColor: '#9a7159', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' }
-      : { baseColor: '#a5784f', grainColor: '#775438', accentColor: '#c49a70', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  if (normalized.includes('marron')) {
-    return { baseColor: '#8b6748', grainColor: '#5d452f', accentColor: '#a98461', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  if (normalized.includes('pin')) {
-    return { baseColor: '#b89a6a', grainColor: '#8a714b', accentColor: '#d1b384', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
-  }
-
-  return { baseColor: '#a9815d', grainColor: '#755b42', accentColor: '#c19b75', imageSourcePageUrl: sourcePageUrl, imageStatus: 'catalog-described' };
+  return neutralVisual(sourcePageUrl);
 }

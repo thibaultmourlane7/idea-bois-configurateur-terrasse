@@ -72,16 +72,15 @@ export function Plan2D({
         <defs>
           <clipPath id={clipId}><polygon points={points} /></clipPath>
           <pattern id={patternId} width="140" height="70" patternUnits="userSpaceOnUse">
-            {visual?.imageUrl ? (
+            {visual?.imageStatus === 'verified-media' && visual.imageUrl ? (
               <>
-                <rect width="140" height="70" fill={visual.baseColor} />
-                <image href={visual.imageUrl} x="0" y="0" width="140" height="70" preserveAspectRatio="xMidYMid slice" opacity="0.96" />
+                <rect width="140" height="70" fill="#eef1f3" />
+                <image href={visual.imageUrl} x="0" y="0" width="140" height="70" preserveAspectRatio="xMidYMid slice" opacity="1" />
               </>
             ) : (
               <>
-                <rect width="140" height="70" fill={visual?.baseColor ?? '#b4936d'} />
-                <path d="M-10 16 C20 4,44 27,78 13 S124 20,155 8 M-5 43 C28 31,56 55,95 38 S132 49,154 34 M10 62 C38 50,74 69,123 57" fill="none" stroke={visual?.grainColor ?? '#7a6047'} strokeWidth="2.4" opacity="0.55" />
-                <path d="M18 26 C40 18,56 30,77 23 M87 55 C105 47,121 58,137 49" fill="none" stroke={visual?.accentColor ?? '#d0ad82'} strokeWidth="1.2" opacity="0.65" />
+                <rect width="140" height="70" fill="#edf1f3" />
+                <path d="M0 0 L140 70 M-35 0 L105 70 M35 0 L175 70" fill="none" stroke="#d5dde2" strokeWidth="8" opacity="0.8" />
               </>
             )}
           </pattern>
@@ -134,6 +133,13 @@ export function Plan2D({
           <g opacity={deckingOpacity}>
             <polygon points={points} fill={`url(#${patternId})`} />
             <g clipPath={`url(#${clipId})`} className="board-lines">{boardLines}</g>
+            {visual?.imageStatus !== 'verified-media' && (
+              <g className="visual-placeholder-label">
+                <rect x={maxW / 2 - 86} y={maxH / 2 - 16} width="172" height="32" rx="8" fill="rgba(255,255,255,.92)" stroke="#cfd8de" />
+                <text x={maxW / 2} y={maxH / 2 - 2} textAnchor="middle" fontSize="10" fontWeight="800" fill="#526979">Photo officielle IDEA Bois</text>
+                <text x={maxW / 2} y={maxH / 2 + 10} textAnchor="middle" fontSize="9" fill="#7d8e9a">texture média à intégrer</text>
+              </g>
+            )}
           </g>
         )}
 
@@ -170,7 +176,11 @@ export function Plan2D({
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
       </div>
-      {visual?.imageStatus === 'verified-media' && <div className="texture-source-note">Texture issue d’une photo produit IDEA Bois vérifiée.</div>}
+      {visual?.imageStatus === 'verified-media'
+        ? <div className="texture-source-note verified">Photo produit IDEA Bois vérifiée utilisée comme base visuelle.</div>
+        : visual?.imageStatus === 'verified-product-page'
+          ? <div className="texture-source-note pending">Page produit IDEA Bois vérifiée — média direct non encore mappé, aucun faux rendu appliqué.</div>
+          : <div className="texture-source-note pending">Visuel produit non encore vérifié — rendu neutre volontaire.</div>}
     </div>
   );
 }

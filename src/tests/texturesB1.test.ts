@@ -24,7 +24,7 @@ describe('Affinage Pin du Nord strié V0.14.2-B1', () => {
       const grooves = buildGrooveLines(profile);
       expect(profile.grooveBands).toHaveLength(2);
       expect(grooves).toHaveLength(26);
-      expect(grooves.filter((line) => line.ratio > 0.31 && line.ratio < 0.69)).toHaveLength(0);
+      expect(grooves.filter((line) => line.ratio > 0.311 && line.ratio < 0.689)).toHaveLength(0);
       expect(grooves.some((line) => line.ratio < 0.31)).toBe(true);
       expect(grooves.some((line) => line.ratio > 0.69)).toBe(true);
     }

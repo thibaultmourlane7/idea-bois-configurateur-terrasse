@@ -340,8 +340,73 @@ export function InteractivePlanEditor({
   };
 
   const setReference = (file?: File) => {
+    if (!file) {
+      if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
+      setReferenceImageUrl(null);
+      setCalibrationPoints([]);
+      setCalibrationDistanceM('');
+      onBeginEdit();
+      onChange({ ...project, referencePlan: undefined });
+      setTool('select');
+      return;
+    }
+
     if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
-    setReferenceImageUrl(file ? URL.createObjectURL(file) : null);
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const widthPx = Math.max(1, image.naturalWidth);
+      const heightPx = Math.max(1, image.naturalHeight);
+      const canReuse = referencePlan?.imageWidthPx === widthPx && referencePlan?.imageHeightPx === heightPx;
+      const next = canReuse && referencePlan
+        ? { ...referencePlan, imageWidthPx: widthPx, imageHeightPx: heightPx }
+        : fitReferencePlan({ widthPx, heightPx }, bounds.lengthM, bounds.widthM);
+      onBeginEdit();
+      onChange({ ...project, referencePlan: next });
+      setReferenceImageUrl(url);
+      setCalibrationPoints([]);
+      setCalibrationDistanceM('');
+      setTool('select');
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      setEditorMessage('Ce fichier image ne peut pas être chargé.');
+    };
+    image.src = url;
+  };
+
+  const beginCalibration = () => {
+    if (!referenceImageUrl || !referencePlan) return;
+    setCalibrationPoints([]);
+    setCalibrationDistanceM('');
+    setTool('calibrate');
+    setEditorMessage('Calibration : cliquez deux points dont vous connaissez la distance réelle.');
+  };
+
+  const applyCalibration = () => {
+    if (!referencePlan || calibrationPoints.length !== 2) return;
+    const distanceM = Number(calibrationDistanceM.replace(',', '.'));
+    if (!Number.isFinite(distanceM) || distanceM <= 0) {
+      setEditorMessage('Entrez une distance réelle strictement positive.');
+      return;
+    }
+    try {
+      onBeginEdit();
+      updateReferencePlan(calibrateReferencePlan(referencePlan, calibrationPoints[0], calibrationPoints[1], distanceM * 1000));
+      setCalibrationPoints([]);
+      setCalibrationDistanceM('');
+      setTool('select');
+      setEditorMessage('Fond calibré. Les cotes du projet restent celles du dessin vectoriel.');
+    } catch (error) {
+      setEditorMessage(error instanceof Error ? error.message : 'Calibration impossible.');
+    }
+  };
+
+  const startReferenceZoom = (factor: number) => {
+    if (!referencePlan || referencePlan.locked) return;
+    onBeginEdit();
+    updateReferencePlan(zoomReferencePlan(referencePlan, factor));
+    setEditorMessage('Le zoom manuel du fond invalide sa calibration. Recalibrez deux points avant de mesurer.');
   };
 
   const gridX = Array.from({ length: Math.floor(bounds.lengthM / 0.5) + 1 }, (_, index) => index * 0.5);

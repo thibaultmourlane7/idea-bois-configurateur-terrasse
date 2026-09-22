@@ -4,6 +4,8 @@ import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
+import { resolveMaterialProfile } from '../visual/materialProfiles';
+import { buildGrooveLines } from '../visual/texturePainter';
 
 function obstacleColor(kind: TerraceObstacle['kind']) {
   if (kind === 'pool') return '#bfe8fb';
@@ -26,6 +28,8 @@ export function Preview3D({
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const texture = resolveBoardTexture(input.board);
+  const materialProfile = resolveMaterialProfile(input.board);
+  const grooveLines = buildGrooveLines(materialProfile);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -194,17 +198,39 @@ export function Preview3D({
         const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
         const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
         if (pitchMm > 0) {
-          ctx.strokeStyle = photo ? 'rgba(78,61,43,.55)' : '#ccd5da';
-          ctx.lineWidth = 1;
           for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
             const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
             for (const [start, end] of intervals) {
-              const a = input.orientation === 'length' ? iso(start / 1000, center / 1000, deckLift) : iso(center / 1000, start / 1000, deckLift);
-              const b = input.orientation === 'length' ? iso(end / 1000, center / 1000, deckLift) : iso(center / 1000, end / 1000, deckLift);
-              ctx.beginPath();
-              ctx.moveTo(a.x, a.y);
-              ctx.lineTo(b.x, b.y);
-              ctx.stroke();
+              const drawParallel = (transverseOffsetMm: number, stroke: string, lineWidth: number) => {
+                const shifted = center + transverseOffsetMm;
+                const a = input.orientation === 'length'
+                  ? iso(start / 1000, shifted / 1000, deckLift)
+                  : iso(shifted / 1000, start / 1000, deckLift);
+                const b = input.orientation === 'length'
+                  ? iso(end / 1000, shifted / 1000, deckLift)
+                  : iso(shifted / 1000, end / 1000, deckLift);
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = lineWidth;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+              };
+
+              const halfWidth = input.board.widthMm / 2;
+              const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
+              drawParallel(-halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
+              drawParallel(halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
+
+              if (grooveLines.length) {
+                for (const groove of grooveLines) {
+                  const offsetMm = (groove.ratio - 0.5) * input.board.widthMm;
+                  drawParallel(offsetMm, `rgba(37,30,25,${groove.shadowOpacity})`, 0.62);
+                  drawParallel(offsetMm - 1.15, `rgba(237,226,201,${groove.highlightOpacity})`, 0.34);
+                }
+              } else {
+                drawParallel(0, photo ? 'rgba(78,61,43,.35)' : '#ccd5da', 0.55);
+              }
             }
           }
         }
@@ -247,7 +273,7 @@ export function Preview3D({
 
   return (
     <div className="visual-card">
-      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-0142</code></div>
+      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-0142-B1</code></div>
       <canvas ref={ref} />
       <div className="construction-legend">
         {layers.decking && <span><i className="legend-decking" />Lames</span>}
@@ -259,7 +285,7 @@ export function Preview3D({
       <div className={`texture-quality-note ${texture.status}`}>
         <strong>{textureStatusLabel(texture)}</strong>
         <span>{texture.label}</span>
-        {texture.status === 'close' && <small>Rendu de projection ; la V0.14.2-B améliorera le PBR et l’échelle 3D.</small>}
+        {materialProfile ? <small>Profil B1 : rainures renforcées sur la géométrie de la lame.</small> : texture.status === 'close' && <small>Rendu de projection ; le PBR avancé viendra ensuite.</small>}
       </div>
     </div>
   );

@@ -4,6 +4,9 @@ import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
+import { resolveMaterialProfile } from '../visual/materialProfiles';
+import { resolveTextureVariant } from '../visual/textureVariants';
+import { boardOffsetFromRatio, buildGrooveLines, shouldRenderKnots } from '../visual/texturePainter';
 
 function obstacleFill(kind: TerraceObstacle['kind']) {
   if (kind === 'pool') return '#cfeeff';
@@ -30,6 +33,10 @@ export function Plan2D({
   const outline = getDeckOutlinePointsM(input);
   const construction = buildConstructionVisual(input, basket);
   const texture = resolveBoardTexture(input.board);
+  const materialProfile = resolveMaterialProfile(input.board);
+  const grooveLines = buildGrooveLines(materialProfile);
+  const variantCount = materialProfile?.variantCount ?? 4;
+
   const pad = 34;
   const maxW = 640;
   const maxH = 390;
@@ -40,9 +47,9 @@ export function Plan2D({
   const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
   const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
   const boardWidthPx = Math.max(2.2, (input.board.widthMm / 1000) * scale);
-  const textureWidthPx = Math.max(90, (texture.textureScaleMmX / 1000) * scale);
-  const textureHeightPx = Math.max(boardWidthPx * 1.15, (texture.textureScaleMmY / 1000) * scale);
-  const patternIds = Array.from({ length: 4 }, (_, index) => `texture-${baseId}-${index}`);
+  const textureWidthPx = Math.max(110, (texture.textureScaleMmX / 1000) * scale);
+  const textureHeightPx = Math.max(boardWidthPx * 1.08, (texture.textureScaleMmY / 1000) * scale);
+  const patternIds = Array.from({ length: variantCount }, (_, index) => `texture-${baseId}-${index}`);
 
   const boardLines: ReactNode[] = [];
   if (layers.decking && pitchMm > 0) {
@@ -50,20 +57,40 @@ export function Plan2D({
     for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
       const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
       intervals.forEach(([start, end], segment) => {
-        const patternId = patternIds[row % patternIds.length];
-        const common = { key: `r-${row}-s-${segment}` };
-        const grooveCount = texture.grooveCount ?? 0;
+        const variant = resolveTextureVariant(row, segment, variantCount);
+        const patternId = patternIds[variant.index % patternIds.length];
+        const commonKey = `r-${row}-s-${segment}`;
+        const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
 
         if (input.orientation === 'length') {
           const x1 = x + (start / 1000) * scale;
           const x2 = x + (end / 1000) * scale;
           const yc = y + (center / 1000) * scale;
+
           boardLines.push(
-            <g {...common}>
+            <g key={commonKey}>
               <line x1={x1} y1={yc} x2={x2} y2={yc} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
-              {Array.from({ length: grooveCount }, (_, groove) => {
-                const offset = (((groove + 1) / (grooveCount + 1)) - 0.5) * boardWidthPx * 0.78;
-                return <line key={groove} x1={x1} y1={yc + offset} x2={x2} y2={yc + offset} stroke="rgba(49,42,35,.34)" strokeWidth=".55" />;
+              <line x1={x1} y1={yc - boardWidthPx * 0.49} x2={x2} y2={yc - boardWidthPx * 0.49} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
+              <line x1={x1} y1={yc + boardWidthPx * 0.49} x2={x2} y2={yc + boardWidthPx * 0.49} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
+              {grooveLines.map((groove, grooveIndex) => {
+                const offset = boardOffsetFromRatio(groove.ratio, boardWidthPx);
+                return (
+                  <g key={grooveIndex}>
+                    <line x1={x1} y1={yc + offset} x2={x2} y2={yc + offset} stroke={`rgba(38,32,27,${groove.shadowOpacity})`} strokeWidth="0.72" />
+                    <line x1={x1} y1={yc + offset - 0.55} x2={x2} y2={yc + offset - 0.55} stroke={`rgba(236,226,202,${groove.highlightOpacity})`} strokeWidth="0.42" />
+                  </g>
+                );
+              })}
+              {shouldRenderKnots(materialProfile) && variant.knotRatios.map((ratio, knotIndex) => {
+                const cx = x1 + (x2 - x1) * ratio;
+                const ry = Math.max(1.2, boardWidthPx * 0.13);
+                const rx = Math.max(3.5, Math.min(8, (x2 - x1) * 0.018));
+                return (
+                  <g key={`k-${knotIndex}`} opacity="0.42">
+                    <ellipse cx={cx} cy={yc} rx={rx} ry={ry} fill="rgba(66,49,34,.42)" />
+                    <ellipse cx={cx} cy={yc} rx={rx * 0.55} ry={ry * 0.55} fill="rgba(38,29,22,.38)" />
+                  </g>
+                );
               })}
             </g>,
           );
@@ -71,12 +98,31 @@ export function Plan2D({
           const xc = x + (center / 1000) * scale;
           const y1 = y + (start / 1000) * scale;
           const y2 = y + (end / 1000) * scale;
+
           boardLines.push(
-            <g {...common}>
+            <g key={commonKey}>
               <line x1={xc} y1={y1} x2={xc} y2={y2} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
-              {Array.from({ length: grooveCount }, (_, groove) => {
-                const offset = (((groove + 1) / (grooveCount + 1)) - 0.5) * boardWidthPx * 0.78;
-                return <line key={groove} x1={xc + offset} y1={y1} x2={xc + offset} y2={y2} stroke="rgba(49,42,35,.34)" strokeWidth=".55" />;
+              <line x1={xc - boardWidthPx * 0.49} y1={y1} x2={xc - boardWidthPx * 0.49} y2={y2} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
+              <line x1={xc + boardWidthPx * 0.49} y1={y1} x2={xc + boardWidthPx * 0.49} y2={y2} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
+              {grooveLines.map((groove, grooveIndex) => {
+                const offset = boardOffsetFromRatio(groove.ratio, boardWidthPx);
+                return (
+                  <g key={grooveIndex}>
+                    <line x1={xc + offset} y1={y1} x2={xc + offset} y2={y2} stroke={`rgba(38,32,27,${groove.shadowOpacity})`} strokeWidth="0.72" />
+                    <line x1={xc + offset - 0.55} y1={y1} x2={xc + offset - 0.55} y2={y2} stroke={`rgba(236,226,202,${groove.highlightOpacity})`} strokeWidth="0.42" />
+                  </g>
+                );
+              })}
+              {shouldRenderKnots(materialProfile) && variant.knotRatios.map((ratio, knotIndex) => {
+                const cy = y1 + (y2 - y1) * ratio;
+                const rx = Math.max(1.2, boardWidthPx * 0.13);
+                const ry = Math.max(3.5, Math.min(8, (y2 - y1) * 0.018));
+                return (
+                  <g key={`k-${knotIndex}`} opacity="0.42">
+                    <ellipse cx={xc} cy={cy} rx={rx} ry={ry} fill="rgba(66,49,34,.42)" />
+                    <ellipse cx={xc} cy={cy} rx={rx * 0.55} ry={ry * 0.55} fill="rgba(38,29,22,.38)" />
+                  </g>
+                );
               })}
             </g>,
           );
@@ -94,56 +140,66 @@ export function Plan2D({
     <div className="visual-card construction-plan-card">
       <div className="visual-title">
         <span>Vue de dessus</span>
-        <code>IB-TERR-UI-2D-0142</code>
+        <code>IB-TERR-UI-2D-0142-B1</code>
       </div>
       <svg viewBox={`0 0 ${maxW} ${maxH}`} className="plan" role="img" aria-label="Plan 2D de la construction de terrasse">
         <defs>
           <clipPath id={clipId}><polygon points={points} /></clipPath>
-          {patternIds.map((patternId, index) => (
-            <pattern
-              key={patternId}
-              id={patternId}
-              width={textureWidthPx}
-              height={textureHeightPx}
-              patternUnits="userSpaceOnUse"
-              x={-(index * textureWidthPx * 0.23)}
-              y={-(index * textureHeightPx * 0.17)}
-              patternTransform={input.orientation === 'width' ? 'rotate(90)' : undefined}
-            >
-              {texture.textureImageUrl ? (
-                <>
-                  <rect width={textureWidthPx} height={textureHeightPx} fill="#d8d2ca" />
-                  <image
-                    href={texture.textureImageUrl}
-                    x="0"
-                    y="0"
-                    width={textureWidthPx}
-                    height={textureHeightPx}
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                  {tintOpacity > 0 && (
-                    <rect
+          {patternIds.map((patternId, index) => {
+            const variant = resolveTextureVariant(index, 0, variantCount);
+            const bright = variant.brightnessOverlay;
+            return (
+              <pattern
+                key={patternId}
+                id={patternId}
+                width={textureWidthPx}
+                height={textureHeightPx}
+                patternUnits="userSpaceOnUse"
+                x={-(variant.offsetXRatio * textureWidthPx)}
+                y={-(variant.offsetYRatio * textureHeightPx)}
+                patternTransform={input.orientation === 'width' ? 'rotate(90)' : undefined}
+              >
+                {texture.textureImageUrl ? (
+                  <>
+                    <rect width={textureWidthPx} height={textureHeightPx} fill="#d8d2ca" />
+                    <image
+                      href={texture.textureImageUrl}
+                      x="0"
+                      y="0"
                       width={textureWidthPx}
                       height={textureHeightPx}
-                      fill={tint}
-                      opacity={tintOpacity}
-                      style={{ mixBlendMode: 'multiply' }}
+                      preserveAspectRatio="xMidYMid slice"
                     />
-                  )}
-                </>
-              ) : (
-                <>
-                  <rect width={textureWidthPx} height={textureHeightPx} fill="#edf1f3" />
-                  <path d={`M0 0 L${textureWidthPx} ${textureHeightPx} M-${textureWidthPx / 2} 0 L${textureWidthPx / 2} ${textureHeightPx}`} stroke="#d2dbe0" strokeWidth="5" />
-                </>
-              )}
-            </pattern>
-          ))}
+                    {tintOpacity > 0 && (
+                      <rect
+                        width={textureWidthPx}
+                        height={textureHeightPx}
+                        fill={tint}
+                        opacity={tintOpacity}
+                        style={{ mixBlendMode: 'multiply' }}
+                      />
+                    )}
+                    {bright !== 0 && (
+                      <rect
+                        width={textureWidthPx}
+                        height={textureHeightPx}
+                        fill={bright > 0 ? '#ffffff' : '#000000'}
+                        opacity={Math.abs(bright)}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <rect width={textureWidthPx} height={textureHeightPx} fill="#edf1f3" />
+                    <path d={`M0 0 L${textureWidthPx} ${textureHeightPx} M-${textureWidthPx / 2} 0 L${textureWidthPx / 2} ${textureHeightPx}`} stroke="#d2dbe0" strokeWidth="5" />
+                  </>
+                )}
+              </pattern>
+            );
+          })}
         </defs>
 
-        {layers.support && (
-          <polygon points={points} fill="#f2f4f5" stroke="#cbd4da" strokeWidth="3" strokeDasharray="7 5" />
-        )}
+        {layers.support && <polygon points={points} fill="#f2f4f5" stroke="#cbd4da" strokeWidth="3" strokeDasharray="7 5" />}
 
         {layers.plots && construction.plots.map((plot) => (
           <g key={plot.id} className="plot-symbol">
@@ -195,7 +251,7 @@ export function Plan2D({
           <polygon
             points={points}
             fill="none"
-            stroke={`url(#${patternIds[1]})`}
+            stroke={`url(#${patternIds[1 % patternIds.length]})`}
             strokeWidth={Math.max(7, boardWidthPx * 0.78)}
             strokeLinejoin="round"
             opacity="0.98"
@@ -235,7 +291,8 @@ export function Plan2D({
       <div className={`texture-quality-note ${texture.status}`}>
         <strong>{textureStatusLabel(texture)}</strong>
         <span>{texture.label}</span>
-        {texture.status === 'close' && <small>Rendu de projection, pas une photographie contractuelle du produit exact.</small>}
+        {materialProfile && <small>Profil B1 : stries renforcées, bande centrale plus lisse et variations entre lames.</small>}
+        {!materialProfile && texture.status === 'close' && <small>Rendu de projection, pas une photographie contractuelle du produit exact.</small>}
         {texture.status === 'neutral' && <small>Aucune texture suffisamment fiable n’est encore associée à cette lame.</small>}
       </div>
     </div>

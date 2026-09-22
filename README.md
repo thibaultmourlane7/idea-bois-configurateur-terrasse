@@ -1,47 +1,34 @@
-# IDEA Bois — Configurateur Terrasse V0.14.2-A
+# IDEA Bois — Configurateur Terrasse V0.14.2-B1
 
-## Bibliothèque de textures réalistes
+## Affinage visuel Pin du Nord strié
 
-La V0.14.2-A remplace le rendu global de la V0.14.1 par une bibliothèque indépendante de matériaux.
+Ce sous-lot affine uniquement le rendu visuel du Pin du Nord strié vert et marron.
 
-### États de texture
-- **exact** : texture du produit exact, source vérifiée ;
-- **close** : texture de projection proche, source et licence explicites ;
-- **neutral** : aucune texture suffisamment fiable.
+### Cible visuelle
+Le profil strié est désormais représenté avec :
+- deux bandes de rainures fines et serrées sur les côtés ;
+- une zone centrale plus lisse ;
+- joints de lames distincts des rainures ;
+- ombre + léger reflet sur chaque rainure pour créer du relief ;
+- variations de départ de texture entre les lames ;
+- variations légères de luminosité ;
+- nœuds répartis de façon déterministe.
 
-Une texture proche n'est jamais présentée comme la photo contractuelle du produit.
+### Pin vert / marron
+Les deux finitions possèdent :
+- un profil matériel distinct ;
+- une teinte distincte ;
+- une texture de base pin noueux ;
+- le même principe de stries, sans partager la même couleur.
 
-## 8 finitions prioritaires couvertes
-- Pin du Nord strié vert ;
-- Pin du Nord strié marron ;
-- Cumaru ;
-- Padouk ;
-- Ipé ;
-- Garapa ;
-- SILVADEC Atmosphère Gris Ushuaia ;
-- SILVADEC Atmosphère Nuances Ipé.
+Le rendu reste déclaré **Texture proche** : il sert à la projection client et ne prétend pas être une photo contractuelle de la référence exacte.
 
-Les variantes Pin lisse vert/marron sont également mappées pour cohérence catalogue.
+### Vues concernées
+- cartes produit ;
+- vue 2D ;
+- vue 3D ;
+- vue de côté ;
+- habillage de rive.
 
-## Nouveau rendu 2D
-La texture n'est plus projetée comme une grande image sur toute la terrasse.
-
-Chaque lame est maintenant dessinée séparément :
-- largeur réelle de lame ;
-- jeu réel entre lames ;
-- orientation longueur/largeur ;
-- coupure réelle autour des réservations ;
-- décalage de texture entre les rangées ;
-- stries longitudinales visibles pour les profils striés ;
-- même matière utilisée pour les rives lorsque l'habillage est réalisé avec la même lame.
-
-## Sources de base
-Les textures de projection utilisées dans ce lot viennent de Poly Haven, sous licence CC0.
-Les pages produit IDEA Bois ou bibliothèques spécialisées servent de référence visuelle pour la teinte/essence, sans être revendiquées comme texture exacte.
-
-## 3D
-La vue 3D utilise désormais le même résolveur de matériau.
-Le PBR avancé (normal, roughness, relief des stries, éclairage) reste prévu pour V0.14.2-B.
-
-## Règle ferme
-Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.
+### Métier
+Aucun calcul de prix, quantité, structure, panier ou règle technique n'est modifié par ce lot.

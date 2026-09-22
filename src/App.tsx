@@ -16,6 +16,7 @@ import { restoreProjectFromUrl } from './commercial/share';
 import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
 import { FINISHED_LAYERS, layersForStep, type ConstructionLayers, type VisualPreset } from './visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from './visual/resolveBoardTexture';
+import { resolveMaterialProfile } from './visual/materialProfiles';
 
 const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027') ?? ideaBoisBoards[0];
 
@@ -194,7 +195,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Construction progressive • textures réalistes • structure • rives</div>
+          <div className="header-note">Construction progressive • Pin strié B1 • structure • rives</div>
         </div>
       </header>
 
@@ -251,12 +252,13 @@ export default function App() {
                 {filteredBoards.map((board) => {
                   const readiness = getProductReadiness(board);
                   const texture = resolveBoardTexture(board);
+                  const materialProfile = resolveMaterialProfile(board);
                   const comparing = compareIds.includes(board.id);
                   return (
                     <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
                       <button type="button" className="product-select" onClick={() => setProject({ ...project, board })}>
                         <div
-                          className={`product-swatch ${board.technical.materialFamily} texture-${texture.status} ${texture.grooveCount ? 'has-grooves' : ''}`}
+                          className={`product-swatch ${board.technical.materialFamily} texture-${texture.status} ${materialProfile ? 'pin-strie-b1' : texture.grooveCount ? 'has-grooves' : ''}`}
                           style={texture.textureImageUrl
                             ? {
                                 backgroundImage: `linear-gradient(${hexToRgba(texture.tintColor ?? '#ffffff', texture.tintOpacity ?? 0)}, ${hexToRgba(texture.tintColor ?? '#ffffff', texture.tintOpacity ?? 0)}), url("${texture.previewImageUrl ?? texture.textureImageUrl}")`,

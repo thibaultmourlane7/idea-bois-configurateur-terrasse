@@ -3,6 +3,8 @@ import type { BasketResult, ProjectInput } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
+import { resolveMaterialProfile } from '../visual/materialProfiles';
+import { buildGrooveLines } from '../visual/texturePainter';
 
 export function SideView({
   input,
@@ -16,6 +18,8 @@ export function SideView({
   const patternId = `side-texture-${useId().replace(/:/g, '')}`;
   const construction = buildConstructionVisual(input, basket);
   const texture = resolveBoardTexture(input.board);
+  const materialProfile = resolveMaterialProfile(input.board);
+  const grooveLines = buildGrooveLines(materialProfile);
   const totalHeightCm = Math.max(8, input.heightCm);
   const deckThicknessCm = input.board.thicknessMm / 10;
   const joistHeightCm = 4;
@@ -32,7 +36,7 @@ export function SideView({
 
   return (
     <div className="visual-card side-view-card">
-      <div className="visual-title"><span>Vue de côté</span><code>IB-TERR-SIDE-0142</code></div>
+      <div className="visual-title"><span>Vue de côté</span><code>IB-TERR-SIDE-0142-B1</code></div>
       <svg viewBox="0 0 640 210" className="side-view-svg" role="img" aria-label="Coupe latérale de la terrasse">
         <defs>
           <pattern id={patternId} width="160" height="44" patternUnits="userSpaceOnUse">
@@ -100,7 +104,18 @@ export function SideView({
             {Array.from({ length: Math.max(1, construction.cladding.rowCount ?? 1) }, (_, index) => {
               const rows = Math.max(1, construction.cladding.rowCount ?? 1);
               const rowH = (claddingHeightCm * scaleY) / rows;
-              return <line key={index} x1="70" x2="564" y1={deckY + rowH * (index + 1)} y2={deckY + rowH * (index + 1)} stroke="rgba(55,45,38,.45)" opacity="0.75" />;
+              const rowTop = deckY + rowH * index;
+              return (
+                <g key={index}>
+                  <line x1="70" x2="564" y1={rowTop + rowH} y2={rowTop + rowH} stroke="rgba(55,45,38,.50)" opacity="0.85" />
+                  {grooveLines.map((groove, grooveIndex) => (
+                    <g key={grooveIndex}>
+                      <line x1="70" x2="564" y1={rowTop + groove.ratio * rowH} y2={rowTop + groove.ratio * rowH} stroke={`rgba(38,31,25,${groove.shadowOpacity})`} strokeWidth="0.8" />
+                      <line x1="70" x2="564" y1={rowTop + groove.ratio * rowH - 0.55} y2={rowTop + groove.ratio * rowH - 0.55} stroke={`rgba(238,226,202,${groove.highlightOpacity})`} strokeWidth="0.4" />
+                    </g>
+                  ))}
+                </g>
+              );
             })}
           </g>
         )}
@@ -131,6 +146,7 @@ export function SideView({
       <div className={`texture-quality-note compact ${texture.status}`}>
         <strong>{textureStatusLabel(texture)}</strong>
         <span>{texture.label}</span>
+        {materialProfile && <small>Profil B1 strié renforcé.</small>}
       </div>
     </div>
   );

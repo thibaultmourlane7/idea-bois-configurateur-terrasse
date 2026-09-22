@@ -10,13 +10,13 @@ import { validateScope } from './scope';
 import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-0142';
+export const VERSION_TAG = 'IB-TERR-VERSION-0142-B1';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + bibliothèque textures réalistes + rendu lame par lame V0.14.2-A.`];
+  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + rendu Pin du Nord strié renforcé V0.14.2-B1.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

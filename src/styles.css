@@ -403,3 +403,23 @@
   .texture-quality-note{grid-template-columns:1fr}
   .texture-quality-note strong{grid-row:auto;width:max-content}
 }
+
+
+/* V0.14.2-B1 — Pin du Nord strié renforcé */
+.product-swatch.pin-strie-b1::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg,rgba(36,31,25,.42) 0,rgba(36,31,25,.42) 1px,rgba(238,226,202,.16) 1px,rgba(238,226,202,.16) 2px,transparent 2px,transparent 5px) left top/31% 100% no-repeat,
+    repeating-linear-gradient(0deg,rgba(36,31,25,.42) 0,rgba(36,31,25,.42) 1px,rgba(238,226,202,.16) 1px,rgba(238,226,202,.16) 2px,transparent 2px,transparent 5px) right top/31% 100% no-repeat;
+  mix-blend-mode:multiply;
+}
+.product-swatch.pin-strie-b1::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(38,31,25,.42);
+}

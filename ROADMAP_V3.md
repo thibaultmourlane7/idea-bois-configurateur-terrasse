@@ -1,27 +1,28 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.14.2-A
-- construction progressive V0.14 ;
-- habillage bois et supports verticaux ;
-- bibliothèque de textures indépendante ;
-- 8 finitions prioritaires en rendu de projection ;
-- statuts exact / proche / neutre ;
-- rendu 2D lame par lame ;
-- sens de pose et jeu conservés ;
-- profils striés différenciés ;
-- même matériau sur les rives ;
-- 3D branchée sur le même résolveur.
+## Présent V0.14.2-B1
+- bibliothèque textures V0.14.2-A ;
+- Pin du Nord strié vert et marron affinés ;
+- deux bandes de stries + centre lisse ;
+- 26 rainures visuelles ;
+- joints renforcés ;
+- nœuds et variations entre lames ;
+- même profil en 2D, 3D et rive.
 
-## V0.14.2-B
-- héberger localement les textures validées ;
-- ajouter normal maps / roughness / relief ;
-- calibrer précisément l'échelle PBR ;
-- améliorer le composite SILVADEC ;
-- ajouter plusieurs variantes de grain par essence ;
-- remplacer progressivement les textures proches par des textures exactes lorsque disponibles et autorisées.
+## Étape suivante
+### V0.14.2-B2 — Cumaru + Garapa
+- affiner le grain des bois exotiques lisses ;
+- calibrer les teintes ;
+- créer plusieurs variantes naturelles ;
+- conserver une texture sans rainures.
 
-## V0.15
-Éditeur visuel interactif, déplacement/redimensionnement des réservations, cotations, zoom/pan et forme libre.
+### V0.14.2-B3 — PBR 3D
+- normal map ;
+- roughness ;
+- relief de stries ;
+- éclairage matière ;
+- hébergement local des textures validées.
 
-## V0.16
-Structure technique avancée, hauteurs multiples, pente, implantation structurelle des plots et panier plus proche d'une commande réelle.
+## Puis
+V0.15 : éditeur visuel interactif.
+V0.16 : structure technique avancée.

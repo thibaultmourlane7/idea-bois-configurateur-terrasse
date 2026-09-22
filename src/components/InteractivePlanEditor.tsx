@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ProjectInput, TerraceObstacle, TerracePoint } from '../domain/types';
+import type { ProjectInput, ReferencePlanTransform, TerraceObstacle, TerracePoint } from '../domain/types';
+import { calibrateReferencePlan, fitReferencePlan, referencePlanDiagnostics, zoomReferencePlan } from '../domain/referencePlan';
 import { getDeckBoundingSizeM, getDeckOutlinePointsM, isSimplePolygon } from '../engine/geometry';
 import {
   addVertexOnLongestEdge,
@@ -14,13 +15,14 @@ import {
   vertexLabel,
 } from '../editor/interactiveGeometry';
 
-type Tool = 'select' | 'pan' | 'draw';
+type Tool = 'select' | 'pan' | 'draw' | 'reference' | 'calibrate';
 
 type DragState =
   | { kind: 'move-obstacle'; id: string; offsetXM: number; offsetYM: number }
   | { kind: 'resize-obstacle'; id: string }
   | { kind: 'vertex'; index: number }
   | { kind: 'pan'; startX: number; startY: number; panX: number; panY: number }
+  | { kind: 'move-reference'; startXM: number; startYM: number; offsetXM: number; offsetYM: number }
   | null;
 
 type Props = {
@@ -63,7 +65,8 @@ export function InteractivePlanEditor({
   const [selectedObstacleId, setSelectedObstacleId] = useState<string | null>(null);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
-  const [referenceOpacity, setReferenceOpacity] = useState(0.34);
+  const [calibrationPoints, setCalibrationPoints] = useState<TerracePoint[]>([]);
+  const [calibrationDistanceM, setCalibrationDistanceM] = useState('');
   const [drawPoints, setDrawPoints] = useState<TerracePoint[]>([]);
   const [orthogonalMode, setOrthogonalMode] = useState(false);
   const [editorMessage, setEditorMessage] = useState<string | null>(null);
@@ -96,6 +99,8 @@ export function InteractivePlanEditor({
   const originY = (HEIGHT - viewport.heightM * baseScale) / 2 - viewport.minY * baseScale;
   const edgeLengths = useMemo(() => polygonEdgeLengths(project.freeformPoints ?? []), [project.freeformPoints]);
   const selectedObstacle = project.obstacles.find((obstacle) => obstacle.id === selectedObstacleId) ?? null;
+  const referencePlan = project.referencePlan;
+  const referenceDiagnostics = referencePlanDiagnostics(referencePlan);
 
   const screenPoint = (event: React.PointerEvent<SVGSVGElement | SVGElement>) => {
     const svg = svgRef.current;

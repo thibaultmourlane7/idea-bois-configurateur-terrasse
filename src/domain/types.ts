@@ -1,5 +1,6 @@
 export type ShapeType = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'circle' | 'freeform';
 export type BoardOrientation = 'length' | 'width';
+export type DeckLayingPattern = 'straight' | 'half' | 'third';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
 export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
@@ -165,6 +166,8 @@ export interface ProjectInput {
   includeGeotextile: boolean;
   drainage: DrainageAnswer;
   orientation: BoardOrientation;
+  /** Motif de départ des lames. Diagonale non activée tant que son moteur n'est pas validé. */
+  layingPattern?: DeckLayingPattern;
   board: BoardSpec;
   joist: JoistSpec;
   usage: 'residential';

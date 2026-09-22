@@ -12,7 +12,7 @@ import { LayerControls } from './components/LayerControls';
 import { LevelingEditor } from './components/LevelingEditor';
 import { SupportHeightMap } from './components/SupportHeightMap';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
-import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
+import type { BoardOrientation, DeckLayingPattern, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 import { restoreProjectFromUrl } from './commercial/share';
 import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
@@ -55,6 +55,7 @@ const initialProject: ProjectInput = {
   includeGeotextile: false,
   drainage: 'unknown',
   orientation: 'length',
+  layingPattern: 'straight',
   board: defaultBoard,
   joist: demoJoist,
   usage: 'residential',
@@ -207,7 +208,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.16.1 • plan coté • raccords • contour</div>
+          <div className="header-note">Structure V0.16.2 • calepinage CALPI • raccords alignés • contour</div>
         </div>
       </header>
 
@@ -327,6 +328,31 @@ export default function App() {
                   </button>
                 ))}
               </div></div>
+
+              <div className="laying-pattern-block">
+                <h3>Quel calepinage souhaitez-vous pour les lames ?</h3>
+                <p>Le motif reprend la logique CALPI. Les raccords restent sur des axes cohérents pour la structure.</p>
+                <div className="laying-pattern-grid">
+                  {([
+                    ['straight', 'Pose entière / droite', 'Départ avec une lame entière à chaque rangée'],
+                    ['half', 'Pose décalée 1/2', 'Une rangée sur deux démarre à une demi-lame'],
+                    ['third', 'Pose décalée 1/3', 'Cycle strict : entière, 2/3, 1/3'],
+                  ] as const).map(([value, title, subtitle]) => (
+                    <ChoiceCard
+                      key={value}
+                      active={(project.layingPattern ?? 'straight') === value}
+                      title={title}
+                      subtitle={subtitle}
+                      onClick={() => setProject({ ...project, layingPattern: value as DeckLayingPattern })}
+                    />
+                  ))}
+                  <button type="button" className="choice-card laying-pattern-disabled" disabled>
+                    <span className="choice-check" />
+                    <strong>Pose diagonale</strong>
+                    <small>Moteur non encore validé pour la terrasse — aucune approximation activée.</small>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

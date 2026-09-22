@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-016.1';
+export const VERSION_TAG = 'IB-TERR-VERSION-016.2';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Stabilisation visible : forme libre cotée, réservations débordantes, raccords et lambourdes périphériques.`];
+  const trace: string[] = [`[${VERSION_TAG}] Calepinage CALPI adapté terrasse : pose entière/1-2/1-3, raccords globaux cohérents et lambourdes sans explosion d’axes.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -29,7 +29,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   let layout: LayoutResult | undefined;
   if (input.board.gapMm != null && Number.isFinite(input.board.gapMm) && input.board.gapMm >= 0) {
     layout = computeLayout(input);
-    trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires.`);
+    trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées ; motif ${input.layingPattern ?? 'straight'} ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires ; ${new Set(layout.buttJoints.map((joint) => Math.round(joint.axisPositionMm))).size} axe(s) de raccord.`);
     trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames commerciales ; chute matière ${layout.wastePercent.toFixed(2)} %.`);
   } else {
     diagnostics.push({

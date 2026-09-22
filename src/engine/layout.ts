@@ -1,17 +1,64 @@
-import type { LayoutBoardSegment, LayoutButtJoint, LayoutResult, ProjectInput, RequiredPiece } from '../domain/types';
+import type {
+  DeckLayingPattern,
+  LayoutBoardSegment,
+  LayoutButtJoint,
+  LayoutResult,
+  ProjectInput,
+  RequiredPiece,
+} from '../domain/types';
 import { optimizeCuts } from './cuts';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm } from './geometry';
 
-export const LAYOUT_TAG = 'SA-TERR-LAYOUT-001';
+export const LAYOUT_TAG = 'SA-TERR-LAYOUT-002';
 
+interface PatternCell {
+  index: number;
+  startMm: number;
+  endMm: number;
+}
+
+function starterLengthForPattern(pattern: DeckLayingPattern, rowIndex: number, materialLengthMm: number): number {
+  if (pattern === 'half') return rowIndex % 2 === 0 ? materialLengthMm : materialLengthMm / 2;
+  if (pattern === 'third') {
+    const cycle = rowIndex % 3;
+    if (cycle === 0) return materialLengthMm;
+    if (cycle === 1) return (materialLengthMm * 2) / 3;
+    return materialLengthMm / 3;
+  }
+  return materialLengthMm;
+}
+
+function buildPatternCells(runLengthMm: number, materialLengthMm: number, starterLengthMm: number): PatternCell[] {
+  const cells: PatternCell[] = [];
+  let cursor = 0;
+  let index = 0;
+
+  while (cursor < runLengthMm - 0.001) {
+    const targetLengthMm = index === 0 ? starterLengthMm : materialLengthMm;
+    const endMm = Math.min(runLengthMm, cursor + Math.max(1, targetLengthMm));
+    cells.push({ index, startMm: cursor, endMm });
+    cursor = endMm;
+    index += 1;
+  }
+
+  return cells;
+}
+
+/**
+ * Calepinage terrasse inspiré de CALPI :
+ * le motif est défini globalement sur chaque rangée, puis intersecté avec la géométrie réelle.
+ * Une rive diagonale ne décale donc plus le raccord de chaque rangée et n'engendre plus
+ * un nouvel axe de lambourde pour chaque lame.
+ */
 export function computeLayout(input: ProjectInput): LayoutResult {
   if (input.board.gapMm == null || !Number.isFinite(input.board.gapMm) || input.board.gapMm < 0) {
     throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
   }
 
   const bounds = getDeckBoundingSizeM(input);
-  const transverse = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
-  const pitch = input.board.widthMm + input.board.gapMm;
+  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
+  const runLengthMm = (input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000;
+  const pitchMm = input.board.widthMm + input.board.gapMm;
   const requiredPieces: RequiredPiece[] = [];
   const boardSegments: LayoutBoardSegment[] = [];
   const buttJoints: LayoutButtJoint[] = [];
@@ -19,52 +66,59 @@ export function computeLayout(input: ProjectInput): LayoutResult {
     ? input.board.availableLengthsMm
     : [input.board.lengthMm];
   const maxStockLengthMm = Math.max(...stockLengthsMm);
+  const pattern: DeckLayingPattern = input.layingPattern ?? 'straight';
   let rowIndex = 0;
 
-  for (let center = input.board.widthMm / 2; center <= transverse + 0.001; center += pitch) {
-    const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
+  for (let centerMm = input.board.widthMm / 2; centerMm <= transverseMm + 0.001; centerMm += pitchMm) {
+    const intervals = getDeckIntervalsAtMm(input, centerMm, input.orientation, input.board.widthMm / 2);
+    if (!intervals.length) continue;
+
+    const starterLengthMm = starterLengthForPattern(pattern, rowIndex, maxStockLengthMm);
+    const patternCells = buildPatternCells(runLengthMm, maxStockLengthMm, starterLengthMm);
     let intervalIndex = 0;
 
-    for (const [start, end] of intervals) {
-      const lengthMm = end - start;
-      if (lengthMm <= 1) continue;
-      requiredPieces.push({
-        id: `R${rowIndex + 1}-S${intervalIndex + 1}`,
-        rowIndex,
-        lengthMm,
-      });
+    for (const [intervalStartMm, intervalEndMm] of intervals) {
+      if (intervalEndMm - intervalStartMm <= 1) continue;
 
-      let cursor = start;
-      let segmentIndex = 0;
-      while (cursor < end - 0.001) {
-        const next = Math.min(end, cursor + maxStockLengthMm);
-        boardSegments.push({
-          id: `R${rowIndex + 1}-I${intervalIndex + 1}-P${segmentIndex + 1}`,
+      const installed: LayoutBoardSegment[] = [];
+      for (const cell of patternCells) {
+        const startMm = Math.max(intervalStartMm, cell.startMm);
+        const endMm = Math.min(intervalEndMm, cell.endMm);
+        if (endMm - startMm <= 1) continue;
+
+        const segmentIndex = installed.length;
+        const id = `R${rowIndex + 1}-I${intervalIndex + 1}-P${segmentIndex + 1}`;
+        const segment: LayoutBoardSegment = {
+          id,
           rowIndex,
           intervalIndex,
           segmentIndex,
-          transverseCenterMm: center,
-          startMm: cursor,
-          endMm: next,
-          lengthMm: next - cursor,
-        });
-
-        if (next < end - 0.001) {
-          buttJoints.push({
-            id: `BJ-R${rowIndex + 1}-I${intervalIndex + 1}-P${segmentIndex + 1}`,
-            rowIndex,
-            transverseCenterMm: center,
-            axisPositionMm: next,
-          });
-        }
-
-        cursor = next;
-        segmentIndex += 1;
+          transverseCenterMm: centerMm,
+          startMm,
+          endMm,
+          lengthMm: endMm - startMm,
+        };
+        installed.push(segment);
+        boardSegments.push(segment);
+        requiredPieces.push({ id, rowIndex, lengthMm: segment.lengthMm });
       }
+
+      for (let i = 0; i + 1 < installed.length; i += 1) {
+        const left = installed[i];
+        const right = installed[i + 1];
+        if (Math.abs(left.endMm - right.startMm) > 0.01) continue;
+        buttJoints.push({
+          id: `BJ-R${rowIndex + 1}-I${intervalIndex + 1}-P${i + 1}`,
+          rowIndex,
+          transverseCenterMm: centerMm,
+          axisPositionMm: left.endMm,
+        });
+      }
+
       intervalIndex += 1;
     }
 
-    if (intervalIndex > 0) rowIndex += 1;
+    rowIndex += 1;
   }
 
   const hasButtJoints = buttJoints.length > 0;

@@ -145,3 +145,13 @@
 @media(max-width:700px){
   .stabilisation-banner,.double-joist-heading{align-items:flex-start;flex-direction:column}
 }
+
+
+/* V0.16.2 — motifs de pose CALPI adaptés terrasse */
+.laying-pattern-block{margin-top:18px;padding-top:16px;border-top:1px solid #e1e9ef}
+.laying-pattern-block h3{margin:0 0 5px;color:#244b68;font-size:13px}
+.laying-pattern-block>p{margin:0 0 11px;color:#718391;font-size:9px;line-height:1.45}
+.laying-pattern-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.laying-pattern-disabled{opacity:.55;cursor:not-allowed!important;border-style:dashed!important}
+@media(max-width:980px){.laying-pattern-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.laying-pattern-grid{grid-template-columns:1fr}}

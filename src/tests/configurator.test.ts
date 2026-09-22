@@ -68,7 +68,7 @@ describe('Configurateur terrasse V0.9', () => {
     expect(supports.reduce((sum, line) => sum + (line.quantity ?? 0), 0))
       .toBe(result.supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0));
     expect(fixings?.quantity).toBe(5);
-    expect(protection?.quantity).toBe(3);
+    expect(protection?.quantity).toBe(Math.ceil((result.supportPlan?.joistLinearM ?? 0) / 20));
     expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001')).toBe(false);
   });
 

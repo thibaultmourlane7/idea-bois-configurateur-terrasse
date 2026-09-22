@@ -61,6 +61,15 @@ export interface BoardCatalogData {
   sourceStatus: string;
 }
 
+export interface BoardVisualData {
+  baseColor: string;
+  grainColor: string;
+  accentColor?: string;
+  imageUrl?: string;
+  imageSourcePageUrl?: string;
+  imageStatus: 'verified-media' | 'catalog-described';
+}
+
 export interface BoardSpec {
   id: string;
   label: string;
@@ -73,6 +82,7 @@ export interface BoardSpec {
   gapRangeMm?: [number, number];
   priceTtcPerM2?: number;
   isDemo: boolean;
+  visual?: BoardVisualData;
   catalog?: BoardCatalogData;
   commercialRecipeId?: 'idea-pin-nord-145x27' | 'idea-cumaru-145x21' | 'idea-garapa-145x21' | 'idea-padouk-120x21' | 'idea-ipe-140x20' | 'silvadec-atmosphere-138x23';
   technical: BoardTechnicalData;
@@ -96,6 +106,7 @@ export interface ProjectInput {
   supportType: SupportType;
   supportSystem: SupportSystem;
   edgeFinishMode: EdgeFinishMode;
+  edgeCladdingHeightCm: number;
   includeGeotextile: boolean;
   drainage: DrainageAnswer;
   orientation: BoardOrientation;

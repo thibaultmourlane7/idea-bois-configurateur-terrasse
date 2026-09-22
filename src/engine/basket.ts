@@ -1,4 +1,5 @@
 import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput } from '../domain/types';
+import { computeEdgeCladding } from './edgeCladding';
 import {
   GEODECK_20M2,
   HARDWOOD_SCREWS_5X60_200,
@@ -282,12 +283,72 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
       sourceUrl: screws.sourceUrl,
     });
   } else {
-    lines.push(pending(
-      'edge-finish',
-      'accessories',
-      'Habillage latéral assorti',
-      `${geometry.perimeterM.toFixed(2)} ml de rives à habiller. La référence de finition compatible avec cette lame doit être validée avant chiffrage.`,
-    ));
+    const cladding = computeEdgeCladding(input);
+
+    if (cladding.status === 'exact' && cladding.mode === 'same-decking') {
+      lines.push({
+        id: 'edge-finish',
+        family: 'accessories',
+        label: `Habillage latéral — ${input.board.label}`,
+        productRef: input.board.catalog?.internalCodes.join(', '),
+        quantity: cladding.boardStockBoards?.length,
+        unit: 'lame(s)',
+        totalTtc: cladding.boardTotalTtc,
+        status: 'exact',
+        required: true,
+        note: `${cladding.rowCount} rang(s) sur ${input.edgeCladdingHeightCm.toFixed(0)} cm de hauteur • même lame que le platelage • ${cladding.boardPurchasedLinearM?.toFixed(2)} ml achetés.`,
+        sourceUrl: input.board.catalog?.sourceUrl,
+      });
+
+      lines.push({
+        id: 'edge-vertical-joists',
+        family: 'joists',
+        label: `Lambourdes verticales d’habillage — morceaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm`,
+        productRef: PIN_JOIST_60X40_2400.productRef,
+        quantity: cladding.verticalJoistStockBoards?.length,
+        unit: 'lambourde(s) 2,40 m',
+        unitPriceTtc: PIN_JOIST_60X40_2400.unitPriceTtc,
+        totalTtc: cladding.verticalJoistTotalTtc,
+        status: 'exact',
+        required: true,
+        note: `${cladding.verticalSupportCount} support(s) verticaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires.`,
+        sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
+      });
+    } else if (cladding.mode === 'same-decking' && cladding.boardTotalTtc != null) {
+      lines.push({
+        id: 'edge-finish',
+        family: 'accessories',
+        label: `Habillage latéral — ${input.board.label}`,
+        productRef: input.board.catalog?.internalCodes.join(', '),
+        quantity: cladding.boardStockBoards?.length,
+        unit: 'lame(s)',
+        unitPriceTtc: input.board.priceTtcPerM2,
+        totalTtc: cladding.boardTotalTtc,
+        status: 'exact',
+        required: true,
+        note: `${cladding.rowCount} rang(s) • même lame que le platelage. ${cladding.reason ?? ''}`.trim(),
+        sourceUrl: input.board.catalog?.sourceUrl,
+      });
+      lines.push(pending(
+        'edge-vertical-joists',
+        'joists',
+        'Lambourdes verticales d’habillage',
+        cladding.reason ?? 'L’entraxe des supports verticaux doit être validé pour cette gamme.',
+      ));
+    } else {
+      lines.push(pending(
+        'edge-finish',
+        'accessories',
+        'Habillage latéral avec la même lame',
+        cladding.reason ?? `${geometry.perimeterM.toFixed(2)} ml de rives à habiller. Le calcul doit être validé pour cette géométrie.`,
+      ));
+      lines.push(pending(
+        'edge-vertical-joists',
+        'joists',
+        'Lambourdes verticales d’habillage',
+        cladding.reason ?? 'La structure verticale doit être validée.',
+      ));
+    }
   }
 
   return lines;

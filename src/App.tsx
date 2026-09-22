@@ -7,11 +7,14 @@ import { Results } from './components/Results';
 import { CommercialActions } from './components/CommercialActions';
 import { VariantComparator } from './components/VariantComparator';
 import { GeometryEditor } from './components/GeometryEditor';
+import { SideView } from './components/SideView';
+import { LayerControls } from './components/LayerControls';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { BoardOrientation, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 import { restoreProjectFromUrl } from './commercial/share';
 import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
+import { FINISHED_LAYERS, layersForStep, type ConstructionLayers, type VisualPreset } from './visual/layers';
 
 const defaultBoard = ideaBoisBoards.find((board) => board.id === 'IDEA-TERR-G027') ?? ideaBoisBoards[0];
 
@@ -34,6 +37,7 @@ const initialProject: ProjectInput = {
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
   edgeFinishMode: 'none',
+  edgeCladdingHeightCm: 20,
   includeGeotextile: false,
   drainage: 'unknown',
   orientation: 'length',
@@ -44,8 +48,8 @@ const initialProject: ProjectInput = {
 
 const steps = [
   { id: 1, label: 'Dimensions' },
-  { id: 2, label: 'Support' },
-  { id: 3, label: 'Lames' },
+  { id: 2, label: 'Lames' },
+  { id: 3, label: 'Support' },
   { id: 4, label: 'Finitions' },
   { id: 5, label: 'Votre projet' },
 ];
@@ -78,7 +82,7 @@ function boardFilter(board: ProjectInput['board']): ProductFilter {
 export default function App() {
   const [project, setProject] = useState<ProjectInput>(() => restoreProjectFromUrl(initialProject, window.location.href));
   const [step, setStep] = useState(1);
-  const [preview, setPreview] = useState<'2d' | '3d'>('2d');
+  const [preview, setPreview] = useState<'2d' | '3d' | 'side'>('2d');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [readinessFilter, setReadinessFilter] = useState<ProductReadinessFilter>('all');
@@ -86,7 +90,10 @@ export default function App() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [savedAvailable, setSavedAvailable] = useState(() => hasSavedProject());
+  const [visualPreset, setVisualPreset] = useState<VisualPreset>('finished');
+  const [visualLayers, setVisualLayers] = useState<ConstructionLayers>({ ...FINISHED_LAYERS });
   const result = useMemo(() => runConfigurator(project), [project]);
+  const progressiveLayers = useMemo(() => layersForStep(step), [step]);
   const geometryDiagnostics = result.diagnostics.filter((item) =>
     item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001')
   );
@@ -176,7 +183,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Formes avancées • réservations • comparateur • panier • PDF</div>
+          <div className="header-note">Construction progressive • textures • structure • rives • panier</div>
         </div>
       </header>
 
@@ -205,43 +212,7 @@ export default function App() {
 
           {step === 2 && (
             <div className="step-content">
-              <div className="section-heading"><span className="section-number">2</span><div><h2>Sur quoi sera posée la terrasse ?</h2><p>Les contrôles techniques restent en arrière-plan.</p></div></div>
-              <div className="choice-grid three-choice">
-                {([
-                  ['existing-concrete-slab', 'Dalle béton existante', 'Une dalle est déjà présente'],
-                  ['new-concrete-slab', 'Dalle béton neuve', 'La dalle sera créée pour le projet'],
-                  ['stabilized-ground', 'Sol stabilisé', 'Terrain préparé et drainant'],
-                ] as const).map(([value, title, subtitle]) => <ChoiceCard key={value} active={project.supportType === value} title={title} subtitle={subtitle} onClick={() => setProject({
-                    ...project,
-                    supportType: value as SupportType,
-                    includeGeotextile: value === 'stabilized-ground' ? project.includeGeotextile : false,
-                  })} />)}
-              </div>
-              <div className="question-block support-choice-block">
-                <h3>Comment la structure sera-t-elle supportée ?</h3>
-                <div className="choice-grid three-choice compact-choices">
-                  {([
-                    ['adjustable-pedestals', 'Plots réglables', 'Pour régler précisément la hauteur'],
-                    ['pads', 'Cales / appuis fixes', 'Pour une pose proche du support'],
-                    ['unknown', 'Je ne sais pas', 'Le configurateur le signalera sans inventer'],
-                  ] as const).map(([value, title, subtitle]) => (
-                    <ChoiceCard key={value} active={project.supportSystem === value} title={title} subtitle={subtitle} onClick={() => setProject({ ...project, supportSystem: value as SupportSystem })} />
-                  ))}
-                </div>
-              </div>
-
-              <label className="single-field">Hauteur souhaitée de la terrasse<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support jusqu'au dessus des lames.</small></label>
-              {project.supportType !== 'stabilized-ground' && (
-                <div className="question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
-                  {([['yes', 'Oui'], ['no', 'Non'], ['unknown', 'Je ne sais pas']] as const).map(([value, label]) => <button type="button" key={value} className={project.drainage === value ? 'active' : ''} onClick={() => setProject({ ...project, drainage: value as DrainageAnswer })}>{label}</button>)}
-                </div></div>
-              )}
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="step-content">
-              <div className="section-heading"><span className="section-number">3</span><div><h2>Choisissez le style de vos lames</h2><p>Les longueurs commerciales sont regroupées : le client choisit le produit, le moteur choisira les longueurs.</p></div></div>
+              <div className="section-heading"><span className="section-number">2</span><div><h2>Choisissez le style de vos lames</h2><p>Les longueurs commerciales sont regroupées : le client choisit le produit, le moteur choisira les longueurs.</p></div></div>
 
               <div className="catalog-toolbar">
                 <input className="catalog-search" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Rechercher : Ipé, Pin, Padouk, Cumaru, Silvadec…" />
@@ -272,7 +243,16 @@ export default function App() {
                   return (
                     <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
                       <button type="button" className="product-select" onClick={() => setProject({ ...project, board })}>
-                        <div className={`product-swatch ${board.technical.materialFamily}`} />
+                        <div
+                          className={`product-swatch ${board.technical.materialFamily}`}
+                          style={{
+                            backgroundColor: board.visual?.baseColor,
+                            backgroundImage: board.visual?.imageUrl
+                              ? `linear-gradient(rgba(0,0,0,.04),rgba(0,0,0,.04)), url("${board.visual.imageUrl}")`
+                              : `linear-gradient(105deg, ${board.visual?.baseColor ?? '#b4936d'}, ${board.visual?.accentColor ?? '#d0ad82'}, ${board.visual?.baseColor ?? '#b4936d'})`,
+                            backgroundSize: board.visual?.imageUrl ? 'cover' : '100% 100%',
+                          }}
+                        />
                         <div className="product-copy">
                           <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
                           <strong>{board.label}</strong>
@@ -310,6 +290,42 @@ export default function App() {
             </div>
           )}
 
+          {step === 3 && (
+            <div className="step-content">
+              <div className="section-heading"><span className="section-number">3</span><div><h2>Sur quoi sera posée la terrasse ?</h2><p>Les contrôles techniques restent en arrière-plan.</p></div></div>
+              <div className="choice-grid three-choice">
+                {([
+                  ['existing-concrete-slab', 'Dalle béton existante', 'Une dalle est déjà présente'],
+                  ['new-concrete-slab', 'Dalle béton neuve', 'La dalle sera créée pour le projet'],
+                  ['stabilized-ground', 'Sol stabilisé', 'Terrain préparé et drainant'],
+                ] as const).map(([value, title, subtitle]) => <ChoiceCard key={value} active={project.supportType === value} title={title} subtitle={subtitle} onClick={() => setProject({
+                    ...project,
+                    supportType: value as SupportType,
+                    includeGeotextile: value === 'stabilized-ground' ? project.includeGeotextile : false,
+                  })} />)}
+              </div>
+              <div className="question-block support-choice-block">
+                <h3>Comment la structure sera-t-elle supportée ?</h3>
+                <div className="choice-grid three-choice compact-choices">
+                  {([
+                    ['adjustable-pedestals', 'Plots réglables', 'Pour régler précisément la hauteur'],
+                    ['pads', 'Cales / appuis fixes', 'Pour une pose proche du support'],
+                    ['unknown', 'Je ne sais pas', 'Le configurateur le signalera sans inventer'],
+                  ] as const).map(([value, title, subtitle]) => (
+                    <ChoiceCard key={value} active={project.supportSystem === value} title={title} subtitle={subtitle} onClick={() => setProject({ ...project, supportSystem: value as SupportSystem })} />
+                  ))}
+                </div>
+              </div>
+
+              <label className="single-field">Hauteur souhaitée de la terrasse<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support jusqu'au dessus des lames.</small></label>
+              {project.supportType !== 'stabilized-ground' && (
+                <div className="question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
+                  {([['yes', 'Oui'], ['no', 'Non'], ['unknown', 'Je ne sais pas']] as const).map(([value, label]) => <button type="button" key={value} className={project.drainage === value ? 'active' : ''} onClick={() => setProject({ ...project, drainage: value as DrainageAnswer })}>{label}</button>)}
+                </div></div>
+              )}
+            </div>
+          )}
+
           {step === 4 && (
             <div className="step-content">
               <div className="section-heading">
@@ -336,6 +352,25 @@ export default function App() {
                     subtitle="Le configurateur ajoute les finitions compatibles quand elles sont connues"
                     onClick={() => setProject({ ...project, edgeFinishMode: 'full-perimeter' as EdgeFinishMode })}
                   />
+                </div>
+                {project.edgeFinishMode === 'full-perimeter' && (
+                  <label className="single-field edge-height-field">
+                    Hauteur de l’habillage
+                    <div className="input-unit compact">
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={project.edgeCladdingHeightCm}
+                        onChange={(e) => setProject({ ...project, edgeCladdingHeightCm: +e.target.value })}
+                      />
+                      <span>cm</span>
+                    </div>
+                    <small>Les lames de rive et les morceaux verticaux de lambourde sont recalculés avec cette hauteur.</small>
+                  </label>
+                )}
+                <div className="finish-live-side">
+                  <SideView input={project} basket={result.basket} layers={progressiveLayers} />
                 </div>
               </div>
 
@@ -390,8 +425,23 @@ export default function App() {
               </div>
               <Results input={project} result={result} />
               <CommercialActions project={project} result={result} version={VERSION_TAG} />
-              <div className="preview-toolbar"><div className="segmented small-segmented"><button type="button" className={preview === '2d' ? 'active' : ''} onClick={() => setPreview('2d')}>Vue 2D</button><button type="button" className={preview === '3d' ? 'active' : ''} onClick={() => setPreview('3d')}>Vue 3D</button></div><span>Produit : <strong>{project.board.label}</strong></span></div>
-              {preview === '2d' ? <Plan2D input={project} /> : <Preview3D input={project} />}
+              <div className="preview-toolbar">
+                <div className="segmented small-segmented">
+                  <button type="button" className={preview === '2d' ? 'active' : ''} onClick={() => setPreview('2d')}>Vue 2D</button>
+                  <button type="button" className={preview === '3d' ? 'active' : ''} onClick={() => setPreview('3d')}>Vue 3D</button>
+                  <button type="button" className={preview === 'side' ? 'active' : ''} onClick={() => setPreview('side')}>Vue de côté</button>
+                </div>
+                <span>Produit : <strong>{project.board.label}</strong></span>
+              </div>
+              <LayerControls
+                preset={visualPreset}
+                layers={visualLayers}
+                onPreset={(preset, layers) => { setVisualPreset(preset); setVisualLayers(layers); }}
+                onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
+              />
+              {preview === '2d' && <Plan2D input={project} basket={result.basket} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
+              {preview === '3d' && <Preview3D input={project} basket={result.basket} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
+              {preview === 'side' && <SideView input={project} basket={result.basket} layers={visualLayers} />}
               <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
               <div className="scope-reminder">Cette démo calcule uniquement les matériaux. Aucun temps de pose, aucune heure ni aucun coût de main-d'œuvre.</div>
             </div>
@@ -401,8 +451,13 @@ export default function App() {
         </section>
 
         <aside className="live-summary">
-          <span className="live-label">Votre terrasse</span>
-          <div className="live-preview"><Plan2D input={project} /></div>
+          <span className="live-label">Construction — étape {step}/5</span>
+          <div className="progressive-stage">
+            <strong>{step === 1 ? 'Contour du projet' : step === 2 ? 'Lambourdes' : step === 3 ? 'Lambourdes + plots' : step === 4 ? 'Structure + rives' : 'Terrasse finie'}</strong>
+            <small>{step === 1 ? 'Les réservations et dimensions définissent la forme.' : step === 2 ? 'La lame choisie détermine l’entraxe documenté.' : step === 3 ? 'Les appuis apparaissent avec le support sélectionné.' : step === 4 ? 'L’habillage et ses supports verticaux sont ajoutés.' : 'Les lames recouvrent la structure.'}</small>
+          </div>
+          <div className="live-preview"><Plan2D input={project} basket={result.basket} layers={progressiveLayers} /></div>
+          {step === 4 && <div className="live-side-preview"><SideView input={project} basket={result.basket} layers={progressiveLayers} /></div>}
           <div className="live-stats"><div><span>Surface nette</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Réservations</span><strong>{project.obstacles.length}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
           <div className="speedarti-note"><span>✓</span><p>Le projet peut être partagé, repris par un conseiller et préparé pour devis/panier. Les connexions réelles restent désactivées dans la démo.</p></div>
           <code className="version-code">{VERSION_TAG}</code>

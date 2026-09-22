@@ -248,3 +248,40 @@
 .geometry-breakdown span{font-size:10px;color:#6e8291;background:#f5f8fa;border-radius:999px;padding:5px 8px}
 @media(max-width:900px){.shape-selector{grid-template-columns:repeat(3,1fr)}.obstacle-edit-grid,.obstacle-draft-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.shape-selector{grid-template-columns:repeat(2,1fr)}.obstacle-edit-grid,.obstacle-draft-grid{grid-template-columns:1fr}.obstacle-heading{flex-direction:column}}
+
+
+/* V0.14 — construction visuelle progressive, textures et couches */
+.progressive-stage{margin:7px 0 10px;padding:9px 10px;border-radius:10px;background:#f4f9fd;border:1px solid #dceaf4}
+.progressive-stage strong{display:block;color:#1d5278;font-size:11px}
+.progressive-stage small{display:block;margin-top:3px;color:#718493;font-size:9px;line-height:1.4}
+.construction-plan-card .plan{background:linear-gradient(180deg,#fbfcfd,#f6f8fa)}
+.construction-legend{display:flex;flex-wrap:wrap;gap:7px;padding:8px 10px 10px;border-top:1px solid #edf1f4}
+.construction-legend span{display:inline-flex;align-items:center;gap:5px;color:#657a89;font-size:9px;font-weight:750}
+.construction-legend i{display:inline-block;width:13px;height:5px;border-radius:2px}
+.legend-decking{background:#ad845f}
+.legend-joist{background:#62442e}
+.legend-plot{width:7px!important;height:7px!important;border-radius:50%!important;background:#2f3e49}
+.legend-edge{background:#8f6a4c}
+.legend-vertical{background:#503824}
+.texture-source-note{padding:0 10px 10px;color:#34744f;font-size:9px;font-weight:750}
+.layer-panel{margin:12px 0 14px;border:1px solid #dce7ee;border-radius:14px;background:#f9fbfc;overflow:hidden}
+.layer-presets{display:flex;gap:6px;padding:10px;border-bottom:1px solid #e7edf1}
+.layer-presets button{border:1px solid #d4e0e8;background:#fff;color:#526c7d;border-radius:9px;padding:7px 11px;font-size:10px;font-weight:850}
+.layer-presets button.active{background:#173b5f;border-color:#173b5f;color:#fff}
+.layer-toggles{display:flex;flex-wrap:wrap;gap:8px 14px;padding:10px}
+.layer-toggles label{display:inline-flex;align-items:center;gap:6px;color:#5b7182;font-size:10px;font-weight:750;cursor:pointer}
+.layer-toggles input{accent-color:#1976d2}
+.side-view-card{margin-top:14px}
+.side-view-svg{width:100%;height:auto;background:linear-gradient(#fbfcfd,#f7f9fa)}
+.edge-height-field{margin-top:16px}
+.finish-live-side{margin-top:16px}
+.live-side-preview .visual-title{display:none}
+.live-side-preview .visual-card{margin-top:9px}
+.live-side-preview .side-view-svg{max-height:150px}
+.product-swatch{background-position:center!important;background-repeat:no-repeat!important}
+.plot-symbol{filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.joist-lines{filter:drop-shadow(0 1px 1px rgba(0,0,0,.12))}
+@media(max-width:700px){
+  .layer-toggles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .layer-presets{overflow:auto}
+}

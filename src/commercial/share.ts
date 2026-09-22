@@ -2,7 +2,7 @@ import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput, ShapeType, TerraceObstacle } from '../domain/types';
 
 export interface ShareSnapshotV2 {
-  v: 2;
+  v: 3;
   projectName: string;
   shape: ProjectInput['shape'];
   dimensions: ProjectInput['dimensions'];
@@ -11,6 +11,7 @@ export interface ShareSnapshotV2 {
   supportType: ProjectInput['supportType'];
   supportSystem: ProjectInput['supportSystem'];
   edgeFinishMode: ProjectInput['edgeFinishMode'];
+  edgeCladdingHeightCm: number;
   includeGeotextile: boolean;
   drainage: ProjectInput['drainage'];
   orientation: ProjectInput['orientation'];
@@ -36,7 +37,7 @@ function validShape(value: unknown): ShapeType {
 
 export function projectToShareToken(project: ProjectInput): string {
   const snapshot: ShareSnapshotV2 = {
-    v: 2,
+    v: 3,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -45,6 +46,7 @@ export function projectToShareToken(project: ProjectInput): string {
     supportType: project.supportType,
     supportSystem: project.supportSystem,
     edgeFinishMode: project.edgeFinishMode,
+    edgeCladdingHeightCm: project.edgeCladdingHeightCm,
     includeGeotextile: project.includeGeotextile,
     drainage: project.drainage,
     orientation: project.orientation,
@@ -57,7 +59,7 @@ export function projectFromShareToken(token: string, fallback: ProjectInput): Pr
   try {
     const raw = new TextDecoder().decode(base64UrlToBytes(token));
     const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV2>, 'v'> & { v?: number };
-    if ((snapshot.v !== 1 && snapshot.v !== 2) || !snapshot.boardId || !snapshot.dimensions) return fallback;
+    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3) || !snapshot.boardId || !snapshot.dimensions) return fallback;
     const board = ideaBoisBoards.find((item) => item.id === snapshot.boardId);
     if (!board) return fallback;
 
@@ -71,6 +73,7 @@ export function projectFromShareToken(token: string, fallback: ProjectInput): Pr
       supportType: snapshot.supportType ?? fallback.supportType,
       supportSystem: snapshot.supportSystem ?? fallback.supportSystem,
       edgeFinishMode: snapshot.edgeFinishMode ?? fallback.edgeFinishMode,
+      edgeCladdingHeightCm: Number(snapshot.edgeCladdingHeightCm) || fallback.edgeCladdingHeightCm,
       includeGeotextile: Boolean(snapshot.includeGeotextile),
       drainage: snapshot.drainage ?? fallback.drainage,
       orientation: snapshot.orientation ?? fallback.orientation,

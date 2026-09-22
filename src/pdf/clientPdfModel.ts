@@ -116,7 +116,7 @@ export function buildClientPdfModel(
       ? `${eur(basket?.totalMinTtc ?? 0)} a ${eur(basket?.totalMaxTtc ?? 0)}`
       : eur(basket?.knownSubtotalTtc ?? 0);
 
-  const finishParts = [input.edgeFinishMode === 'full-perimeter' ? 'Habillage lateral du pourtour' : 'Sans habillage lateral'];
+  const finishParts = [input.edgeFinishMode === 'full-perimeter' ? `Habillage lateral du pourtour - hauteur ${fmt(input.edgeCladdingHeightCm)} cm` : 'Sans habillage lateral'];
   if (input.supportType === 'stabilized-ground') finishParts.push(input.includeGeotextile ? 'Geotextile inclus' : 'Sans geotextile');
 
   const lines = (basket?.lines ?? []).map((line): ClientPdfLine => ({

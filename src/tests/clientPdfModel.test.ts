@@ -23,6 +23,7 @@ const project: ProjectInput = {
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
   edgeFinishMode: 'none',
+  edgeCladdingHeightCm: 20,
   includeGeotextile: false,
   drainage: 'yes',
   orientation: 'length',

@@ -1,4 +1,5 @@
 import type { BoardSpec, JoistSpec } from '../domain/types';
+import { boardVisual } from './visuals';
 
 type RawBoard = [
   string, string, string, number, number, number | null, number[],
@@ -32,6 +33,7 @@ export const ideaBoisBoards: BoardSpec[] = RAW_IDEA_BOIS_BOARDS.map((row) => {
     gapRangeMm: isGarapa145x21 ? [8, 10] : undefined,
     priceTtcPerM2: priceTtcPerM2 ?? undefined,
     isDemo: false,
+    visual: boardVisual(id, material, profile, color, sourceUrl),
     commercialRecipeId: isPinNord145x27
       ? 'idea-pin-nord-145x27'
       : isCumaru145x21

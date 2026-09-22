@@ -23,6 +23,7 @@ const base: ProjectInput = {
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
   edgeFinishMode: 'none',
+  edgeCladdingHeightCm: 20,
   includeGeotextile: false,
   drainage: 'yes',
   orientation: 'length',
@@ -125,17 +126,21 @@ describe('Configurateur terrasse V0.9', () => {
     expect(result.basket?.status).toBe('partial');
   });
 
-  it('n’invente pas une finition latérale bois non validée', () => {
+  it('utilise la même lame pour l’habillage bois et ajoute les lambourdes verticales', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
     const result = runConfigurator({
       ...base,
       board,
       edgeFinishMode: 'full-perimeter',
+      edgeCladdingHeightCm: 20,
     });
     const finish = result.basket?.lines.find((line) => line.id === 'edge-finish');
-    expect(finish?.status).toBe('pending');
-    expect(finish?.totalTtc).toBeUndefined();
-    expect(result.basket?.status).toBe('partial');
+    const vertical = result.basket?.lines.find((line) => line.id === 'edge-vertical-joists');
+    expect(finish?.status).toBe('exact');
+    expect(finish?.productRef).toBe(board.catalog?.internalCodes.join(', '));
+    expect(finish?.totalTtc).toBeGreaterThan(0);
+    expect(vertical?.status).toBe('exact');
+    expect(vertical?.quantity).toBeGreaterThan(0);
   });
 
   it('optimise sur plusieurs longueurs commerciales autorisées', () => {

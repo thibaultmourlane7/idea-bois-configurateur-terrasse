@@ -1,50 +1,63 @@
-# IDEA Bois — Configurateur Terrasse V0.13
+# IDEA Bois — Configurateur Terrasse V0.14
 
-## Gros lot V0.13 — géométrie avancée
+## Gros lot V0.14 — construction visuelle progressive
 
-Cette version transforme la géométrie en vrai moteur de projet.
+La terrasse se construit désormais visuellement au fil du parcours.
 
-### Formes disponibles
-- rectangle ;
-- forme en L ;
-- forme en T ;
-- forme en U ;
-- cercle.
+### Nouveau parcours
+1. Dimensions / forme / réservations
+2. Lames et sens de pose
+3. Support, hauteur et plots
+4. Finitions / rives
+5. Projet final
 
-### Réservations / zones exclues
-Le particulier peut ajouter plusieurs zones qui ne doivent pas recevoir de lames :
-- piscine ;
-- arbre ;
-- poteau ;
-- regard ;
-- autre réservation.
+### Construction progressive
+- étape 1 : contour et réservations ;
+- étape 2 : lambourdes calculées selon la règle documentée de la lame ;
+- étape 3 : plots/appuis visualisés sous les lambourdes lorsque le panier fournit une quantité exacte ;
+- étape 4 : rives + supports verticaux d'habillage ;
+- étape 5 : lames visibles et structure masquée par défaut.
 
-Chaque réservation possède une position et des dimensions explicites.
+### Couches 2D / 3D
+La vue finale propose :
+- Lames
+- Rives
+- Lambourdes
+- Lambourdes verticales
+- Plots
+- Réservations
+- Support
 
-### Impact réel des réservations
-Les réservations :
-- retirent leur surface de la surface nette ;
-- réduisent les quantités et les budgets ;
-- coupent les rangées de lames en plusieurs segments ;
-- influencent l'optimisation des longueurs commerciales ;
-- sont visibles dans les vues 2D et 3D ;
-- sont conservées dans la sauvegarde locale ;
-- sont conservées dans le lien partagé ;
-- apparaissent dans le PDF client.
+Raccourcis :
+- Fini
+- Structure
+- Éclaté
 
-### Contrôles
-Le moteur bloque :
-- une réservation hors de la terrasse ;
-- des dimensions nulles ou négatives ;
-- deux réservations qui se chevauchent ;
-- une géométrie T/U/L incohérente.
+Une vue de côté complète la vue de dessus et l'aperçu 3D.
 
-### Compatibilité
-Les anciennes fonctions restent présentes :
-catalogue réel, comparateur, panier matériaux, finitions, PDF, partage, devis/rappel et préparation du panier.
+## Habillage bois intelligent
+Pour une terrasse bois sans accessoire de rive dédié :
+- la même lame que le platelage est utilisée ;
+- la hauteur d'habillage est saisie explicitement ;
+- le nombre de rangs est calculé ;
+- les longueurs de rive sont optimisées dans les longueurs commerciales ;
+- les lambourdes verticales sont ajoutées ;
+- chaque morceau vertical a la longueur de la hauteur d'habillage ;
+- l'entraxe horizontal suit la règle documentée de la gamme ;
+- les extrémités de chaque rive sont supportées ;
+- les morceaux de lambourde sont optimisés dans des longueurs commerciales de 2,40 m.
 
-## Connexions
-ERP/PIM/CRM/e-commerce restent préparés mais non activés avant vente du module.
+Le composite conserve ses accessoires de finition dédiés lorsqu'ils existent.
+
+## Textures produit
+Le modèle visuel distingue :
+- `verified-media` : image produit IDEA Bois directement vérifiée ;
+- `catalog-described` : rendu visuel basé sur l'essence, le profil et la teinte publiés, sans inventer une photo.
+
+La V0.14 intègre une première texture photo vérifiée sur la gamme Padouk et prépare le même mécanisme pour toutes les autres références dès que leurs médias sont mappés de façon fiable.
+
+## Important
+La position des plots en V0.14 est une représentation visuelle répartissant la quantité commerciale exacte du panier sur les lambourdes. Le positionnement structurel définitif des plots fait partie du moteur technique avancé V0.16.
 
 ## Règle ferme
 Aucun temps de pose, aucune durée, aucune heure ni aucun coût de main-d'œuvre.

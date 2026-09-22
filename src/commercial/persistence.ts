@@ -1,8 +1,8 @@
 import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput, ShapeType, TerraceObstacle } from '../domain/types';
 
-export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v013';
-const LEGACY_KEYS = ['idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
+export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v014';
+const LEGACY_KEYS = ['idea-bois-terrasse-v013', 'idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
 
 function validShape(value: unknown): ShapeType {
   return value === 'l-shape' || value === 't-shape' || value === 'u-shape' || value === 'circle' ? value : 'rectangle';
@@ -10,7 +10,7 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -19,6 +19,7 @@ export function saveProjectLocally(project: ProjectInput): void {
     supportType: project.supportType,
     supportSystem: project.supportSystem,
     edgeFinishMode: project.edgeFinishMode,
+    edgeCladdingHeightCm: project.edgeCladdingHeightCm,
     includeGeotextile: project.includeGeotextile,
     drainage: project.drainage,
     orientation: project.orientation,
@@ -43,6 +44,7 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     supportType: (snapshot.supportType as ProjectInput['supportType']) ?? fallback.supportType,
     supportSystem: (snapshot.supportSystem as ProjectInput['supportSystem']) ?? fallback.supportSystem,
     edgeFinishMode: (snapshot.edgeFinishMode as ProjectInput['edgeFinishMode']) ?? fallback.edgeFinishMode,
+    edgeCladdingHeightCm: Number(snapshot.edgeCladdingHeightCm) || fallback.edgeCladdingHeightCm,
     includeGeotextile: Boolean(snapshot.includeGeotextile),
     drainage: (snapshot.drainage as ProjectInput['drainage']) ?? fallback.drainage,
     orientation: (snapshot.orientation as ProjectInput['orientation']) ?? fallback.orientation,

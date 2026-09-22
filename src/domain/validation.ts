@@ -80,6 +80,24 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     }
   }
 
+  if (input.edgeFinishMode === 'full-perimeter') {
+    if (!Number.isFinite(input.edgeCladdingHeightCm) || input.edgeCladdingHeightCm <= 0) {
+      diagnostics.push({
+        tag: 'SA-TERR-EDGE-HEIGHT-001',
+        severity: 'blocking',
+        message: 'La hauteur d’habillage doit être renseignée avec une valeur positive.',
+        field: 'edgeCladdingHeightCm',
+      });
+    } else if (input.edgeCladdingHeightCm > input.heightCm) {
+      diagnostics.push({
+        tag: 'SA-TERR-EDGE-HEIGHT-002',
+        severity: 'blocking',
+        message: 'La hauteur d’habillage ne peut pas dépasser la hauteur finie de la terrasse.',
+        field: 'edgeCladdingHeightCm',
+      });
+    }
+  }
+
   for (const obstacle of input.obstacles) diagnostics.push(...validateObstacle(obstacle));
 
   if (!diagnostics.some((item) => item.severity === 'blocking')) {

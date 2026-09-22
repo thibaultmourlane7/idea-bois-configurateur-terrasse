@@ -24,6 +24,7 @@ export function Preview3D({
   exploded?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const visual = input.board.visual;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -36,7 +37,6 @@ export function Preview3D({
     const height = 390;
     const construction = buildConstructionVisual(input, basket);
     const bounds = getDeckBoundingSizeM(input);
-    const visual = input.board.visual;
     const deckLift = exploded ? -26 : 0;
     const joistLift = exploded ? 4 : 0;
     const plotDrop = exploded ? 14 : 0;

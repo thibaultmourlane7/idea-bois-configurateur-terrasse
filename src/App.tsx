@@ -540,7 +540,7 @@ export default function App() {
                 onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
               />
               {preview === '2d' && <Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
-              {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
+              {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layout={result.layout} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
               {preview === 'side' && <SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} />}
               <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
               <div className="scope-reminder">Cette démo calcule uniquement les matériaux. Aucun temps de pose, aucune heure ni aucun coût de main-d'œuvre.</div>

@@ -72,12 +72,12 @@ describe('Configurateur terrasse V0.9', () => {
     expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001')).toBe(false);
   });
 
-  it('conserve le panier commercial même si la validation normative finale bloque', () => {
+  it('utilise la règle commerciale validée du Pin du Nord sans blocage normatif générique', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
     const result = runConfigurator({ ...base, board });
-    expect(result.valid).toBe(false);
+    expect(result.valid).toBe(true);
     expect(result.basket?.status).toBe('complete');
-    expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-LAME-010')).toBe(true);
+    expect(result.diagnostics.some((d) => d.severity === 'blocking')).toBe(false);
   });
 
   it('affiche les familles manquantes au lieu de les masquer pour une lame sans jeu validé', () => {

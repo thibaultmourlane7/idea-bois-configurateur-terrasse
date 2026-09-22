@@ -67,20 +67,21 @@ describe('Catalogue et comparateur V0.12', () => {
     expect(result.basket?.status).toBe('partial');
   });
 
-  it('documente Padouk et Ipé comme calculs partiels sans inventer leur jeu', () => {
+  it('garde Padouk partiel mais active le jeu documenté de l’Ipé', () => {
     expect(board('IDEA-TERR-G015').commercialRecipeId).toBe('idea-padouk-120x21');
     expect(board('IDEA-TERR-G015').gapMm).toBeUndefined();
     expect(getProductReadiness(board('IDEA-TERR-G015')).level).toBe('partial');
 
     expect(board('IDEA-TERR-G011').commercialRecipeId).toBe('idea-ipe-140x20');
-    expect(board('IDEA-TERR-G011').gapMm).toBeUndefined();
-    expect(getProductReadiness(board('IDEA-TERR-G011')).level).toBe('partial');
+    expect(board('IDEA-TERR-G011').gapMm).toBe(5);
+    expect(board('IDEA-TERR-G011').gapRangeMm).toEqual([4, 5]);
+    expect(getProductReadiness(board('IDEA-TERR-G011')).level).toBe('complete');
   });
 
   it('ne donne plus une structure générique aux produits sans recette validée', () => {
     const bamboo = board('IDEA-TERR-G001');
     const result = runConfigurator({ ...project, board: bamboo });
-    expect(getProductReadiness(bamboo).level).toBe('price-only');
+    expect(getProductReadiness(bamboo).level).toBe('partial');
     expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('pending');
   });
 

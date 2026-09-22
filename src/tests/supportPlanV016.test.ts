@@ -199,11 +199,12 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     expect(restored.layingPattern).toBe('half');
   });
 
-  it('n’active pas le plan précis pour une gamme dont la structure compatible reste à valider', () => {
+  it('active le plan précis Cumaru quand sa structure compatible est documentée', () => {
     const cumaru = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G005')!;
     const project: ProjectInput = { ...base, board: cumaru };
     const plan = computeSupportPlan(project, computeLayout(project));
-    expect(plan.status).toBe('unavailable');
-    expect(plan.note).toContain('section de lambourde');
+    expect(plan.status).toBe('exact');
+    expect(plan.joistSpacingMm).toBe(450);
+    expect(plan.joistStockBoards.every((item) => item.stockLengthMm === 3950)).toBe(true);
   });
 });

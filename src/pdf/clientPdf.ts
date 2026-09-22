@@ -370,5 +370,54 @@ export async function generateClientPdf(input: ProjectInput, result: Configurato
   text(doc, 'Ce document est un recapitulatif materiaux issu du configurateur et ne constitue pas une etude structurelle.', 14, 272, 7.2, false, MUTED);
   drawFooter(doc, version);
 
+  doc.addPage();
+  drawHeader(doc, 'Plan technique de pose', doc.getNumberOfPages());
+  text(doc, 'Calepinage des lames', 14, 33, 11, true, NAVY);
+  wrapped(doc, `${model.layingPattern} - ${model.orientation} - ${model.boardLayout}`, 14, 39, 182, 7.5, MUTED);
+  drawPlan(doc, input, result, 14, 48, 182, 78);
+  text(doc, model.stockSummary, 14, 133, 7.2, false, MUTED);
+
+  text(doc, 'Structure et appuis', 14, 148, 11, true, NAVY);
+  wrapped(doc, model.structureSummary, 14, 154, 182, 7.5, MUTED);
+  drawStructurePlan(doc, input, result, 14, 166, 182, 72);
+  wrapped(doc, model.plotSummary, 14, 246, 182, 7.5, MUTED);
+  drawFooter(doc, version);
+
+  doc.addPage();
+  drawHeader(doc, 'Cotes, niveaux et tracabilite', doc.getNumberOfPages());
+  let technicalY = 34;
+
+  const writeTechnicalSection = (title: string, values: string[]) => {
+    if (!values.length) return;
+    if (technicalY > 250) {
+      drawFooter(doc, version);
+      doc.addPage();
+      drawHeader(doc, 'Cotes, niveaux et tracabilite', doc.getNumberOfPages());
+      technicalY = 34;
+    }
+    text(doc, title, 14, technicalY, 9.5, true, NAVY);
+    technicalY += 6;
+    for (const value of values) {
+      const nextY = wrapped(doc, `- ${value}`, 18, technicalY, 174, 7.2, MUTED);
+      technicalY = nextY + 1.5;
+      if (technicalY > 264) {
+        drawFooter(doc, version);
+        doc.addPage();
+        drawHeader(doc, 'Cotes, niveaux et tracabilite', doc.getNumberOfPages());
+        technicalY = 34;
+      }
+    }
+    technicalY += 4;
+  };
+
+  writeTechnicalSection('Cotes du contour', model.edgeDimensions);
+  writeTechnicalSection('Reservations', model.obstacleDetails.length ? model.obstacleDetails : ['Aucune reservation']);
+  writeTechnicalSection('Niveaux et pentes', [model.levelSummary]);
+  writeTechnicalSection('Fond de reference', [model.referencePlanSummary]);
+  writeTechnicalSection('Sources techniques', model.sources.length ? model.sources : ['Aucune source supplementaire']);
+  writeTechnicalSection('Points a confirmer / avertissements', model.warnings.length ? model.warnings : ['Aucun avertissement technique actif']);
+  wrapped(doc, 'Les donnees signalees a confirmer ne sont jamais transformees en valeurs certaines. Les prix restent des donnees catalogue integrees et non des donnees ERP temps reel.', 14, Math.min(technicalY + 2, 270), 182, 7.2, MUTED);
+  drawFooter(doc, version);
+
   doc.save(`IDEA-Bois-${safeFileName(model.projectName)}.pdf`);
 }

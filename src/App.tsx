@@ -208,7 +208,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.17 • plan/photo calibré • structures multi-matériaux</div>
+          <div className="header-note">Structure V0.18 • PDF technique • plan calibré • multi-matériaux</div>
         </div>
       </header>
 

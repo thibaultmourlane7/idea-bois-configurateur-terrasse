@@ -11,7 +11,7 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-017';
+export const VERSION_TAG = 'IB-TERR-VERSION-018';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 

@@ -3,6 +3,7 @@ import type {
   GeometryResult,
   ProjectInput,
   TerraceObstacle,
+  TerracePoint,
 } from '../domain/types';
 
 export const GEOMETRY_TAG = 'SA-TERR-GEO-001';
@@ -18,7 +19,7 @@ export type IntervalMm = [number, number];
 const EPS = 1e-7;
 const mm = (m: number) => m * 1000;
 
-function polygonArea(points: PointM[]): number {
+export function polygonArea(points: PointM[]): number {
   let sum = 0;
   for (let i = 0; i < points.length; i += 1) {
     const a = points[i];
@@ -28,7 +29,7 @@ function polygonArea(points: PointM[]): number {
   return Math.abs(sum) / 2;
 }
 
-function polygonPerimeter(points: PointM[]): number {
+export function polygonPerimeter(points: PointM[]): number {
   let total = 0;
   for (let i = 0; i < points.length; i += 1) {
     const a = points[i];
@@ -44,6 +45,9 @@ export function getDeckPolygonM(input: ProjectInput): PointM[] | null {
   const W = input.shape === 'circle' ? g.circleDiameterM : g.widthM;
 
   if (input.shape === 'circle') return null;
+  if (input.shape === 'freeform') {
+    return (input.freeformPoints ?? []).map((point) => ({ x: point.xM, y: point.yM }));
+  }
   if (input.shape === 'rectangle') {
     return [{ x: 0, y: 0 }, { x: L, y: 0 }, { x: L, y: W }, { x: 0, y: W }];
   }
@@ -97,6 +101,14 @@ export function getDeckOutlinePointsM(input: ProjectInput, circleSegments = 48):
 }
 
 export function getDeckBoundingSizeM(input: ProjectInput): { lengthM: number; widthM: number } {
+  if (input.shape === 'freeform') {
+    const points = input.freeformPoints ?? [];
+    if (!points.length) return { lengthM: input.dimensions.lengthM, widthM: input.dimensions.widthM };
+    return {
+      lengthM: Math.max(0.1, ...points.map((point) => point.xM)),
+      widthM: Math.max(0.1, ...points.map((point) => point.yM)),
+    };
+  }
   if (input.shape === 'circle') {
     return { lengthM: input.dimensions.circleDiameterM, widthM: input.dimensions.circleDiameterM };
   }
@@ -234,6 +246,37 @@ export function obstaclesOverlap(a: TerraceObstacle, b: TerraceObstacle): boolea
   if (a.shape === 'rectangle' && b.shape === 'rectangle') return rectsOverlap(a, b);
   if (a.shape === 'circle' && b.shape === 'circle') return circlesOverlap(a, b);
   return a.shape === 'circle' ? circleRectOverlap(a, b) : circleRectOverlap(b, a);
+}
+
+function orientation(a: PointM, b: PointM, c: PointM): number {
+  const value = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+  if (Math.abs(value) <= EPS) return 0;
+  return value > 0 ? 1 : 2;
+}
+
+function segmentsIntersect(a1: PointM, a2: PointM, b1: PointM, b2: PointM): boolean {
+  const o1 = orientation(a1, a2, b1);
+  const o2 = orientation(a1, a2, b2);
+  const o3 = orientation(b1, b2, a1);
+  const o4 = orientation(b1, b2, a2);
+  return o1 !== o2 && o3 !== o4;
+}
+
+export function isSimplePolygon(points: TerracePoint[]): boolean {
+  if (points.length < 3) return false;
+  const mapped = points.map((point) => ({ x: point.xM, y: point.yM }));
+  for (let i = 0; i < mapped.length; i += 1) {
+    const a1 = mapped[i];
+    const a2 = mapped[(i + 1) % mapped.length];
+    for (let j = i + 1; j < mapped.length; j += 1) {
+      const adjacent = j === i || j === (i + 1) % mapped.length || i === (j + 1) % mapped.length;
+      if (adjacent) continue;
+      const b1 = mapped[j];
+      const b2 = mapped[(j + 1) % mapped.length];
+      if (segmentsIntersect(a1, a2, b1, b2)) return false;
+    }
+  }
+  return polygonArea(mapped) > EPS;
 }
 
 export function computeGeometry(input: ProjectInput): GeometryResult {

@@ -83,12 +83,19 @@ function shapeLabel(input: ProjectInput): string {
   if (input.shape === 't-shape') return 'Forme en T';
   if (input.shape === 'u-shape') return 'Forme en U';
   if (input.shape === 'circle') return 'Cercle';
+  if (input.shape === 'freeform') return 'Forme libre';
   return 'Rectangle';
 }
 
 function dimensionLabel(input: ProjectInput): string {
   const g = input.dimensions;
   if (input.shape === 'circle') return `Diametre ${fmt(g.circleDiameterM)} m`;
+  if (input.shape === 'freeform') {
+    const points = input.freeformPoints ?? [];
+    const maxX = points.length ? Math.max(...points.map((point) => point.xM)) : 0;
+    const maxY = points.length ? Math.max(...points.map((point) => point.yM)) : 0;
+    return `${points.length} sommets - emprise ${fmt(maxX)} x ${fmt(maxY)} m`;
+  }
   if (input.shape === 'l-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - decroche ${fmt(g.notchLengthM)} x ${fmt(g.notchWidthM)} m`;
   if (input.shape === 't-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - pied ${fmt(g.tStemWidthM)} m - barre ${fmt(g.tBarDepthM)} m`;
   if (input.shape === 'u-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - ouverture ${fmt(g.uOpeningWidthM)} x ${fmt(g.uOpeningDepthM)} m`;

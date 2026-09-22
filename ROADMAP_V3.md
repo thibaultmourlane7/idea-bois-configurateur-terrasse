@@ -1,28 +1,39 @@
 # Roadmap vers le cahier V3
 
-## Présent V0.14.2-B1
-- bibliothèque textures V0.14.2-A ;
-- Pin du Nord strié vert et marron affinés ;
-- deux bandes de stries + centre lisse ;
-- 26 rainures visuelles ;
-- joints renforcés ;
-- nœuds et variations entre lames ;
-- même profil en 2D, 3D et rive.
+## Présent V0.15
+- formes rectangle, L, T, U et cercle ;
+- nouvelle forme libre polygonale ;
+- déplacement des sommets ;
+- ajout / suppression de sommets ;
+- cotations des arêtes ;
+- déplacement des réservations à la souris ;
+- redimensionnement des réservations ;
+- distances visibles ;
+- zoom / pan / recentrage ;
+- annuler / rétablir ;
+- fond plan/photo local avec opacité ;
+- recalcul continu via le moteur métier existant ;
+- partage, sauvegarde et PDF compatibles forme libre.
 
-## Étape suivante
-### V0.14.2-B2 — Cumaru + Garapa
-- affiner le grain des bois exotiques lisses ;
-- calibrer les teintes ;
-- créer plusieurs variantes naturelles ;
-- conserver une texture sans rainures.
+## Sujet textures en pause
+V0.14.2-B1 reste le point de reprise textures :
+- Pin strié vert/marron déjà amélioré ;
+- rendu à affiner plus tard avec le travail dédié textures ;
+- ne pas considérer le chantier textures comme terminé.
 
-### V0.14.2-B3 — PBR 3D
-- normal map ;
-- roughness ;
-- relief de stries ;
-- éclairage matière ;
-- hébergement local des textures validées.
+## Prochaine grosse version
+### V0.16 — structure technique avancée
+- hauteurs multiples ;
+- pente et niveaux ;
+- implantation structurelle réelle des plots ;
+- carte de hauteurs ;
+- doubles lambourdes / aboutages ;
+- règles de structure plus proches de la commande finale ;
+- panier structurel enrichi.
 
-## Puis
-V0.15 : éditeur visuel interactif.
-V0.16 : structure technique avancée.
+## Après V0.16
+- calibration réelle d'un plan/photo importé ;
+- import de plans plus avancé ;
+- environnement jardin ;
+- rendu 3D/PBR avancé ;
+- reprise du chantier textures.

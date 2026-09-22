@@ -1,5 +1,5 @@
 import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
-import { isObstacleInsideBaseDeck, obstaclesOverlap } from '../engine/geometry';
+import { isObstacleInsideBaseDeck, isSimplePolygon, obstaclesOverlap, polygonArea } from '../engine/geometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -37,7 +37,7 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
 
   if (input.shape === 'circle') {
     positive.push(['diamètre de la terrasse', g.circleDiameterM, 'dimensions.circleDiameterM']);
-  } else {
+  } else if (input.shape !== 'freeform') {
     positive.push(['longueur de la terrasse', g.lengthM, 'dimensions.lengthM']);
     positive.push(['largeur de la terrasse', g.widthM, 'dimensions.widthM']);
   }
@@ -50,6 +50,21 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
         message: `La ${label} doit être renseignée avec une valeur positive.`,
         field,
       });
+    }
+  }
+
+  if (input.shape === 'freeform') {
+    const points = input.freeformPoints ?? [];
+    if (points.length < 3) {
+      diagnostics.push({ tag: 'SA-TERR-GEO-FREE-001', severity: 'blocking', message: 'La forme libre doit contenir au moins 3 sommets.' });
+    } else {
+      if (points.some((point) => !Number.isFinite(point.xM) || !Number.isFinite(point.yM) || point.xM < 0 || point.yM < 0)) {
+        diagnostics.push({ tag: 'SA-TERR-GEO-FREE-002', severity: 'blocking', message: 'Tous les sommets de la forme libre doivent avoir des coordonnées positives.' });
+      } else if (!isSimplePolygon(points)) {
+        diagnostics.push({ tag: 'SA-TERR-GEO-FREE-003', severity: 'blocking', message: 'La forme libre se croise ou ne définit pas un contour valide.' });
+      } else if (polygonArea(points.map((point) => ({ x: point.xM, y: point.yM }))) < 0.05) {
+        diagnostics.push({ tag: 'SA-TERR-GEO-FREE-004', severity: 'blocking', message: 'La forme libre est trop petite pour être calculée.' });
+      }
     }
   }
 

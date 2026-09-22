@@ -195,7 +195,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Construction progressive • Pin strié B1 • structure • rives</div>
+          <div className="header-note">Éditeur interactif V0.15 • forme libre • structure • rives</div>
         </div>
       </header>
 

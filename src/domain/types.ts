@@ -1,4 +1,4 @@
-export type ShapeType = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'circle';
+export type ShapeType = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'circle' | 'freeform';
 export type BoardOrientation = 'length' | 'width';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
@@ -22,6 +22,11 @@ export interface Dimensions {
 
 export type ObstacleKind = 'pool' | 'tree' | 'post' | 'manhole' | 'other';
 export type ObstacleShape = 'rectangle' | 'circle';
+
+export interface TerracePoint {
+  xM: number;
+  yM: number;
+}
 
 export interface TerraceObstacle {
   id: string;
@@ -130,6 +135,8 @@ export interface ProjectInput {
   shape: ShapeType;
   dimensions: Dimensions;
   obstacles: TerraceObstacle[];
+  /** Sommets utilisés uniquement lorsque shape === 'freeform'. */
+  freeformPoints?: TerracePoint[];
   heightCm: number;
   supportType: SupportType;
   supportSystem: SupportSystem;

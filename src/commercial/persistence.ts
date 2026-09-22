@@ -1,20 +1,27 @@
 import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
-import type { ProjectInput, ShapeType, TerraceObstacle } from '../domain/types';
+import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint } from '../domain/types';
 
-export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v014';
-const LEGACY_KEYS = ['idea-bois-terrasse-v013', 'idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
+export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v015';
+const LEGACY_KEYS = ['idea-bois-terrasse-v014', 'idea-bois-terrasse-v013', 'idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
 
 function validShape(value: unknown): ShapeType {
-  return value === 'l-shape' || value === 't-shape' || value === 'u-shape' || value === 'circle' ? value : 'rectangle';
+  return value === 'l-shape'
+    || value === 't-shape'
+    || value === 'u-shape'
+    || value === 'circle'
+    || value === 'freeform'
+    ? value
+    : 'rectangle';
 }
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
     obstacles: project.obstacles,
+    freeformPoints: project.freeformPoints,
     heightCm: project.heightCm,
     supportType: project.supportType,
     supportSystem: project.supportSystem,
@@ -40,6 +47,7 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     shape: validShape(snapshot.shape),
     dimensions: { ...fallback.dimensions, ...(snapshot.dimensions as Partial<ProjectInput['dimensions']>) },
     obstacles: Array.isArray(snapshot.obstacles) ? snapshot.obstacles as TerraceObstacle[] : [],
+    freeformPoints: Array.isArray(snapshot.freeformPoints) ? snapshot.freeformPoints as TerracePoint[] : fallback.freeformPoints,
     heightCm: Number(snapshot.heightCm) || fallback.heightCm,
     supportType: (snapshot.supportType as ProjectInput['supportType']) ?? fallback.supportType,
     supportSystem: (snapshot.supportSystem as ProjectInput['supportSystem']) ?? fallback.supportSystem,

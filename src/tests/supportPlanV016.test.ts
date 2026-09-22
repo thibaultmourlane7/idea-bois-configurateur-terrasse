@@ -143,8 +143,10 @@ describe('Structure technique avancée V0.16', () => {
     const basePlan = computeSupportPlan(base, computeLayout(base));
     const poolPlan = computeSupportPlan(withPool, computeLayout(withPool));
 
-    expect(poolPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0))
-      .toBeGreaterThan(basePlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0));
+    expect(poolPlan.joistSegments.length).toBeGreaterThan(basePlan.joistSegments.length);
+    expect(poolPlan.supportPoints.some((point) =>
+      point.xM > 2 && point.xM < 3 && point.yM > 1 && point.yM < 2
+    )).toBe(false);
   });
 
   it('injecte les quantités structurelles de base dans le panier sans double lambourdage', () => {

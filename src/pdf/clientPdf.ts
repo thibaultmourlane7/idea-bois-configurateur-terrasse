@@ -168,6 +168,71 @@ function drawPlan(doc: Pdf, input: ProjectInput, result: ConfiguratorResult, x: 
   }
 }
 
+function drawStructurePlan(doc: Pdf, input: ProjectInput, result: ConfiguratorResult, x: number, y: number, width: number, height: number) {
+  const bounds = getDeckBoundingSizeM(input);
+  const scale = Math.min((width - 8) / bounds.lengthM, (height - 8) / bounds.widthM);
+  const ox = x + (width - bounds.lengthM * scale) / 2;
+  const oy = y + (height - bounds.widthM * scale) / 2;
+  const outline = getDeckOutlinePointsM(input);
+  const points = outline.map((point) => [ox + point.x * scale, oy + point.y * scale] as const);
+  const first = points[0];
+  const vectors = points.slice(1).map((point, index) => [point[0] - points[index][0], point[1] - points[index][1]]);
+
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(x, y, width, height, 3, 3, 'F');
+  doc.setFillColor(242, 244, 245);
+  doc.setDrawColor(160, 176, 188);
+  doc.lines(vectors, first[0], first[1], [1, 1], 'FD', true);
+
+  const plan = result.supportPlan;
+  if (plan && plan.status !== 'unavailable') {
+    for (const joist of plan.joistSegments) {
+      const perimeter = joist.role === 'perimeter';
+      const doubled = joist.multiplicity === 2;
+      doc.setDrawColor(perimeter ? 54 : doubled ? 155 : 108, perimeter ? 95 : doubled ? 95 : 77, perimeter ? 122 : doubled ? 47 : 49);
+      doc.setLineWidth(perimeter ? 1.2 : doubled ? 1.5 : 0.8);
+      doc.line(
+        ox + joist.x1M * scale,
+        oy + joist.y1M * scale,
+        ox + joist.x2M * scale,
+        oy + joist.y2M * scale,
+      );
+    }
+
+    for (const point of plan.supportPoints) {
+      doc.setFillColor(point.status === 'unsupported' ? 182 : 47, point.status === 'unsupported' ? 76 : 63, point.status === 'unsupported' ? 69 : 75);
+      const r = point.multiplicity === 2 ? 1.3 : 1;
+      doc.circle(ox + point.xM * scale, oy + point.yM * scale, r, 'F');
+    }
+  }
+
+  for (const obstacle of input.obstacles) {
+    doc.setFillColor(obstacle.kind === 'pool' ? 207 : obstacle.kind === 'tree' ? 223 : 235, obstacle.kind === 'pool' ? 238 : obstacle.kind === 'tree' ? 242 : 238, obstacle.kind === 'pool' ? 255 : obstacle.kind === 'tree' ? 223 : 241);
+    if (obstacle.shape === 'circle') {
+      const d = obstacle.diameterM ?? 0;
+      doc.ellipse(
+        ox + (obstacle.xM + d / 2) * scale,
+        oy + (obstacle.yM + d / 2) * scale,
+        (d / 2) * scale,
+        (d / 2) * scale,
+        'F',
+      );
+    } else {
+      doc.rect(
+        ox + obstacle.xM * scale,
+        oy + obstacle.yM * scale,
+        (obstacle.widthM ?? 0) * scale,
+        (obstacle.heightM ?? 0) * scale,
+        'F',
+      );
+    }
+  }
+
+  doc.setDrawColor(24, 63, 100);
+  doc.setLineWidth(0.6);
+  doc.lines(vectors, first[0], first[1], [1, 1], 'S', true);
+}
+
 function drawInfoCell(doc: Pdf, label: string, value: string, x: number, y: number, w: number) {
   doc.setFillColor(SOFT[0], SOFT[1], SOFT[2]);
   doc.roundedRect(x, y, w, 18, 2, 2, 'F');

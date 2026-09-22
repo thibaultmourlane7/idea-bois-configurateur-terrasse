@@ -129,6 +129,10 @@ export function InteractivePlanEditor({
     });
   };
 
+  const updateReferencePlan = (next: ReferencePlanTransform) => {
+    onChange({ ...project, referencePlan: next });
+  };
+
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!drag) return;
 
@@ -142,6 +146,16 @@ export function InteractivePlanEditor({
     }
 
     const point = modelPoint(event);
+
+    if (drag.kind === 'move-reference') {
+      if (!referencePlan || referencePlan.locked) return;
+      updateReferencePlan({
+        ...referencePlan,
+        offsetXM: drag.offsetXM + point.xM - drag.startXM,
+        offsetYM: drag.offsetYM + point.yM - drag.startYM,
+      });
+      return;
+    }
 
     if (drag.kind === 'move-obstacle') {
       const obstacle = project.obstacles.find((item) => item.id === drag.id);
@@ -168,6 +182,13 @@ export function InteractivePlanEditor({
   const startBackgroundPointer = (event: React.PointerEvent<SVGRectElement>) => {
     setSelectedObstacleId(null);
     setSelectedVertexIndex(null);
+
+    if (tool === 'calibrate' && referenceImageUrl && referencePlan) {
+      const point = modelPoint(event);
+      setCalibrationPoints((current) => current.length >= 2 ? [point] : [...current, point]);
+      setEditorMessage(null);
+      return;
+    }
 
     if (tool === 'draw' && project.shape === 'freeform') {
       const raw = modelPoint(event);
@@ -212,6 +233,21 @@ export function InteractivePlanEditor({
     event.stopPropagation();
     onBeginEdit();
     setDrag({ kind: 'resize-obstacle', id: obstacle.id });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const startReferenceMove = (event: React.PointerEvent<SVGImageElement>) => {
+    if (tool !== 'reference' || !referencePlan || referencePlan.locked) return;
+    event.stopPropagation();
+    const point = modelPoint(event);
+    onBeginEdit();
+    setDrag({
+      kind: 'move-reference',
+      startXM: point.xM,
+      startYM: point.yM,
+      offsetXM: referencePlan.offsetXM,
+      offsetYM: referencePlan.offsetYM,
+    });
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 

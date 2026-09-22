@@ -1,4 +1,5 @@
 import type { BasketLine, ConfiguratorResult, ProjectInput } from '../domain/types';
+import { getDeckOutlinePointsM } from '../engine/geometry';
 
 export interface ClientPdfLine {
   family: string;
@@ -20,16 +21,27 @@ export interface ClientPdfModel {
   excludedSurface: string;
   perimeter: string;
   obstacles: string;
+  obstacleDetails: string[];
+  edgeDimensions: string[];
   support: string;
   supportSystem: string;
   height: string;
   decking: string;
   orientation: string;
+  layingPattern: string;
   finishes: string;
+  boardLayout: string;
+  stockSummary: string;
+  structureSummary: string;
+  plotSummary: string;
+  levelSummary: string;
+  referencePlanSummary: string;
   basketStatus: 'complete' | 'range' | 'partial';
   budgetLabel: string;
   budgetValue: string;
   lines: ClientPdfLine[];
+  sources: string[];
+  warnings: string[];
   clientNote: string;
 }
 
@@ -92,14 +104,46 @@ function dimensionLabel(input: ProjectInput): string {
   if (input.shape === 'circle') return `Diametre ${fmt(g.circleDiameterM)} m`;
   if (input.shape === 'freeform') {
     const points = input.freeformPoints ?? [];
-    const maxX = points.length ? Math.max(...points.map((point) => point.xM)) : 0;
-    const maxY = points.length ? Math.max(...points.map((point) => point.yM)) : 0;
-    return `${points.length} sommets - emprise ${fmt(maxX)} x ${fmt(maxY)} m`;
+    const xs = points.map((point) => point.xM);
+    const ys = points.map((point) => point.yM);
+    const width = points.length ? Math.max(...xs) - Math.min(...xs) : 0;
+    const height = points.length ? Math.max(...ys) - Math.min(...ys) : 0;
+    return `${points.length} sommets - emprise ${fmt(width)} x ${fmt(height)} m`;
   }
   if (input.shape === 'l-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - decroche ${fmt(g.notchLengthM)} x ${fmt(g.notchWidthM)} m`;
   if (input.shape === 't-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - pied ${fmt(g.tStemWidthM)} m - barre ${fmt(g.tBarDepthM)} m`;
   if (input.shape === 'u-shape') return `${fmt(g.lengthM)} x ${fmt(g.widthM)} m - ouverture ${fmt(g.uOpeningWidthM)} x ${fmt(g.uOpeningDepthM)} m`;
   return `${fmt(g.lengthM)} m x ${fmt(g.widthM)} m`;
+}
+
+function layingPatternLabel(input: ProjectInput): string {
+  if (input.layingPattern === 'half') return 'Pose decalee 1/2';
+  if (input.layingPattern === 'third') return 'Pose decalee 1/3';
+  return 'Pose entiere / droite';
+}
+
+function edgeDimensions(input: ProjectInput): string[] {
+  if (input.shape === 'circle') return [`Diametre : ${fmt(input.dimensions.circleDiameterM)} m`];
+  const outline = getDeckOutlinePointsM(input);
+  return outline.map((point, index) => {
+    const next = outline[(index + 1) % outline.length];
+    const length = Math.hypot(next.x - point.x, next.y - point.y);
+    const a = String.fromCharCode(65 + (index % 26));
+    const b = String.fromCharCode(65 + ((index + 1) % 26));
+    return `${a}${b} : ${fmt(length)} m`;
+  });
+}
+
+function obstacleDetails(input: ProjectInput): string[] {
+  return input.obstacles.map((obstacle) => {
+    const position = `X ${fmt(obstacle.xM)} m / Y ${fmt(obstacle.yM)} m`;
+    if (obstacle.shape === 'circle') return `${obstacle.label} - Ø ${fmt(obstacle.diameterM ?? 0)} m - ${position}`;
+    return `${obstacle.label} - ${fmt(obstacle.widthM ?? 0)} x ${fmt(obstacle.heightM ?? 0)} m - ${position}`;
+  });
+}
+
+function unique(values: Array<string | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value?.trim())))];
 }
 
 export function buildClientPdfModel(
@@ -135,6 +179,56 @@ export function buildClientPdfModel(
     status: lineStatus(line),
   }));
 
+  const layout = result.layout;
+  const supportPlan = result.supportPlan;
+  const jointAxes = layout ? [...new Set(layout.buttJoints.map((joint) => Math.round(joint.axisPositionMm)))] : [];
+  const perimeterJoists = supportPlan?.joistSegments.filter((segment) => segment.role === 'perimeter').length ?? 0;
+  const doubleJoists = supportPlan?.joistSegments.filter((segment) => segment.multiplicity === 2).length ?? 0;
+
+  const boardLayout = layout
+    ? `${layout.rowCount} rangees - ${layout.boardSegments.length} segments poses - ${layout.buttJoints.length} raccords sur ${jointAxes.length} axe(s)`
+    : 'Calepinage final a confirmer';
+
+  const stockSummary = layout
+    ? `${layout.stockBoards.length} lames commerciales - ${fmt(layout.purchasedLinearM)} ml achetes - chute ${fmt(layout.wastePercent, 1)} %`
+    : 'Longueurs de commande a confirmer';
+
+  const structureSummary = supportPlan && supportPlan.status !== 'unavailable'
+    ? `${supportPlan.joistStockBoards.length} lambourdes commerciales - ${fmt(supportPlan.joistLinearM)} ml - entraxe ${supportPlan.joistSpacingMm ?? 0} mm - ${perimeterJoists} segment(s) de contour - ${doubleJoists} segment(s) doubles`
+    : 'Structure a confirmer pour cette gamme';
+
+  const plotCount = supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0) ?? 0;
+  const plotSummary = supportPlan && supportPlan.status !== 'unavailable'
+    ? `${plotCount} appuis - entraxe maxi ${supportPlan.plotSpacingMm ?? 0} mm - hauteurs ${fmt(supportPlan.minRequiredPlotHeightMm ?? 0, 0)} a ${fmt(supportPlan.maxRequiredPlotHeightMm ?? 0, 0)} mm - statut ${supportPlan.status}`
+    : supportSystemLabel(input);
+
+  const level = input.supportLevelProfile;
+  const levelSummary = level
+    ? `Support ${level.mode === 'flat' ? 'plan' : '4 coins'} - ecarts TL/TR/BR/BL : ${fmt(level.topLeftDeltaMm, 0)}/${fmt(level.topRightDeltaMm, 0)}/${fmt(level.bottomRightDeltaMm, 0)}/${fmt(level.bottomLeftDeltaMm, 0)} mm - pente finie X ${fmt(level.targetSlopeXPercent)} % / Y ${fmt(level.targetSlopeYPercent)} %`
+    : 'Niveaux non renseignes';
+
+  const referencePlanSummary = input.referencePlan
+    ? input.referencePlan.calibrated
+      ? `Fond calibre - distance etalon ${fmt((input.referencePlan.calibrationDistanceMm ?? 0) / 1000)} m - rotation ${fmt(input.referencePlan.rotationDeg, 0)} deg`
+      : 'Fond importe mais calibration metrique a refaire'
+    : 'Aucun fond plan/photo attache au projet';
+
+  const sources = unique([
+    input.board.catalog?.sourceUrl,
+    input.board.technical.sourceLabel,
+    supportPlan?.sourceUrl,
+    ...((basket?.lines ?? []).map((line) => line.sourceUrl)),
+  ]);
+
+  const warnings = unique([
+    ...result.diagnostics
+      .filter((item) => item.severity !== 'info')
+      .map((item) => `${item.tag} - ${item.message}`),
+    ...((basket?.lines ?? [])
+      .filter((line) => line.status === 'pending' || line.status === 'informative')
+      .map((line) => `${line.label} - ${line.note ?? 'A confirmer'}`)),
+  ]);
+
   const clientNote = basketStatus === 'complete'
     ? 'Les quantites et prix ci-dessus constituent le panier materiel calcule pour cette configuration.'
     : basketStatus === 'range'
@@ -151,21 +245,28 @@ export function buildClientPdfModel(
     grossSurface: `${fmt(result.geometry.grossAreaM2)} m2`,
     excludedSurface: `${fmt(result.geometry.excludedAreaM2)} m2`,
     perimeter: `${fmt(result.geometry.perimeterM)} ml`,
-    obstacles: input.obstacles.length
-      ? input.obstacles.map((obstacle) => obstacle.label).join(', ')
-      : 'Aucune reservation',
+    obstacles: input.obstacles.length ? input.obstacles.map((obstacle) => obstacle.label).join(', ') : 'Aucune reservation',
+    obstacleDetails: obstacleDetails(input),
+    edgeDimensions: edgeDimensions(input),
     support: supportLabel(input),
-    supportSystem: result.supportPlan && result.supportPlan.status !== 'unavailable'
-      ? `${result.supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} plots - ${fmt(result.supportPlan.minRequiredPlotHeightMm ?? 0, 0)} a ${fmt(result.supportPlan.maxRequiredPlotHeightMm ?? 0, 0)} mm`
-      : supportSystemLabel(input),
+    supportSystem: plotSummary,
     height: `${fmt(input.heightCm)} cm (reference)`,
     decking: input.board.label,
     orientation: input.orientation === 'length' ? 'Dans la longueur' : 'Dans la largeur',
+    layingPattern: layingPatternLabel(input),
     finishes: finishParts.join(' - '),
+    boardLayout,
+    stockSummary,
+    structureSummary,
+    plotSummary,
+    levelSummary,
+    referencePlanSummary,
     basketStatus,
     budgetLabel,
     budgetValue,
     lines,
+    sources,
+    warnings,
     clientNote,
   };
 }

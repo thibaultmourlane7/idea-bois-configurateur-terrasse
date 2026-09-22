@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { BasketResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
+import type { BasketResult, LayoutResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
@@ -19,12 +19,14 @@ export function Preview3D({
   input,
   basket,
   supportPlan,
+  layout,
   layers = FINISHED_LAYERS,
   exploded = false,
 }: {
   input: ProjectInput;
   basket?: BasketResult;
   supportPlan?: SupportPlanResult;
+  layout?: LayoutResult;
   layers?: ConstructionLayers;
   exploded?: boolean;
 }) {
@@ -47,6 +49,8 @@ export function Preview3D({
     const deckLift = exploded ? -26 : 0;
     const joistLift = exploded ? 4 : 0;
     const plotDrop = exploded ? 14 : 0;
+    const minPlotHeight = supportPlan?.minRequiredPlotHeightMm ?? 0;
+    const maxPlotHeight = supportPlan?.maxRequiredPlotHeightMm ?? minPlotHeight;
 
     canvas.width = width * dpr;
     canvas.height = height * dpr;
@@ -95,6 +99,14 @@ export function Preview3D({
     const paint = (photo?: HTMLImageElement) => {
       ctx.clearRect(0, 0, width, height);
 
+      const ground = [
+        { x: -0.7, y: -0.7 },
+        { x: bounds.lengthM + 0.7, y: -0.7 },
+        { x: bounds.lengthM + 0.7, y: bounds.widthM + 0.7 },
+        { x: -0.7, y: bounds.widthM + 0.7 },
+      ];
+      drawPolygon(ground, '#f5f3ea', '#d8d3c6', 1, 31 + plotDrop, 0.96);
+
       if (layers.support) {
         const shifted = outline.map((point) => ({ x: point.x + 0.08, y: point.y + 0.08 }));
         drawPolygon(shifted, '#eef1f2', '#c7d0d6', 1, 18 + plotDrop, 0.9);
@@ -102,6 +114,9 @@ export function Preview3D({
 
       if (layers.plots) {
         construction.plots.forEach((plot) => {
+          const range = Math.max(1, maxPlotHeight - minPlotHeight);
+          const heightRatio = plot.requiredHeightMm == null ? 0.5 : (plot.requiredHeightMm - minPlotHeight) / range;
+          const stemPx = 7 + Math.max(0, Math.min(1, heightRatio)) * 13;
           const p = iso(plot.xM, plot.yM, 15 + plotDrop);
           ctx.fillStyle = plot.status === 'unsupported' ? '#b64c45' : '#2f3e49';
           ctx.beginPath();
@@ -112,7 +127,7 @@ export function Preview3D({
           ctx.stroke();
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x, p.y - 9);
+          ctx.lineTo(p.x, p.y - stemPx);
           ctx.stroke();
         });
       }
@@ -121,8 +136,9 @@ export function Preview3D({
         construction.joists.forEach((joist) => {
           const a = iso(joist.x1M, joist.y1M, 7 + joistLift);
           const b = iso(joist.x2M, joist.y2M, 7 + joistLift);
-          ctx.strokeStyle = joist.multiplicity === 2 ? '#935a2f' : '#62442e';
-          ctx.lineWidth = joist.multiplicity === 2 ? 11 : 7;
+          const perimeter = joist.role === 'perimeter';
+          ctx.strokeStyle = perimeter ? '#365f7a' : joist.multiplicity === 2 ? '#935a2f' : '#62442e';
+          ctx.lineWidth = perimeter ? 8 : joist.multiplicity === 2 ? 11 : 7;
           ctx.lineCap = 'square';
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
@@ -238,25 +254,80 @@ export function Preview3D({
         }
       }
 
+      if (layers.decking && layout?.buttJoints?.length) {
+        ctx.save();
+        ctx.strokeStyle = '#17212a';
+        ctx.lineWidth = 1.8;
+        for (const joint of layout.buttJoints) {
+          const centerM = joint.transverseCenterMm / 1000;
+          const axisM = joint.axisPositionMm / 1000;
+          const halfM = Math.max(0.035, input.board.widthMm / 1000 * 0.55);
+          const a = input.orientation === 'length'
+            ? iso(axisM, centerM - halfM, deckLift - 0.5)
+            : iso(centerM - halfM, axisM, deckLift - 0.5);
+          const b = input.orientation === 'length'
+            ? iso(axisM, centerM + halfM, deckLift - 0.5)
+            : iso(centerM + halfM, axisM, deckLift - 0.5);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       if (layers.obstacles) {
         for (const obstacle of input.obstacles) {
           if (obstacle.shape === 'circle') {
             const d = obstacle.diameterM ?? 0;
             const r = d / 2;
+            const cx = obstacle.xM + r;
+            const cy = obstacle.yM + r;
             const points = Array.from({ length: 32 }, (_, i) => {
               const angle = (Math.PI * 2 * i) / 32;
-              return { x: obstacle.xM + r + Math.cos(angle) * r, y: obstacle.yM + r + Math.sin(angle) * r };
+              return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
             });
             drawPolygon(points, obstacleColor(obstacle.kind), '#6b7e8d', 1.2, deckLift - 1);
+            const center = iso(cx, cy, deckLift - 2);
+            if (obstacle.kind === 'tree') {
+              ctx.strokeStyle = '#76543b';
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              ctx.moveTo(center.x, center.y + 3);
+              ctx.lineTo(center.x, center.y - 24);
+              ctx.stroke();
+              ctx.fillStyle = '#9bc58f';
+              ctx.beginPath();
+              ctx.ellipse(center.x, center.y - 28, Math.max(8, r * sx * 0.35), Math.max(5, r * sy * 0.2), 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
           } else {
             const w = obstacle.widthM ?? 0;
             const h = obstacle.heightM ?? 0;
-            drawPolygon([
+            const shape = [
               { x: obstacle.xM, y: obstacle.yM },
               { x: obstacle.xM + w, y: obstacle.yM },
               { x: obstacle.xM + w, y: obstacle.yM + h },
               { x: obstacle.xM, y: obstacle.yM + h },
-            ], obstacleColor(obstacle.kind), '#6b7e8d', 1.2, deckLift - 1);
+            ];
+            const obstacleZ = obstacle.kind === 'pool' ? deckLift + 5 : deckLift - 1;
+            drawPolygon(shape, obstacleColor(obstacle.kind), '#6b7e8d', 1.2, obstacleZ);
+            const center = iso(obstacle.xM + w / 2, obstacle.yM + h / 2, deckLift - 1);
+            if (obstacle.kind === 'post') {
+              ctx.strokeStyle = '#727a80';
+              ctx.lineWidth = 6;
+              ctx.beginPath();
+              ctx.moveTo(center.x, center.y + 2);
+              ctx.lineTo(center.x, center.y - 30);
+              ctx.stroke();
+            } else if (obstacle.kind === 'pool') {
+              ctx.strokeStyle = 'rgba(255,255,255,.85)';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.moveTo(center.x - Math.max(4, w * sx * 0.18), center.y);
+              ctx.lineTo(center.x + Math.max(4, w * sx * 0.18), center.y);
+              ctx.stroke();
+            }
           }
         }
       }
@@ -271,15 +342,17 @@ export function Preview3D({
       image.onerror = () => paint();
       image.src = texture.textureImageUrl;
     }
-  }, [input, basket, supportPlan, layers, exploded, texture]);
+  }, [input, basket, supportPlan, layout, layers, exploded, texture, materialProfile, grooveLines]);
 
   return (
     <div className="visual-card">
-      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-016</code></div>
+      <div className="visual-title"><span>Aperçu 3D construction</span><code>IB-TERR-UI-3D-019</code></div>
       <canvas ref={ref} />
       <div className="construction-legend">
         {layers.decking && <span><i className="legend-decking" />Lames</span>}
+        {layers.decking && (layout?.buttJoints?.length ?? 0) > 0 && <span><i className="legend-joint" />Raccords</span>}
         {layers.joists && <span><i className="legend-joist" />Lambourdes</span>}
+        {layers.joists && (supportPlan?.joistSegments.some((segment) => segment.role === 'perimeter') ?? false) && <span><i className="legend-perimeter" />Contour</span>}
         {layers.plots && <span><i className="legend-plot" />Plots</span>}
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
@@ -287,7 +360,7 @@ export function Preview3D({
       <div className={`texture-quality-note ${texture.status}`}>
         <strong>{textureStatusLabel(texture)}</strong>
         <span>{texture.label}</span>
-        {materialProfile ? <small>Profil B1 : rainures renforcées sur la géométrie de la lame.</small> : texture.status === 'close' && <small>Rendu de projection ; le PBR avancé viendra ensuite.</small>}
+        {materialProfile ? <small>Profil B1 : rainures représentées sur la géométrie de la lame.</small> : texture.status === 'close' && <small>Rendu de projection. Les textures réalistes ne sont pas modifiées dans cette phase.</small>}
       </div>
     </div>
   );

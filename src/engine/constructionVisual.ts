@@ -39,7 +39,8 @@ function joistSegments(input: ProjectInput, rule: CommercialConstructionRule): V
   const segments: VisualLineSegment[] = [];
   let id = 1;
   for (const positionM of positions) {
-    const intervals = getDeckIntervalsAtMm(input, positionM * 1000, joistOrientation, 0);
+    const queryPositionM = positionM >= axisLengthM - 0.000001 ? Math.max(0, axisLengthM - 0.001) : positionM;
+    const intervals = getDeckIntervalsAtMm(input, queryPositionM * 1000, joistOrientation, 0);
     for (const [startMm, endMm] of intervals) {
       if (input.orientation === 'length') {
         segments.push({

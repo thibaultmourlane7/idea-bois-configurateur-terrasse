@@ -76,3 +76,72 @@
 .double-joist-visible-setting{margin:0 0 16px;padding:12px;border:1px solid #d4e3ed;border-radius:11px;background:#fff}
 .double-joist-visible-setting h3{margin:0;color:#244b68;font-size:13px}
 .double-joist-visible-setting p{margin:5px 0 10px;color:#718391;font-size:9px;line-height:1.45}
+
+/* V0.16.1 — corrections visibles de la démo */
+.stabilisation-banner{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 14px;
+  padding:10px 12px;
+  border:1px solid #b9d9ef;
+  border-radius:11px;
+  background:#f3faff;
+  color:#315a75;
+  font-size:10px;
+  line-height:1.4;
+}
+.stabilisation-banner strong{
+  flex:0 0 auto;
+  color:#116cae;
+  font-size:11px;
+}
+.double-joist-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.joint-status{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:850;
+  border:1px solid #d3e1ea;
+  color:#6e7f8b;
+  background:#f7f9fa;
+}
+.joint-status.detected{
+  border-color:#a8cde5;
+  color:#17689d;
+  background:#edf8ff;
+}
+.board-butt-joint-gap{
+  stroke:#fff;
+  stroke-width:3.8;
+  vector-effect:non-scaling-stroke;
+  opacity:.98;
+}
+.board-butt-joint{
+  stroke:#17212a;
+  stroke-width:1.45;
+  vector-effect:non-scaling-stroke;
+  opacity:1;
+}
+.plan-edge-dimension-group line{
+  stroke:#1976d2;
+  stroke-width:.8;
+  vector-effect:non-scaling-stroke;
+  opacity:.78;
+}
+.plan-edge-dimension-group .dimension-main-line{
+  stroke-width:1.1;
+  stroke-dasharray:none;
+  opacity:.95;
+}
+@media(max-width:700px){
+  .stabilisation-banner,.double-joist-heading{align-items:flex-start;flex-direction:column}
+}

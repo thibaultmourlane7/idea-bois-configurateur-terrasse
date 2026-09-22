@@ -294,8 +294,18 @@ export function Plan2D({
           const cy = y + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
           const half = Math.max(3, boardWidthPx * 0.58);
           return input.orientation === 'length'
-            ? <line key={joint.id} x1={cx} y1={cy - half} x2={cx} y2={cy + half} className="board-butt-joint" />
-            : <line key={joint.id} x1={cx - half} y1={cy} x2={cx + half} y2={cy} className="board-butt-joint" />;
+            ? (
+              <g key={joint.id} className="board-joint-marker">
+                <line x1={cx} y1={cy - half} x2={cx} y2={cy + half} className="board-butt-joint-gap" />
+                <line x1={cx} y1={cy - half} x2={cx} y2={cy + half} className="board-butt-joint" />
+              </g>
+            )
+            : (
+              <g key={joint.id} className="board-joint-marker">
+                <line x1={cx - half} y1={cy} x2={cx + half} y2={cy} className="board-butt-joint-gap" />
+                <line x1={cx - half} y1={cy} x2={cx + half} y2={cy} className="board-butt-joint" />
+              </g>
+            );
         })}
 
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && (
@@ -350,15 +360,28 @@ export function Plan2D({
               const dx = mx - centroid.x;
               const dy = my - centroid.y;
               const norm = Math.hypot(dx, dy) || 1;
-              const offsetPx = 17;
-              const tx = x + mx * scale + (dx / norm) * offsetPx;
-              const ty = y + my * scale + (dy / norm) * offsetPx;
+              const offsetPx = 20;
+              const ox = (dx / norm) * offsetPx;
+              const oy = (dy / norm) * offsetPx;
+              const x1 = x + point.x * scale;
+              const y1 = y + point.y * scale;
+              const x2 = x + next.x * scale;
+              const y2 = y + next.y * scale;
+              const dx1 = x1 + ox;
+              const dy1 = y1 + oy;
+              const dx2 = x2 + ox;
+              const dy2 = y2 + oy;
+              const tx = (dx1 + dx2) / 2;
+              const ty = (dy1 + dy2) / 2 - 3;
               const a = vertexLabel(index);
               const b = vertexLabel((index + 1) % outline.length);
               return (
-                <g key={`dim-${index}`}>
+                <g key={`dim-${index}`} className="plan-edge-dimension-group">
+                  <line x1={x1} y1={y1} x2={dx1} y2={dy1} />
+                  <line x1={x2} y1={y2} x2={dx2} y2={dy2} />
+                  <line x1={dx1} y1={dy1} x2={dx2} y2={dy2} className="dimension-main-line" />
                   <text x={tx} y={ty} className="plan-edge-dimension">{a}{b} {edgeLength(point, next).toFixed(2)} m</text>
-                  <text x={x + point.x * scale + 7} y={y + point.y * scale - 7} className="plan-vertex-label">{a}</text>
+                  <text x={x1 + 7} y={y1 - 7} className="plan-vertex-label">{a}</text>
                 </g>
               );
             })}

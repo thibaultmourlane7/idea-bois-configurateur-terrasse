@@ -207,7 +207,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.16 • niveaux • plots • carte de hauteurs</div>
+          <div className="header-note">Structure V0.16.1 • plan coté • raccords • contour</div>
         </div>
       </header>
 
@@ -225,6 +225,10 @@ export default function App() {
         <section className="wizard-card">
           {step === 1 && (
             <div className="step-content">
+              <div className="stabilisation-banner">
+                <strong>Nouveau V0.16.1</strong>
+                <span>Forme libre dessinable + cotes saisissables • réservations débordantes autorisées • plan entièrement coté.</span>
+              </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
                 <div className="geometry-diagnostics">
@@ -353,26 +357,35 @@ export default function App() {
                 </div>
               </div>
 
-              {result.layout?.hasButtJoints && (
-                <div className="question-block">
-                  <h3>Renfort aux jonctions de lames</h3>
-                  <p className="finish-help">Le configurateur a détecté au moins une jonction de lames. Le double lambourdage est une option, désactivée par défaut.</p>
-                  <div className="choice-grid two-choice">
-                    <ChoiceCard
-                      active={!project.doubleJoistsAtButtJoints}
-                      title="Lambourde simple"
-                      subtitle="Calcul de base : une seule lambourde sur l’axe de jonction"
-                      onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
-                    />
-                    <ChoiceCard
-                      active={Boolean(project.doubleJoistsAtButtJoints)}
-                      title="Double lambourdage"
-                      subtitle="Ajoute une seconde lambourde et recalcule les plots et le panier"
-                      onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}
-                    />
+              <div className="question-block double-joist-visible-setting">
+                <div className="double-joist-heading">
+                  <div>
+                    <h3>Renfort aux jonctions de lames</h3>
+                    <p className="finish-help">
+                      {result.layout?.hasButtJoints
+                        ? `${result.layout.buttJoints.length} raccord${result.layout.buttJoints.length > 1 ? 's' : ''} de lames détecté${result.layout.buttJoints.length > 1 ? 's' : ''}. Le choix ci-dessous recalcule la structure, les plots et le panier.`
+                        : 'Aucun raccord de lames détecté avec le calepinage actuel. Le réglage reste disponible et s’appliquera automatiquement si un raccord apparaît.'}
+                    </p>
                   </div>
+                  <span className={result.layout?.hasButtJoints ? 'joint-status detected' : 'joint-status none'}>
+                    {result.layout?.hasButtJoints ? 'Raccords détectés' : 'Aucun raccord'}
+                  </span>
                 </div>
-              )}
+                <div className="choice-grid two-choice">
+                  <ChoiceCard
+                    active={!project.doubleJoistsAtButtJoints}
+                    title="Lambourdage simple"
+                    subtitle="Une seule lambourde sur chaque axe de jonction"
+                    onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
+                  />
+                  <ChoiceCard
+                    active={Boolean(project.doubleJoistsAtButtJoints)}
+                    title="Double lambourdage"
+                    subtitle="Ajoute une seconde lambourde sur les jonctions et recalcule les plots et le panier"
+                    onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}
+                  />
+                </div>
+              </div>
 
               <label className="single-field">Hauteur finie au point de référence<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support au-dessus de la lame au coin haut-gauche de référence.</small></label>
               <LevelingEditor project={project} onChange={setProject} />

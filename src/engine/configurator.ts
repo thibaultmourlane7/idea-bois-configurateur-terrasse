@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-016';
+export const VERSION_TAG = 'IB-TERR-VERSION-016.1';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Parcours particulier + structure technique avancée, niveaux et carte de plots V0.16.`];
+  const trace: string[] = [`[${VERSION_TAG}] Stabilisation visible : forme libre cotée, réservations débordantes, raccords et lambourdes périphériques.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -112,7 +112,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
       tag: RULE_TAGS.joints,
       severity: 'warning',
       message: 'Certains raccords de lames devront être confirmés avant la commande.',
-      technicalMessage: 'L’optimisation matière ne verrouille pas encore chaque aboutage sur une lambourde dédiée/doublée.',
+      technicalMessage: 'Les raccords sont maintenant positionnés rangée par rangée et repris dans le plan structurel. Le choix simple/double lambourdage reste sous validation humaine avant commande.',
     });
     structure.fixingCount = undefined;
     structure.fixingStatus = 'pending-joint-layout';

@@ -1,5 +1,6 @@
 import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile } from '../domain/types';
+import { sanitizeReferencePlanTransform } from '../domain/referencePlan';
 
 export const LOCAL_PROJECT_KEY = 'idea-bois-terrasse-v016';
 const LEGACY_KEYS = ['idea-bois-terrasse-v015', 'idea-bois-terrasse-v014', 'idea-bois-terrasse-v013', 'idea-bois-terrasse-v011', 'idea-bois-terrasse-v010', 'idea-bois-terrasse-v09'];
@@ -16,12 +17,13 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
     obstacles: project.obstacles,
     freeformPoints: project.freeformPoints,
+    referencePlan: project.referencePlan,
     heightCm: project.heightCm,
     supportLevelProfile: project.supportLevelProfile,
     doubleJoistsAtButtJoints: Boolean(project.doubleJoistsAtButtJoints),
@@ -51,6 +53,7 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     dimensions: { ...fallback.dimensions, ...(snapshot.dimensions as Partial<ProjectInput['dimensions']>) },
     obstacles: Array.isArray(snapshot.obstacles) ? snapshot.obstacles as TerraceObstacle[] : [],
     freeformPoints: Array.isArray(snapshot.freeformPoints) ? snapshot.freeformPoints as TerracePoint[] : fallback.freeformPoints,
+    referencePlan: sanitizeReferencePlanTransform(snapshot.referencePlan) ?? fallback.referencePlan,
     heightCm: Number(snapshot.heightCm) || fallback.heightCm,
     supportLevelProfile: (snapshot.supportLevelProfile as SupportLevelProfile | undefined) ?? fallback.supportLevelProfile,
     doubleJoistsAtButtJoints: Boolean(snapshot.doubleJoistsAtButtJoints),

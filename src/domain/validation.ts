@@ -172,5 +172,14 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     });
   }
 
+  for (const item of referencePlanDiagnostics(input.referencePlan)) {
+    diagnostics.push({
+      tag: 'SA-TERR-REFPLAN-017',
+      severity: item.severity,
+      message: item.message,
+      technicalMessage: 'Le fond importé reste une référence visuelle ; seule la géométrie vectorielle alimente les calculs.',
+    });
+  }
+
   return diagnostics;
 }

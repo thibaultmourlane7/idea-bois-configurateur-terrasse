@@ -1,13 +1,15 @@
 import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
-import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile } from '../domain/types';
+import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile, ReferencePlanTransform } from '../domain/types';
+import { sanitizeReferencePlanTransform } from '../domain/referencePlan';
 
-export interface ShareSnapshotV6 {
-  v: 6;
+export interface ShareSnapshotV7 {
+  v: 7;
   projectName: string;
   shape: ProjectInput['shape'];
   dimensions: ProjectInput['dimensions'];
   obstacles: TerraceObstacle[];
   freeformPoints?: TerracePoint[];
+  referencePlan?: ReferencePlanTransform;
   heightCm: number;
   supportLevelProfile?: SupportLevelProfile;
   doubleJoistsAtButtJoints?: boolean;
@@ -46,13 +48,14 @@ function validShape(value: unknown): ShapeType {
 }
 
 export function projectToShareToken(project: ProjectInput): string {
-  const snapshot: ShareSnapshotV6 = {
-    v: 6,
+  const snapshot: ShareSnapshotV7 = {
+    v: 7,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
     obstacles: project.obstacles,
     freeformPoints: project.freeformPoints,
+    referencePlan: project.referencePlan,
     heightCm: project.heightCm,
     supportLevelProfile: project.supportLevelProfile,
     doubleJoistsAtButtJoints: Boolean(project.doubleJoistsAtButtJoints),
@@ -72,8 +75,8 @@ export function projectToShareToken(project: ProjectInput): string {
 export function projectFromShareToken(token: string, fallback: ProjectInput): ProjectInput {
   try {
     const raw = new TextDecoder().decode(base64UrlToBytes(token));
-    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV6>, 'v'> & { v?: number };
-    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6) || !snapshot.boardId || !snapshot.dimensions) return fallback;
+    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV7>, 'v'> & { v?: number };
+    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7) || !snapshot.boardId || !snapshot.dimensions) return fallback;
     const board = ideaBoisBoards.find((item) => item.id === snapshot.boardId);
     if (!board) return fallback;
 
@@ -84,6 +87,7 @@ export function projectFromShareToken(token: string, fallback: ProjectInput): Pr
       dimensions: { ...fallback.dimensions, ...snapshot.dimensions },
       obstacles: Array.isArray(snapshot.obstacles) ? snapshot.obstacles : [],
       freeformPoints: Array.isArray(snapshot.freeformPoints) ? snapshot.freeformPoints : fallback.freeformPoints,
+      referencePlan: sanitizeReferencePlanTransform(snapshot.referencePlan) ?? fallback.referencePlan,
       heightCm: Number(snapshot.heightCm) || fallback.heightCm,
       supportLevelProfile: snapshot.supportLevelProfile ?? fallback.supportLevelProfile,
       doubleJoistsAtButtJoints: Boolean(snapshot.doubleJoistsAtButtJoints),

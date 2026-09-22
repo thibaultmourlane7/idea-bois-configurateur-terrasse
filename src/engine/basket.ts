@@ -1,6 +1,7 @@
 import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { computeEdgeCladding } from './edgeCladding';
 import {
+  EXOTIC_JOIST_65X42_3950,
   GEODECK_20M2,
   HARDWOOD_SCREWS_5X60_200,
   PGB_SCREWS_5X60_200,
@@ -13,6 +14,7 @@ import {
   SILVADEC_SKIRT_IPE,
   UBBINK_BAND_20M,
 } from '../catalog/materials';
+import { getCommercialConstructionRule } from './constructionRules';
 
 export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
@@ -69,31 +71,34 @@ function choosePlot(residualHeightMm: number) {
 
 function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
-  const hasPrecisePlan = input.board.commercialRecipeId === 'idea-pin-nord-145x27'
-    && input.supportSystem === 'adjustable-pedestals'
+  const rule = getCommercialConstructionRule(input);
+  const hasPrecisePlan = input.supportSystem === 'adjustable-pedestals'
     && supportPlan
     && supportPlan.status !== 'unavailable'
     && supportPlan.joistStockBoards.length > 0;
+  const useExoticJoist = rule?.joistProductRef === EXOTIC_JOIST_65X42_3950.productRef;
+  const joistMaterial = useExoticJoist ? EXOTIC_JOIST_65X42_3950 : PIN_JOIST_60X40_2400;
+  const fallbackStockLengthM = Math.max(...(rule?.joistStockLengthsMm?.length ? rule.joistStockLengthsMm : [2400])) / 1000;
   const joistLinearM = hasPrecisePlan ? supportPlan.joistLinearM : area * 2.5;
-  const joistPieces = hasPrecisePlan ? supportPlan.joistStockBoards.length : Math.ceil(joistLinearM / 2.4);
+  const joistPieces = hasPrecisePlan ? supportPlan.joistStockBoards.length : Math.ceil(joistLinearM / fallbackStockLengthM);
   const bandRolls = Math.ceil(joistLinearM / 20);
 
   const lines: BasketLine[] = [
     {
       id: 'joists',
       family: 'joists',
-      label: PIN_JOIST_60X40_2400.label,
-      productRef: PIN_JOIST_60X40_2400.productRef,
+      label: joistMaterial.label,
+      productRef: joistMaterial.productRef,
       quantity: joistPieces,
       unit: 'pièce(s)',
-      unitPriceTtc: PIN_JOIST_60X40_2400.unitPriceTtc,
-      totalTtc: round2(joistPieces * PIN_JOIST_60X40_2400.unitPriceTtc),
+      unitPriceTtc: joistMaterial.unitPriceTtc,
+      totalTtc: round2(joistPieces * joistMaterial.unitPriceTtc),
       status: 'exact',
       required: true,
       note: hasPrecisePlan
-        ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation en longueurs de 2,40 m.`
+        ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation selon les longueurs commerciales validées de la lambourde.`
         : `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
-      sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
+      sourceUrl: joistMaterial.sourceUrl,
     },
     {
       id: 'protection',
@@ -112,7 +117,7 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supp
   ];
 
   if (input.board.thicknessMm >= 20 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
-    const hardwoodRecipe = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21'].includes(input.board.commercialRecipeId ?? '');
+    const hardwoodRecipe = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '');
     const screwMaterial = hardwoodRecipe ? HARDWOOD_SCREWS_5X60_200 : PGB_SCREWS_5X60_200;
     const screwMin = Math.ceil(area * 35);
     const screwMax = Math.ceil(area * 40);
@@ -218,20 +223,25 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supp
   return lines;
 }
 
-function silvadecLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
+function silvadecLines(input: ProjectInput, geometry: GeometryResult, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
   const clips = Math.ceil(area * 18);
   const packs = Math.ceil(clips / 30);
+  const preciseJoists = supportPlan && supportPlan.status !== 'unavailable' && supportPlan.joistStockBoards.length > 0;
   return [
     {
       id: 'joists',
       family: 'joists',
-      label: 'Lambourdes compatibles SILVADEC',
-      quantity: round2(area * 3),
-      unit: 'ml',
+      label: 'Lambourde aluminium Réversil SILVADEC 63 × 40 × 3600 mm',
+      productRef: 'SILAMB2102',
+      quantity: preciseJoists ? supportPlan.joistStockBoards.length : round2(area * 3),
+      unit: preciseJoists ? 'pièce(s)' : 'ml',
       status: 'pending',
       required: true,
-      note: 'Quantité fabricant : 3 ml/m². La référence de lambourde IDEA Bois compatible et son prix restent à valider.',
+      note: preciseJoists
+        ? `${supportPlan.joistLinearM.toFixed(1)} ml implantés avec entraxe de lambourdes ≤ 400 mm et appuis ≤ 600 mm en résidentiel. Prix commercial de la Réversil à confirmer.`
+        : 'Quantité fabricant : environ 3 ml/m². Prix de la structure Réversil à confirmer.',
+      sourceUrl: 'https://fr.silvadec.com/wp-content/pdf/fr-PU39.pdf',
     },
     {
       id: 'fixings',
@@ -247,7 +257,9 @@ function silvadecLines(input: ProjectInput, geometry: GeometryResult): BasketLin
       note: `${clips} clips requis à 18 clips/m² • sachets de 30.`,
       sourceUrl: SILVADEC_CLIPS_30.sourceUrl,
     },
-    pending('supports', 'supports', 'Plots / appuis compatibles', 'La référence de structure doit être validée avant de chiffrer les appuis.'),
+    pending('supports', 'supports', 'Plots / appuis compatibles', supportPlan?.supportPoints.length
+      ? `${supportPlan.supportPoints.length} position(s) d’appui calculée(s) avec un entraxe maximal de 600 mm. Le modèle de plot commercial compatible reste à valider.`
+      : 'La référence de plot doit être validée avant chiffrage.'),
     pending('protection', 'protection', 'Protection / accessoires structure', 'Dépend du matériau de lambourde retenu.'),
   ];
 }
@@ -338,15 +350,15 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         id: 'edge-vertical-joists',
         family: 'joists',
         label: `Lambourdes verticales d’habillage — morceaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm`,
-        productRef: PIN_JOIST_60X40_2400.productRef,
+        productRef: joistMaterial.productRef,
         quantity: cladding.verticalJoistStockBoards?.length,
         unit: 'lambourde(s) 2,40 m',
-        unitPriceTtc: PIN_JOIST_60X40_2400.unitPriceTtc,
+        unitPriceTtc: joistMaterial.unitPriceTtc,
         totalTtc: cladding.verticalJoistTotalTtc,
         status: 'exact',
         required: true,
         note: `${cladding.verticalSupportCount} support(s) verticaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires.`,
-        sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
+        sourceUrl: joistMaterial.sourceUrl,
       });
     } else if (cladding.mode === 'same-decking' && cladding.boardTotalTtc != null) {
       lines.push({
@@ -398,8 +410,8 @@ export function computeBasket(
   const lines: BasketLine[] = [deckingLine(input, geometry, layout, pricing)];
 
   if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
-    lines.push(...silvadecLines(input, geometry));
-  } else if (['idea-pin-nord-145x27','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21'].includes(input.board.commercialRecipeId ?? '')) {
+    lines.push(...silvadecLines(input, geometry, supportPlan));
+  } else if (['idea-pin-nord-145x27','idea-resineux-class4','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '')) {
     lines.push(...woodCommercialLines(input, geometry, supportPlan));
   } else {
     lines.push(

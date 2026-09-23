@@ -198,6 +198,26 @@ describe('Sprint A V0.20 — calepinage avancé', () => {
     expect(layout.boardSegments.some((segment) => segment.zoneId === 'POLY')).toBe(true);
   });
 
+  it('bloque une zone dont les sommets sont dedans mais dont un côté traverse le décroché d’un L', () => {
+    const lProject: ProjectInput = {
+      ...base,
+      shape: 'l-shape',
+      layingZones: [{
+        id: 'CROSS-NOTCH',
+        label: 'Traverse décroché',
+        points: [
+          { xM: 5.5, yM: 2.8 },
+          { xM: 3.5, yM: 3.8 },
+          { xM: 3, yM: 2.5 },
+        ],
+        direction: 'length',
+        pattern: 'straight',
+        start: 'left',
+      }],
+    };
+    expect(validateProject(lProject).some((item) => item.tag === 'SA-TERR-ZONE-004' && item.severity === 'blocking')).toBe(true);
+  });
+
   it('bloque deux zones qui se chevauchent', () => {
     const a: LayingZone = {
       id: 'A', label: 'A',

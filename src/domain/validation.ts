@@ -1,7 +1,7 @@
 import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
 import { referencePlanDiagnostics } from './referencePlan';
-import { isPointInsideBaseDeck, isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
-import { zonesOverlap } from '../engine/layingGeometry';
+import { isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
+import { zoneFitsBaseDeck, zonesOverlap } from '../engine/layingGeometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -111,8 +111,8 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     if (polygonArea(zone.points.map((point) => ({ x: point.xM, y: point.yM }))) < 0.02) {
       diagnostics.push({ tag: 'SA-TERR-ZONE-003', severity: 'blocking', message: `${zone.label} : la zone est trop petite.` });
     }
-    if (zone.points.some((point) => !isPointInsideBaseDeck(input, point.xM, point.yM))) {
-      diagnostics.push({ tag: 'SA-TERR-ZONE-004', severity: 'blocking', message: `${zone.label} : tous les sommets doivent rester dans le contour de la terrasse.` });
+    if (!zoneFitsBaseDeck(input, zone)) {
+      diagnostics.push({ tag: 'SA-TERR-ZONE-004', severity: 'blocking', message: `${zone.label} : tout le contour de la zone doit rester dans la terrasse, sans traverser un décroché.` });
     }
     if (zone.start === 'edge' && (zone.startEdgeIndex == null || zone.startEdgeIndex < 0 || zone.startEdgeIndex >= zone.points.length)) {
       diagnostics.push({ tag: 'SA-TERR-ZONE-005', severity: 'blocking', message: `${zone.label} : la rive de départ sélectionnée n’existe pas.` });

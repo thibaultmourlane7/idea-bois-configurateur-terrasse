@@ -389,6 +389,45 @@ export function zonesOverlap(a: LayingZone, b: LayingZone): boolean {
   return pointStrictlyInZone(centroidOf(a), b) || pointStrictlyInZone(centroidOf(b), a);
 }
 
+export function zoneFitsBaseDeck(input: ProjectInput, zone: LayingZone): boolean {
+  const deck = getDeckOutlinePointsM(input);
+  if (zone.points.length < 3 || deck.length < 3) return false;
+  if (zone.points.some((point) => !pointInPolygonForContainment(point, deck))) return false;
+
+  for (let i = 0; i < zone.points.length; i += 1) {
+    const a = zone.points[i];
+    const b = zone.points[(i + 1) % zone.points.length];
+    for (let j = 0; j < deck.length; j += 1) {
+      const c = { xM: deck[j].x, yM: deck[j].y };
+      const d = { xM: deck[(j + 1) % deck.length].x, yM: deck[(j + 1) % deck.length].y };
+      if (properSegmentIntersection(a, b, c, d)) return false;
+    }
+    const midpoint = { xM: (a.xM + b.xM) / 2, yM: (a.yM + b.yM) / 2 };
+    if (!pointInPolygonForContainment(midpoint, deck)) return false;
+  }
+  return true;
+}
+
+function pointInPolygonForContainment(
+  point: TerracePoint,
+  polygon: Array<{ x: number; y: number }>,
+): boolean {
+  for (let i = 0; i < polygon.length; i += 1) {
+    const a = { xM: polygon[i].x, yM: polygon[i].y };
+    const b = { xM: polygon[(i + 1) % polygon.length].x, yM: polygon[(i + 1) % polygon.length].y };
+    if (onSegment(a, b, point)) return true;
+  }
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i];
+    const b = polygon[j];
+    const crosses = (a.y > point.yM) !== (b.y > point.yM)
+      && point.xM < ((b.x - a.x) * (point.yM - a.y)) / (b.y - a.y) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
 export function zoneProjectedBounds(input: ProjectInput, basis: LayingBasis, zone?: LayingZone): ProjectedBounds {
   return projectedBounds(regionOutline(input, zone), basis);
 }

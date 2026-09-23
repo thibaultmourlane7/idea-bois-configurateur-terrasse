@@ -6,7 +6,7 @@ import type {
   TerraceObstacle,
   TerracePoint,
 } from '../domain/types';
-import { getDeckOutlinePointsM, getDeckPolygonM } from './geometry';
+import { getDeckOutlinePointsM, getDeckPolygonM, isPointInsideBaseDeck } from './geometry';
 
 export interface LayingBasis {
   dirX: number;
@@ -390,8 +390,13 @@ export function zonesOverlap(a: LayingZone, b: LayingZone): boolean {
 }
 
 export function zoneFitsBaseDeck(input: ProjectInput, zone: LayingZone): boolean {
+  if (zone.points.length < 3) return false;
+  if (input.shape === 'circle') {
+    return zone.points.every((point) => isPointInsideBaseDeck(input, point.xM, point.yM));
+  }
+
   const deck = getDeckOutlinePointsM(input);
-  if (zone.points.length < 3 || deck.length < 3) return false;
+  if (deck.length < 3) return false;
   if (zone.points.some((point) => !pointInPolygonForContainment(point, deck))) return false;
 
   for (let i = 0; i < zone.points.length; i += 1) {

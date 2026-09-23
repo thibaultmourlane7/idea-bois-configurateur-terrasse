@@ -218,6 +218,29 @@ describe('Sprint A V0.20 — calepinage avancé', () => {
     expect(validateProject(lProject).some((item) => item.tag === 'SA-TERR-ZONE-004' && item.severity === 'blocking')).toBe(true);
   });
 
+  it('accepte une zone valide proche du bord réel d’une terrasse circulaire', () => {
+    const circle: ProjectInput = {
+      ...base,
+      shape: 'circle',
+      dimensions: { ...base.dimensions, circleDiameterM: 5 },
+      layingZones: [{
+        id: 'CIRCLE-ZONE',
+        label: 'Zone cercle',
+        points: [
+          { xM: 2.5, yM: 0.02 },
+          { xM: 2.9, yM: 0.05 },
+          { xM: 2.7, yM: 0.35 },
+          { xM: 2.3, yM: 0.35 },
+          { xM: 2.1, yM: 0.05 },
+        ],
+        direction: 'diagonal-45',
+        pattern: 'straight',
+        start: 'top',
+      }],
+    };
+    expect(validateProject(circle).some((item) => item.tag === 'SA-TERR-ZONE-004')).toBe(false);
+  });
+
   it('bloque deux zones qui se chevauchent', () => {
     const a: LayingZone = {
       id: 'A', label: 'A',

@@ -17,6 +17,12 @@ export interface TerrainPlatform {
   targetSlopeYPercent: number;
 }
 
+export interface TerrainBoundarySegment {
+  start: TerracePoint;
+  end: TerracePoint;
+  lengthM: number;
+}
+
 export interface TerrainRelation {
   id: string;
   aPlatformId: string;
@@ -24,6 +30,7 @@ export interface TerrainRelation {
   bPlatformId: string;
   bLabel: string;
   sharedBoundaryLengthM: number;
+  boundarySegments: TerrainBoundarySegment[];
   finishedDeltaMinMm: number;
   finishedDeltaMaxMm: number;
   supportDeltaMinMm: number;
@@ -81,7 +88,8 @@ export function terrainPlatforms(input: ProjectInput): TerrainPlatform[] {
 }
 
 function platformForPoint(input: ProjectInput, xM: number, yM: number, preferredZoneId?: string): TerrainPlatform {
-  if (preferredZoneId && preferredZoneId !== 'main') {
+  if (preferredZoneId === 'main') return mainTerrainPlatform(input);
+  if (preferredZoneId) {
     const explicit = (input.layingZones ?? []).find((zone) => zone.id === preferredZoneId);
     if (explicit) return zoneAsPlatform(input, explicit);
   }
@@ -148,16 +156,32 @@ function sharedCollinearLengthM(a1: TerracePoint, a2: TerracePoint, b1: TerraceP
   return Math.max(0, end - start) * length;
 }
 
-function sharedBoundaryLengthM(a: TerracePoint[], b: TerracePoint[]): number {
-  let total = 0;
+function overlapSegment(a1: TerracePoint, a2: TerracePoint, b1: TerracePoint, b2: TerracePoint): TerrainBoundarySegment | undefined {
+  const adx = a2.xM - a1.xM;
+  const ady = a2.yM - a1.yM;
+  const length = Math.hypot(adx, ady);
+  if (length <= EPS_M) return undefined;
+  if (Math.abs(cross(a1, a2, b1)) > EPS_M || Math.abs(cross(a1, a2, b2)) > EPS_M) return undefined;
+  const project = (p: TerracePoint) => ((p.xM - a1.xM) * adx + (p.yM - a1.yM) * ady) / (length * length);
+  const startT = Math.max(0, Math.min(project(b1), project(b2)));
+  const endT = Math.min(1, Math.max(project(b1), project(b2)));
+  if (endT - startT <= EPS_M / length) return undefined;
+  const start = { xM: a1.xM + adx * startT, yM: a1.yM + ady * startT };
+  const end = { xM: a1.xM + adx * endT, yM: a1.yM + ady * endT };
+  return { start, end, lengthM: Math.hypot(end.xM - start.xM, end.yM - start.yM) };
+}
+
+function sharedBoundarySegments(a: TerracePoint[], b: TerracePoint[]): TerrainBoundarySegment[] {
+  const out: TerrainBoundarySegment[] = [];
   for (let i = 0; i < a.length; i += 1) {
     const a1 = a[i];
     const a2 = a[(i + 1) % a.length];
     for (let j = 0; j < b.length; j += 1) {
-      total += sharedCollinearLengthM(a1, a2, b[j], b[(j + 1) % b.length]);
+      const overlap = overlapSegment(a1, a2, b[j], b[(j + 1) % b.length]);
+      if (overlap) out.push(overlap);
     }
   }
-  return total;
+  return out;
 }
 
 function segmentOnDeckBoundary(input: ProjectInput, a: TerracePoint, b: TerracePoint): boolean {
@@ -172,30 +196,58 @@ function mainBoundaryInfo(
   input: ProjectInput,
   zone: LayingZone,
   allZones: LayingZone[],
-): { lengthM: number; samples: TerracePoint[] } {
+): { lengthM: number; samples: TerracePoint[]; segments: TerrainBoundarySegment[] } {
   let total = 0;
   const samples: TerracePoint[] = [];
+  const segments: TerrainBoundarySegment[] = [];
+
   for (let i = 0; i < zone.points.length; i += 1) {
     const a = zone.points[i];
     const b = zone.points[(i + 1) % zone.points.length];
     if (segmentOnDeckBoundary(input, a, b)) continue;
 
-    const length = Math.hypot(b.xM - a.xM, b.yM - a.yM);
-    const sharedWithZones = allZones
-      .filter((other) => other.id !== zone.id)
-      .reduce((sum, other) => {
-        let shared = 0;
-        for (let j = 0; j < other.points.length; j += 1) {
-          shared += sharedCollinearLengthM(a, b, other.points[j], other.points[(j + 1) % other.points.length]);
-        }
-        return sum + shared;
-      }, 0);
-    const exposed = Math.max(0, length - sharedWithZones);
-    if (exposed <= EPS_M) continue;
-    total += exposed;
-    samples.push(a, b, { xM: (a.xM + b.xM) / 2, yM: (a.yM + b.yM) / 2 });
+    const dx = b.xM - a.xM;
+    const dy = b.yM - a.yM;
+    const length = Math.hypot(dx, dy);
+    if (length <= EPS_M) continue;
+
+    const cuts: Array<[number, number]> = [];
+    for (const other of allZones.filter((item) => item.id !== zone.id)) {
+      for (let j = 0; j < other.points.length; j += 1) {
+        const overlap = overlapSegment(a, b, other.points[j], other.points[(j + 1) % other.points.length]);
+        if (!overlap) continue;
+        const projectT = (p: TerracePoint) => ((p.xM - a.xM) * dx + (p.yM - a.yM) * dy) / (length * length);
+        cuts.push([Math.max(0, projectT(overlap.start)), Math.min(1, projectT(overlap.end))]);
+      }
+    }
+
+    cuts.sort((x, y) => x[0] - y[0]);
+    let cursor = 0;
+    for (const [cutStart, cutEnd] of cuts) {
+      if (cutStart > cursor + EPS_M / length) {
+        const start = { xM: a.xM + dx * cursor, yM: a.yM + dy * cursor };
+        const end = { xM: a.xM + dx * cutStart, yM: a.yM + dy * cutStart };
+        const segment = { start, end, lengthM: Math.hypot(end.xM - start.xM, end.yM - start.yM) };
+        segments.push(segment);
+      }
+      cursor = Math.max(cursor, cutEnd);
+    }
+    if (cursor < 1 - EPS_M / length) {
+      const start = { xM: a.xM + dx * cursor, yM: a.yM + dy * cursor };
+      const end = { xM: b.xM, yM: b.yM };
+      segments.push({ start, end, lengthM: Math.hypot(end.xM - start.xM, end.yM - start.yM) });
+    }
   }
-  return { lengthM: total, samples };
+
+  for (const segment of segments) {
+    total += segment.lengthM;
+    samples.push(
+      segment.start,
+      segment.end,
+      { xM: (segment.start.xM + segment.end.xM) / 2, yM: (segment.start.yM + segment.end.yM) / 2 },
+    );
+  }
+  return { lengthM: total, samples, segments };
 }
 
 function relationSamplePoints(a: TerrainPlatform, b: TerrainPlatform): TerracePoint[] {
@@ -240,6 +292,7 @@ function makeRelation(
   b: TerrainPlatform,
   shared: number,
   samplesOverride?: TerracePoint[],
+  boundarySegments: TerrainBoundarySegment[] = [],
 ): TerrainRelation {
   const samples = samplesOverride?.length ? samplesOverride : relationSamplePoints(a, b);
   const finished = samples.map((point) => finishedFor(b, point.xM, point.yM) - finishedFor(a, point.xM, point.yM));
@@ -256,6 +309,7 @@ function makeRelation(
     bPlatformId: b.id,
     bLabel: b.label,
     sharedBoundaryLengthM: shared,
+    boundarySegments,
     finishedDeltaMinMm: minFinished,
     finishedDeltaMaxMm: maxFinished,
     supportDeltaMinMm: minSupport,
@@ -273,13 +327,14 @@ export function computeTerrainModel(input: ProjectInput): TerrainModel {
   for (const platform of explicit) {
     const zone = zones.find((item) => item.id === platform.id)!;
     const boundary = mainBoundaryInfo(input, zone, zones);
-    if (boundary.lengthM > EPS_M) relations.push(makeRelation(input, main, platform, boundary.lengthM, boundary.samples));
+    if (boundary.lengthM > EPS_M) relations.push(makeRelation(input, main, platform, boundary.lengthM, boundary.samples, boundary.segments));
   }
 
   for (let i = 0; i < explicit.length; i += 1) {
     for (let j = i + 1; j < explicit.length; j += 1) {
-      const shared = sharedBoundaryLengthM(explicit[i].points, explicit[j].points);
-      if (shared > EPS_M) relations.push(makeRelation(input, explicit[i], explicit[j], shared));
+      const boundarySegments = sharedBoundarySegments(explicit[i].points, explicit[j].points);
+      const shared = boundarySegments.reduce((sum, segment) => sum + segment.lengthM, 0);
+      if (shared > EPS_M) relations.push(makeRelation(input, explicit[i], explicit[j], shared, undefined, boundarySegments));
     }
   }
 

@@ -12,7 +12,7 @@ import { optimizeCuts } from './cuts';
 import { getCommercialConstructionRule } from './constructionRules';
 import { getEffectiveBoundarySegmentsM } from './geometry';
 import { intervalsForRegionAtV, worldPointFromUV, type LayingBasis } from './layingGeometry';
-import { supportSurfaceDeltaMm, targetFinishedDeltaMm } from './terrain';
+import { computeTerrainModel, supportSurfaceDeltaMm, targetFinishedDeltaMm } from './terrain';
 
 export const SUPPORT_PLAN_TAG = 'SA-TERR-SUPPORT-PLAN-016';
 export const SUPPORT_PLAN_SOURCE_URL = 'https://www.idea-bois.com/art-plot-lambourde-terrasse-r-glable-40-60-mm-jouplast-2182.htm';
@@ -236,6 +236,42 @@ function zoneBoundaryJoistSegments(input: ProjectInput, existingSegments: Planne
   return out;
 }
 
+function transitionBoundaryJoistSegments(
+  input: ProjectInput,
+  existingSegments: PlannedJoistSegment[],
+): PlannedJoistSegment[] {
+  const terrain = computeTerrainModel(input);
+  const out: PlannedJoistSegment[] = [];
+  let id = 1;
+
+  for (const relation of terrain.relations.filter((item) => item.transitionRequired)) {
+    for (const boundary of relation.boundarySegments) {
+      for (const zoneId of [relation.aPlatformId, relation.bPlatformId]) {
+        const candidate: PlannedJoistSegment = {
+          id: `TB${id++}`,
+          axisPositionMm: -1,
+          x1M: boundary.start.xM,
+          y1M: boundary.start.yM,
+          x2M: boundary.end.xM,
+          y2M: boundary.end.yM,
+          lengthMm: boundary.lengthM * 1000,
+          multiplicity: 1,
+          buttJointSupport: false,
+          role: 'zone-boundary',
+          zoneId,
+        };
+
+        const alreadySupported = [...existingSegments, ...out].some((existing) =>
+          (existing.zoneId ?? 'main') === zoneId && collinearAndCovered(candidate, existing)
+        );
+        if (!alreadySupported) out.push(candidate);
+      }
+    }
+  }
+
+  return out;
+}
+
 function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefined): {
   segments: PlannedJoistSegment[];
   buttJointAxisPositionsMm: number[];
@@ -247,8 +283,10 @@ function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefi
   const field = fieldJoistSegments(input, layout);
   const perimeter = perimeterJoistSegments(input, field.segments);
   const zoneBoundaries = zoneBoundaryJoistSegments(input, [...field.segments, ...perimeter.segments]);
+  const beforeTransitions = [...field.segments, ...perimeter.segments, ...zoneBoundaries];
+  const transitionBoundaries = transitionBoundaryJoistSegments(input, beforeTransitions);
   return {
-    segments: [...field.segments, ...perimeter.segments, ...zoneBoundaries],
+    segments: [...beforeTransitions, ...transitionBoundaries],
     buttJointAxisPositionsMm: field.buttJointAxisPositionsMm,
     pendingCurvedPerimeter: perimeter.pendingCurved,
   };

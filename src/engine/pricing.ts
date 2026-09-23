@@ -33,9 +33,9 @@ export function computePricing(input: ProjectInput, geometry: GeometryResult, la
     const board = boardForZone(input.board, summary.boardId);
     return board.priceTtcPerM2 == null ? undefined : summary.purchasedAreaM2 * board.priceTtcPerM2;
   });
-  const boardPurchaseTtc = productTotals.some((value) => value == null)
-    ? undefined
-    : productTotals.reduce((sum, value) => sum + (value ?? 0), 0);
+  const boardPurchaseTtc = productTotals.every((value): value is number => value != null)
+    ? productTotals.reduce<number>((sum, value) => sum + value, 0)
+    : undefined;
 
   return {
     unitPriceTtcPerM2: layout.productSummaries.length === 1 ? unit : undefined,

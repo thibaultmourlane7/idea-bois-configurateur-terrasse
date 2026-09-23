@@ -8,8 +8,12 @@ const lengthLabel = (lengthMm: number) => `${number(lengthMm / 1000, 2)} m`;
 function stockBreakdownLabel(line: BasketLine): string | null {
   if (!line.stockBreakdown?.length) return null;
   return line.stockBreakdown
-    .map((item) => `${item.quantity} × ${lengthLabel(item.lengthMm)}`)
+    .map((item) => `${item.quantity} × ${lengthLabel(item.lengthMm)}${item.productRef ? ` (${item.productRef})` : ''}`)
     .join(' + ');
+}
+
+function hasUnmappedStockReference(line: BasketLine): boolean {
+  return Boolean(line.stockBreakdown?.some((item) => !item.productRef));
 }
 
 
@@ -99,17 +103,16 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
               <div className="basket-family">{familyLabel[line.family]}</div>
               <div className="basket-product">
                 <strong>{line.label}</strong>
-                {line.productRef && (
-                  <small>
-                    {breakdown ? 'Réf. catalogue disponibles (non associées aux longueurs) : ' : 'Réf. '}
-                    {line.productRef}
-                  </small>
-                )}
+                {line.productRef && <small>{breakdown ? 'Réf. produit sélectionnées : ' : 'Réf. '}{line.productRef}</small>}
                 {breakdown && (
                   <div className="stock-breakdown">
                     <b>Longueurs à commander</b>
                     <span>{breakdown}</span>
-                    <small>Aucun SKU n’est associé automatiquement à une longueur sans correspondance catalogue validée.</small>
+                    <small>
+                      {hasUnmappedStockReference(line)
+                        ? 'Les longueurs sans SKU affiché restent volontairement non associées tant que la page produit exacte n’est pas vérifiée.'
+                        : 'Chaque SKU affiché est associé à sa longueur à partir d’une page produit vérifiée.'}
+                    </small>
                   </div>
                 )}
                 {line.note && <p>{line.note}</p>}

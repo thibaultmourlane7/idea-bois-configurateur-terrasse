@@ -1,11 +1,12 @@
 import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput, StockBoard, StockLengthBreakdown, SupportPlanResult } from '../domain/types';
 import { computeEdgeCladding } from './edgeCladding';
 import {
-  EXOTIC_JOIST_65X42_3950,
+  EXOTIC_JOIST_VARIANTS,
   GEODECK_20M2,
   HARDWOOD_SCREWS_5X60_200,
   PGB_SCREWS_5X60_200,
   PIN_JOIST_60X40_2400,
+  PIN_JOIST_VARIANTS,
   PLOT_OPTIONS,
   SILVADEC_CLIPS_30,
   SILVADEC_FINISH_SCREWS_BROWN,
@@ -20,14 +21,33 @@ export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-function stockLengthBreakdown(stockBoards: StockBoard[]): StockLengthBreakdown[] {
+function stockLengthBreakdown(
+  stockBoards: StockBoard[],
+  refsByLength?: Map<number, string | undefined>,
+): StockLengthBreakdown[] {
   const grouped = new Map<number, number>();
   for (const board of stockBoards) {
     grouped.set(board.stockLengthMm, (grouped.get(board.stockLengthMm) ?? 0) + 1);
   }
   return [...grouped.entries()]
     .sort((a, b) => b[0] - a[0])
-    .map(([lengthMm, quantity]) => ({ lengthMm, quantity }));
+    .map(([lengthMm, quantity]) => ({
+      lengthMm,
+      quantity,
+      productRef: refsByLength?.get(lengthMm),
+    }));
+}
+
+function boardRefsByLength(input: ProjectInput): Map<number, string | undefined> {
+  return new Map(
+    (input.board.catalog?.variants ?? []).map((variant) => [variant.lengthMm, variant.productRef]),
+  );
+}
+
+function joistVariantsFor(input: ProjectInput) {
+  const exotic = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20']
+    .includes(input.board.commercialRecipeId ?? '');
+  return exotic ? EXOTIC_JOIST_VARIANTS : PIN_JOIST_VARIANTS;
 }
 
 
@@ -45,7 +65,7 @@ function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: Layo
       status: 'exact',
       required: true,
       note: `${layout.purchasedLinearM.toFixed(2)} ml achetés • ${layout.wastePercent.toFixed(1)} % de chute`,
-      stockBreakdown: stockLengthBreakdown(layout.stockBoards),
+      stockBreakdown: stockLengthBreakdown(layout.stockBoards, boardRefsByLength(input)),
       sourceUrl: input.board.catalog?.sourceUrl,
     };
   }
@@ -96,34 +116,52 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
     && supportPlan
     && supportPlan.status !== 'unavailable'
     && supportPlan.joistStockBoards.length > 0;
-  const useExoticJoist = rule?.joistProductRef === EXOTIC_JOIST_65X42_3950.productRef;
-  const joistMaterial = useExoticJoist ? EXOTIC_JOIST_65X42_3950 : PIN_JOIST_60X40_2400;
-  const fallbackStockLengthM = Math.max(...(rule?.joistStockLengthsMm?.length ? rule.joistStockLengthsMm : [2400])) / 1000;
+  const joistVariants = joistVariantsFor(input);
+  const longestJoist = joistVariants
+    .slice()
+    .sort((a, b) => (b.lengthMm ?? 0) - (a.lengthMm ?? 0))[0] ?? PIN_JOIST_60X40_2400;
+  const joistMaterialByLength = new Map(joistVariants.map((item) => [item.lengthMm ?? 0, item]));
+  const joistRefsByLength = new Map(joistVariants.map((item) => [item.lengthMm ?? 0, item.productRef]));
+  const fallbackStockLengthM = Math.max(...(rule?.joistStockLengthsMm?.length ? rule.joistStockLengthsMm : [longestJoist.lengthMm ?? 2400])) / 1000;
   const joistLinearM = hasPrecisePlan ? supportPlan.joistLinearM : area * 2.5;
   const joistPieces = hasPrecisePlan ? supportPlan.joistStockBoards.length : Math.ceil(joistLinearM / fallbackStockLengthM);
+  const joistBreakdown = hasPrecisePlan ? stockLengthBreakdown(supportPlan.joistStockBoards, joistRefsByLength) : undefined;
+  const joistPreciseTotalTtc = hasPrecisePlan
+    ? supportPlan.joistStockBoards.reduce((sum, stock) => {
+        const material = joistMaterialByLength.get(stock.stockLengthMm);
+        return material ? sum + material.unitPriceTtc : Number.NaN;
+      }, 0)
+    : undefined;
+  const joistPricingComplete = joistPreciseTotalTtc == null || Number.isFinite(joistPreciseTotalTtc);
+  const joistFallbackTotalTtc = joistPieces * longestJoist.unitPriceTtc;
   const bandRolls = Math.ceil(joistLinearM / 20);
 
   const lines: BasketLine[] = unresolvedStructureReason
     ? [
-        pending('joists', 'joists', joistMaterial.label, unresolvedStructureReason),
+        pending('joists', 'joists', rule?.joistLabel ?? longestJoist.label, unresolvedStructureReason),
         pending('protection', 'protection', UBBINK_BAND_20M.label, 'La longueur de protection dépend du lambourdage final validé.'),
       ]
     : [
         {
           id: 'joists',
           family: 'joists',
-          label: joistMaterial.label,
-          productRef: joistMaterial.productRef,
+          label: rule?.joistLabel ?? longestJoist.label,
+          productRef: hasPrecisePlan && joistBreakdown?.every((item) => item.productRef)
+            ? joistBreakdown.map((item) => item.productRef).filter(Boolean).join(', ')
+            : longestJoist.productRef,
           quantity: joistPieces,
           unit: 'pièce(s)',
-          unitPriceTtc: joistMaterial.unitPriceTtc,
-          totalTtc: round2(joistPieces * joistMaterial.unitPriceTtc),
-          status: 'exact',
+          unitPriceTtc: hasPrecisePlan ? undefined : longestJoist.unitPriceTtc,
+          totalTtc: hasPrecisePlan
+            ? joistPricingComplete ? round2(joistPreciseTotalTtc ?? 0) : undefined
+            : round2(joistFallbackTotalTtc),
+          status: hasPrecisePlan && !joistPricingComplete ? 'pending' : 'exact',
           required: true,
           note: hasPrecisePlan
             ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation selon les longueurs commerciales validées de la lambourde.`
             : `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
-          sourceUrl: joistMaterial.sourceUrl,
+          stockBreakdown: joistBreakdown,
+          sourceUrl: hasPrecisePlan ? rule?.sourceUrl : longestJoist.sourceUrl,
         },
         {
           id: 'protection',

@@ -146,9 +146,10 @@ function obstacleDetails(input: ProjectInput): string[] {
 function stockBreakdownText(line: BasketLine): string | undefined {
   if (!line.stockBreakdown?.length) return undefined;
   const detail = line.stockBreakdown
-    .map((item) => `${item.quantity} x ${fmt(item.lengthMm / 1000)} m`)
+    .map((item) => `${item.quantity} x ${fmt(item.lengthMm / 1000)} m${item.productRef ? ` (${item.productRef})` : ''}`)
     .join(' + ');
-  return `Longueurs a commander : ${detail}. References catalogue non associees automatiquement aux longueurs.`;
+  const unmapped = line.stockBreakdown.some((item) => !item.productRef);
+  return `Longueurs a commander : ${detail}. ${unmapped ? 'Les longueurs sans SKU restent non associees tant que la page produit exacte n est pas verifiee.' : 'Les SKU affiches sont verifies par longueur.'}`;
 }
 
 function unique(values: Array<string | undefined>): string[] {

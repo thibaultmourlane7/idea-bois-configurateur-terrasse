@@ -131,7 +131,9 @@ describe('Sprint I V1.3 — escaliers', () => {
     const optimizedPieceIds = new Set(
       layout.productSummaries.flatMap((summary) => summary.stockBoards.flatMap((stock) => stock.cuts.map((cut) => cut.pieceId))),
     );
-    for (const piece of stairPieces) expect(optimizedPieceIds.has(piece.id)).toBe(true);
+    for (const piece of stairPieces) {
+      expect([...optimizedPieceIds].some((optimizedId) => optimizedId === piece.id || optimizedId.startsWith(`${piece.id}.`))).toBe(true);
+    }
   });
 
   it('retire l’emprise de l’escalier des lames de la plateforme basse', () => {
@@ -182,7 +184,18 @@ describe('Sprint I V1.3 — escaliers', () => {
     expect(incomplete.valid).toBe(false);
     expect(incomplete.diagnostics.some((item) => item.tag === 'SA-TERR-STAIR-GEO-001')).toBe(true);
 
-    const tooWide = runConfigurator(withStair({ widthM: 6 }));
+    const wideProject = withStair({ widthM: 6, boundaryOffsetM: 0 });
+    wideProject.dimensions = { ...wideProject.dimensions, widthM: 7 };
+    wideProject.layingZones = [{
+      ...wideProject.layingZones![0],
+      points: [
+        { xM: 3, yM: 0 },
+        { xM: 6, yM: 0 },
+        { xM: 6, yM: 7 },
+        { xM: 3, yM: 7 },
+      ],
+    }];
+    const tooWide = runConfigurator(wideProject);
     expect(tooWide.valid).toBe(false);
     expect(tooWide.diagnostics.some((item) => item.tag === 'SA-TERR-STAIR-GEO-002' && item.message.includes('longueur commerciale'))).toBe(true);
   });

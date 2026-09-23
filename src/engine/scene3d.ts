@@ -110,6 +110,7 @@ function boardObject(input: ProjectInput, layout: LayoutResult, index: number): 
   ) return undefined;
 
   const board = findBoard(segment.boardId) ?? input.board;
+  const zoneId = segment.zoneId ?? 'main';
   const lengthM = Math.hypot(segment.x2M - segment.x1M, segment.y2M - segment.y1M);
   if (lengthM <= .0001) return undefined;
 
@@ -124,8 +125,8 @@ function boardObject(input: ProjectInput, layout: LayoutResult, index: number): 
   const sRight = { xM: segment.x1M - normalX * halfWidthM, yM: segment.y1M - normalY * halfWidthM };
   const eRight = { xM: segment.x2M - normalX * halfWidthM, yM: segment.y2M - normalY * halfWidthM };
   const eLeft = { xM: segment.x2M + normalX * halfWidthM, yM: segment.y2M + normalY * halfWidthM };
-  const startZ = finishedTopZM(input, segment.x1M, segment.y1M, segment.zoneId);
-  const endZ = finishedTopZM(input, segment.x2M, segment.y2M, segment.zoneId);
+  const startZ = finishedTopZM(input, segment.x1M, segment.y1M, zoneId);
+  const endZ = finishedTopZM(input, segment.x2M, segment.y2M, zoneId);
 
   const top: Scene3DBoard['top'] = [
     { ...sLeft, zM: startZ },
@@ -140,7 +141,7 @@ function boardObject(input: ProjectInput, layout: LayoutResult, index: number): 
     sourceSegmentId: segment.id,
     boardId: board.id,
     boardLabel: board.label,
-    zoneId: segment.zoneId ?? 'main',
+    zoneId,
     widthM: board.widthMm / 1000,
     thicknessM,
     lengthM,

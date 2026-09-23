@@ -137,7 +137,12 @@ describe('Sprint H V1.2 — terrain avancé', () => {
     expect(result.layout?.zones.map((zone) => zone.id)).toEqual(expect.arrayContaining(['main', 'PLATFORM-HIGH']));
     expect(result.layout?.boardSegments.some((segment) => segment.zoneId === 'main')).toBe(true);
     expect(result.layout?.boardSegments.some((segment) => segment.zoneId === 'PLATFORM-HIGH')).toBe(true);
-    expect(result.supportPlan?.joistSegments.some((segment) => segment.role === 'zone-boundary' && segment.zoneId === 'PLATFORM-HIGH')).toBe(true);
+
+    const sharedBoundaryJoists = result.supportPlan?.joistSegments.filter((segment) =>
+      Math.abs(segment.x1M - 3) < 0.005 && Math.abs(segment.x2M - 3) < 0.005
+    ) ?? [];
+    expect(sharedBoundaryJoists.some((segment) => segment.zoneId === 'main')).toBe(true);
+    expect(sharedBoundaryJoists.some((segment) => segment.zoneId === 'PLATFORM-HIGH')).toBe(true);
   });
 
   it('signale la transition de niveau sans inventer un escalier ou une rampe', () => {

@@ -396,7 +396,7 @@ export function InteractivePlanEditor({
       setCalibrationPoints([]);
       setCalibrationDistanceM('');
       setTool('select');
-      setEditorMessage('Fond calibré. Les cotes du projet restent celles du dessin vectoriel.');
+      setEditorMessage(null);
     } catch (error) {
       setEditorMessage(error instanceof Error ? error.message : 'Calibration impossible.');
     }

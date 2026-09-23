@@ -227,7 +227,7 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Nouveau V0.16.1</strong>
+                <strong>Version V0.19</strong>
                 <span>Forme libre dessinable + cotes saisissables • réservations débordantes autorisées • plan entièrement coté.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />

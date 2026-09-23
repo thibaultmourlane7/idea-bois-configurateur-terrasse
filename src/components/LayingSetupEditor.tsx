@@ -111,6 +111,29 @@ export function LayingSetupEditor({ project, onChange }: Props) {
     });
   };
 
+  const patchZonePoint = (zone: LayingZone, pointIndex: number, key: 'xM' | 'yM', value: number) => {
+    const points = zone.points.map((point, index) => index === pointIndex
+      ? { ...point, [key]: Number.isFinite(value) ? value : 0 }
+      : point);
+    patchZone(zone.id, { points });
+  };
+
+  const insertZonePoint = (zone: LayingZone, pointIndex: number) => {
+    const a = zone.points[pointIndex];
+    const b = zone.points[(pointIndex + 1) % zone.points.length];
+    const next = [
+      ...zone.points.slice(0, pointIndex + 1),
+      { xM: (a.xM + b.xM) / 2, yM: (a.yM + b.yM) / 2 },
+      ...zone.points.slice(pointIndex + 1),
+    ];
+    patchZone(zone.id, { points: next });
+  };
+
+  const removeZonePoint = (zone: LayingZone, pointIndex: number) => {
+    if (zone.points.length <= 3) return;
+    patchZone(zone.id, { points: zone.points.filter((_, index) => index !== pointIndex) });
+  };
+
   const removeZone = (id: string) => {
     onChange({ ...project, layingZones: zones.filter((zone) => zone.id !== id) });
   };
@@ -254,6 +277,26 @@ export function LayingSetupEditor({ project, onChange }: Props) {
                     </label>
                   )}
                 </div>
+
+                <details className="zone-points-editor">
+                  <summary>Ajuster la forme de la zone — {zone.points.length} sommets</summary>
+                  <div className="zone-point-list">
+                    {zone.points.map((point, pointIndex) => (
+                      <div className="zone-point-row" key={`${zone.id}-point-${pointIndex}`}>
+                        <strong>{vertexLabel(pointIndex)}</strong>
+                        <label>X
+                          <span><input type="number" step="0.05" value={Number(point.xM.toFixed(2))} onChange={(event) => patchZonePoint(zone, pointIndex, 'xM', Number(event.target.value))} /><em>m</em></span>
+                        </label>
+                        <label>Y
+                          <span><input type="number" step="0.05" value={Number(point.yM.toFixed(2))} onChange={(event) => patchZonePoint(zone, pointIndex, 'yM', Number(event.target.value))} /><em>m</em></span>
+                        </label>
+                        <button type="button" onClick={() => insertZonePoint(zone, pointIndex)}>+ sommet après</button>
+                        <button type="button" className="danger" disabled={zone.points.length <= 3} onClick={() => removeZonePoint(zone, pointIndex)}>Retirer</button>
+                      </div>
+                    ))}
+                  </div>
+                  <small>Les zones peuvent être polygonales. Le moteur bloque les contours croisés, hors terrasse ou qui chevauchent une autre zone.</small>
+                </details>
               </article>
             );
           })}

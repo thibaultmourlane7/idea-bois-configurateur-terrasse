@@ -128,6 +128,76 @@ describe('Sprint A V0.20 — calepinage avancé', () => {
     expect(validateProject({ ...base, layingZones: [a, b] }).some((item) => item.tag === 'SA-TERR-ZONE-006')).toBe(false);
   });
 
+  it('le départ sur une rive choisie utilise réellement la rive droite', () => {
+    const byRight = computeLayout({ ...base, layingStart: 'right' });
+    const byEdge = computeLayout({ ...base, layingStart: 'edge', layingStartEdgeIndex: 1 });
+    expect(byEdge.buttJoints.map((joint) => Number((joint.xM ?? 0).toFixed(3))))
+      .toEqual(byRight.buttJoints.map((joint) => Number((joint.xM ?? 0).toFixed(3))));
+  });
+
+  it('conserve la diagonale sur une forme libre avec une réservation débordante', () => {
+    const project: ProjectInput = {
+      ...base,
+      shape: 'freeform',
+      layingDirection: 'diagonal-45',
+      freeformPoints: [
+        { xM: 0, yM: 0 },
+        { xM: 6, yM: 0 },
+        { xM: 5.4, yM: 4 },
+        { xM: 0, yM: 4 },
+      ],
+      obstacles: [{
+        id: 'POOL-OVER',
+        kind: 'pool',
+        label: 'Piscine débordante',
+        shape: 'rectangle',
+        xM: -0.8,
+        yM: 1,
+        widthM: 2,
+        heightM: 1.6,
+      }],
+    };
+    expect(validateProject(project).some((item) => item.severity === 'blocking')).toBe(false);
+    const layout = computeLayout(project);
+    expect(layout.boardSegments.length).toBeGreaterThan(0);
+
+    for (const segment of layout.boardSegments) {
+      const samples = Array.from({ length: 9 }, (_, index) => {
+        const t = index / 8;
+        return {
+          x: (segment.x1M ?? 0) + ((segment.x2M ?? 0) - (segment.x1M ?? 0)) * t,
+          y: (segment.y1M ?? 0) + ((segment.y2M ?? 0) - (segment.y1M ?? 0)) * t,
+        };
+      });
+      expect(samples.some((point) =>
+        point.x > -0.8 && point.x < 1.2 && point.y > 1 && point.y < 2.6
+      )).toBe(false);
+    }
+  });
+
+  it('calcule aussi une zone polygonale non rectangulaire', () => {
+    const polygonZone: LayingZone = {
+      id: 'POLY',
+      label: 'Zone polygonale',
+      points: [
+        { xM: 1, yM: 0.8 },
+        { xM: 3.2, yM: 0.8 },
+        { xM: 3.8, yM: 2 },
+        { xM: 2.5, yM: 3.1 },
+        { xM: 1.1, yM: 2.4 },
+      ],
+      direction: 'diagonal--45',
+      pattern: 'third',
+      start: 'edge',
+      startEdgeIndex: 2,
+    };
+    const project = { ...base, layingZones: [polygonZone] };
+    expect(validateProject(project).some((item) => item.severity === 'blocking')).toBe(false);
+    const layout = computeLayout(project);
+    expect(layout.zones.find((zone) => zone.id === 'POLY')?.direction).toBe('diagonal--45');
+    expect(layout.boardSegments.some((segment) => segment.zoneId === 'POLY')).toBe(true);
+  });
+
   it('bloque deux zones qui se chevauchent', () => {
     const a: LayingZone = {
       id: 'A', label: 'A',

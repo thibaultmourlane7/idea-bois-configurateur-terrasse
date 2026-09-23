@@ -3,6 +3,7 @@ import type { ConfiguratorResult, ProjectInput, TerraceEdgeTreatment } from '../
 import { getDeckBoundingSizeM, getDeckOutlinePointsM } from '../engine/geometry';
 import { buildSiteDossierModel, type SiteDossierModel } from './siteDossierModel';
 import { computeStairs } from '../engine/stairs';
+import { computeGuardrails } from '../engine/guardrails';
 
 type Pdf = InstanceType<typeof jsPDF>;
 
@@ -288,6 +289,24 @@ function drawStairsPlan(doc: Pdf, input: ProjectInput, x: number, y: number, wid
       text(doc, `${stair.label} - ${stair.mode === 'external-edge' ? 'extérieur - ' : ''}${stair.stepCount ?? 0} marche(s)`, cx - 14, cy, 5.8, true, BROWN);
     }
   }
+
+  const stairGuardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready' && guardrail.targetType === 'stair-side');
+  doc.setDrawColor(54, 91, 112);
+  doc.setFillColor(255, 255, 255);
+  for (const guardrail of stairGuardrails) {
+    doc.setLineWidth(1.2);
+    for (const section of guardrail.sections) {
+      doc.line(
+        ox + section.startTop.xM * scale,
+        oy + section.startTop.yM * scale,
+        ox + section.endTop.xM * scale,
+        oy + section.endTop.yM * scale,
+      );
+    }
+    for (const post of guardrail.posts) {
+      doc.circle(ox + post.base.xM * scale, oy + post.base.yM * scale, 1.2, 'FD');
+    }
+  }
 }
 
 function edgeColor(treatment: TerraceEdgeTreatment): readonly number[] {
@@ -322,6 +341,24 @@ function drawFinishesPlan(doc: Pdf, input: ProjectInput, result: ConfiguratorRes
     const mx = t.ox + ((edge.start.xM + edge.end.xM) / 2) * t.scale;
     const my = t.oy + ((edge.start.yM + edge.end.yM) / 2) * t.scale;
     text(doc, edge.label, mx - 2, my - 2, 5.5, true, c);
+  }
+
+  const guardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready');
+  for (const guardrail of guardrails) {
+    doc.setDrawColor(54, 91, 112);
+    doc.setFillColor(255, 255, 255);
+    doc.setLineWidth(1.3);
+    for (const section of guardrail.sections) {
+      doc.line(
+        t.ox + section.startTop.xM * t.scale,
+        t.oy + section.startTop.yM * t.scale,
+        t.ox + section.endTop.xM * t.scale,
+        t.oy + section.endTop.yM * t.scale,
+      );
+    }
+    for (const post of guardrail.posts) {
+      doc.circle(t.ox + post.base.xM * t.scale, t.oy + post.base.yM * t.scale, 1.3, 'FD');
+    }
   }
 }
 
@@ -471,6 +508,37 @@ export async function generateSiteDossierPdf(input: ProjectInput, result: Config
         stair.structureLineCount != null ? MUTED : AMBER,
       ) + 4;
     }
+  }
+
+  if (model.guardrails.length) {
+    y = addPage(doc, 'Garde-corps', version);
+    text(doc, 'Côtés, poteaux, sections et références', 14, y, 9.5, true, NAVY);
+    y += 7;
+    for (const guardrail of model.guardrails) {
+      y = ensure(doc, y, 30, 'Garde-corps', version);
+      if (guardrail.status !== 'ready') {
+        y = row(doc, y, guardrail.label, `${guardrail.targetLabel} - statut ${guardrail.status} - ${guardrail.issues.join(' ')}`, 'À compléter');
+        continue;
+      }
+      y = row(
+        doc,
+        y,
+        guardrail.label,
+        `${guardrail.targetLabel} - longueur plan ${guardrail.planLengthM?.toFixed(2)} m - longueur 3D ${guardrail.slopeLengthM?.toFixed(2)} m - hauteur ${guardrail.heightMm?.toFixed(0)} mm - ${guardrail.postCount} poteau(x) - ${guardrail.sectionCount} section(s) - section moyenne ${guardrail.averageSectionLengthM?.toFixed(2)} m`,
+      );
+      y = ensure(doc, y, 22, 'Garde-corps', version);
+      y = wrapped(
+        doc,
+        `Section poteau : ${guardrail.postSectionWidthMm ?? '?'} × ${guardrail.postSectionDepthMm ?? '?'} mm. Références : système ${guardrail.systemReference ?? 'à confirmer'} ; poteau ${guardrail.postReference ?? 'à confirmer'} ; section/remplissage ${guardrail.sectionReference ?? 'à confirmer'} ; fixation ${guardrail.fixingReference ?? 'à confirmer'}.`,
+        18,
+        y,
+        174,
+        6.7,
+        guardrail.issues.length ? AMBER : MUTED,
+      ) + 4;
+    }
+    y = ensure(doc, y, 18, 'Garde-corps', version);
+    y = wrapped(doc, 'Aucun besoin réglementaire, entraxe, section de poteau ou référence fabricant n’est déduit automatiquement. Les données absentes restent à confirmer avant commande ou exécution.', 14, y, 182, 6.8, AMBER) + 4;
   }
 
   y = addPage(doc, 'Plan des finitions', version);

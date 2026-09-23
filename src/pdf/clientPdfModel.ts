@@ -3,6 +3,7 @@ import { getDeckOutlinePointsM } from '../engine/geometry';
 import { computeTerraceEdges, EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
 import { computeTerrainModel } from '../engine/terrain';
 import { computeStairs } from '../engine/stairs';
+import { computeGuardrails } from '../engine/guardrails';
 
 export interface ClientPdfLine {
   family: string;
@@ -200,6 +201,9 @@ export function buildClientPdfModel(
         : 'Sans habillage lateral',
   ];
   if (input.supportType === 'stabilized-ground') finishParts.push(input.includeGeotextile ? 'Geotextile inclus' : 'Sans geotextile');
+  if (guardrails.length) {
+    finishParts.push(`${guardrails.length} garde-corps - ${guardrails.reduce((sum, guardrail) => sum + (guardrail.postCount ?? 0), 0)} poteau(x) - ${guardrails.reduce((sum, guardrail) => sum + (guardrail.sectionCount ?? 0), 0)} section(s)`);
+  }
 
   const lines = (basket?.lines ?? []).map((line): ClientPdfLine => ({
     family: familyLabels[line.family],
@@ -215,6 +219,7 @@ export function buildClientPdfModel(
   const supportPlan = result.supportPlan;
   const terrain = computeTerrainModel(input);
   const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
+  const guardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready');
   const jointAxisCount = layout
     ? layout.zones.reduce((sum, zone) => sum + zone.buttJointAxisPositionsMm.length, 0)
     : 0;

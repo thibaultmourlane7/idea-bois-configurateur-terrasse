@@ -11,6 +11,7 @@ import { resolveTextureVariant } from '../visual/textureVariants';
 import { boardOffsetFromRatio, buildGrooveLines, shouldRenderKnots } from '../visual/texturePainter';
 import { findBoard } from '../catalog/compatibility';
 import { computeStairs } from '../engine/stairs';
+import { computeGuardrails } from '../engine/guardrails';
 import { vertexLabel } from '../editor/interactiveGeometry';
 
 function obstacleFill(kind: TerraceObstacle['kind']) {
@@ -64,6 +65,7 @@ export function Plan2D({
   const claddingEdges = businessEdges.filter((edge) => edge.treatment === 'cladding');
   const edgeCladdingRequested = claddingEdges.length > 0;
   const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
+  const guardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready');
 
   const viewport = (() => {
     let minX = 0;
@@ -347,6 +349,40 @@ export function Plan2D({
           </g>
         ))}
 
+        {layers.edgeCladding && guardrails.map((guardrail) => (
+          <g key={`guardrail-${guardrail.id}`} className="guardrail-plan-overlay">
+            {guardrail.sections.map((section) => (
+              <line
+                key={section.id}
+                x1={x + section.startTop.xM * scale}
+                y1={y + section.startTop.yM * scale}
+                x2={x + section.endTop.xM * scale}
+                y2={y + section.endTop.yM * scale}
+                className="guardrail-plan-rail"
+              />
+            ))}
+            {guardrail.posts.map((post) => (
+              <circle
+                key={post.id}
+                cx={x + post.base.xM * scale}
+                cy={y + post.base.yM * scale}
+                r={3.2}
+                className="guardrail-plan-post"
+              />
+            ))}
+            {guardrail.posts.length > 1 && (
+              <text
+                x={x + (guardrail.posts[0].base.xM + guardrail.posts[guardrail.posts.length - 1].base.xM) / 2 * scale}
+                y={y + (guardrail.posts[0].base.yM + guardrail.posts[guardrail.posts.length - 1].base.yM) / 2 * scale - 7}
+                textAnchor="middle"
+                className="guardrail-plan-label"
+              >
+                {guardrail.label} · {guardrail.postCount} poteaux
+              </text>
+            )}
+          </g>
+        ))}
+
         {input.edgeFinishMode === 'per-edge' && input.shape !== 'circle' && businessEdges.map((edge) => {
           const mx = x + ((edge.start.xM + edge.end.xM) / 2) * scale;
           const my = y + ((edge.start.yM + edge.end.yM) / 2) * scale;
@@ -476,6 +512,7 @@ export function Plan2D({
         {layers.edgeCladding && edgeCladdingRequested && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && edgeCladdingRequested && <span><i className="legend-vertical" />Supports verticaux</span>}
         {layers.decking && stairs.length > 0 && <span><i className="legend-stair" />{stairs.length} escalier(s)</span>}
+        {layers.edgeCladding && guardrails.length > 0 && <span><i className="legend-guardrail" />{guardrails.length} garde-corps</span>}
       </div>
 
       <div className={`texture-quality-note ${texture.status}`}>

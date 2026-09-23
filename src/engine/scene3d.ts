@@ -9,6 +9,7 @@ import { computeTerraceEdges } from './edges';
 import { getDeckOutlinePointsM } from './geometry';
 import { computeTerrainModel, targetFinishedDeltaMm, type TerrainModel } from './terrain';
 import { computeStairs, type StairResult } from './stairs';
+import { computeGuardrails, type GuardrailResult } from './guardrails';
 
 export const SCENE_3D_TAG = 'SA-TERR-3D-110';
 
@@ -101,6 +102,7 @@ export interface Scene3DModel {
   obstacles: Scene3DObstacle[];
   terrain: TerrainModel;
   stairs: StairResult[];
+  guardrails: GuardrailResult[];
   diagnostics: string[];
 }
 
@@ -253,6 +255,8 @@ export function buildProfessional3DScene(
   const terrain = computeTerrainModel(input);
   const allStairs = computeStairs(input);
   const stairs = allStairs.filter((stair) => stair.status === 'ready');
+  const allGuardrails = computeGuardrails(input);
+  const guardrails = allGuardrails.filter((guardrail) => guardrail.status === 'ready');
   const deckOutline = getDeckOutlinePointsM(input).map((point) => ({
     xM: point.x,
     yM: point.y,
@@ -265,6 +269,10 @@ export function buildProfessional3DScene(
     ...stairs.flatMap((stair) => stair.structureAxes.flatMap((axis) => [
       { xM: axis.start.xM, yM: axis.start.yM },
       { xM: axis.end.xM, yM: axis.end.yM },
+    ])),
+    ...guardrails.flatMap((guardrail) => guardrail.posts.flatMap((post) => [
+      { xM: post.base.xM, yM: post.base.yM },
+      { xM: post.top.xM, yM: post.top.yM },
     ])),
   ];
   const minXM = xyPoints.length ? Math.min(...xyPoints.map((point) => point.xM)) : 0;
@@ -280,6 +288,7 @@ export function buildProfessional3DScene(
     ...supports.flatMap((support) => [support.bottomZM, support.topZM]),
     ...stairs.flatMap((stair) => stair.treads.flatMap((tread) => tread.top.map((point) => point.zM))),
     ...stairs.flatMap((stair) => stair.structureAxes.flatMap((axis) => [axis.start.zM, axis.end.zM])),
+    ...guardrails.flatMap((guardrail) => guardrail.posts.flatMap((post) => [post.base.zM, post.top.zM])),
   ];
 
   const diagnostics: string[] = [];
@@ -296,6 +305,9 @@ export function buildProfessional3DScene(
   diagnostics.push(...terrain.diagnostics);
   for (const stair of allStairs.filter((item) => item.status !== 'ready')) {
     diagnostics.push(`${stair.label} : ${stair.issues.join(' ')}`);
+  }
+  for (const guardrail of allGuardrails.filter((item) => item.status !== 'ready')) {
+    diagnostics.push(`${guardrail.label} : ${guardrail.issues.join(' ')}`);
   }
 
   return {
@@ -318,6 +330,7 @@ export function buildProfessional3DScene(
     obstacles,
     terrain,
     stairs,
+    guardrails,
     diagnostics,
   };
 }

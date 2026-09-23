@@ -73,7 +73,7 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
         </article>
         {result.supportPlan && result.supportPlan.status !== 'unavailable' && (
           <article className="result-card">
-            <span>Structure V1.3.1</span>
+            <span>Structure V1.4</span>
             <strong>
               {result.supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} plots
             </strong>

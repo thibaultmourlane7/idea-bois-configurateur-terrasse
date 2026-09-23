@@ -14,14 +14,15 @@ import { computeTerraceEdges, EDGE_TAG } from './edges';
 import { getProductCompatibility } from '../catalog/compatibility';
 import { computeTerrainModel, TERRAIN_TAG } from './terrain';
 import { computeStairs, STAIR_TAG } from './stairs';
+import { computeGuardrails, GUARDRAIL_TAG } from './guardrails';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.3.1';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.4.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.3.1 : Sprint I corrigé — escaliers extérieurs depuis une rive et escaliers entre plateformes, sans règle structurelle inventée.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.4.0 : Sprint J — garde-corps sur rives terrasse et côtés d’escalier, avec poteaux, sections et références explicites.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -36,6 +37,11 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
     const treadLinearM = readyStairs.reduce((sum, stair) => sum + (stair.treadRequiredLinearM ?? 0), 0);
     const structureLinearM = readyStairs.reduce((sum, stair) => sum + (stair.structureLinearM ?? 0), 0);
     trace.push(`[${STAIR_TAG}] ${stairs.length} escalier(s) configuré(s) ; ${readyStairs.length} géométrie(s) calculée(s) ; marches ${treadLinearM.toFixed(2)} ml de lame ; structure géométrique ${structureLinearM.toFixed(2)} ml renseignés.`);
+  }
+  const guardrails = computeGuardrails(input);
+  if (guardrails.length) {
+    const readyGuardrails = guardrails.filter((item) => item.status === 'ready');
+    trace.push(`[${GUARDRAIL_TAG}] ${guardrails.length} garde-corps configuré(s) ; ${readyGuardrails.length} géométrie(s) calculée(s) ; ${readyGuardrails.reduce((sum, item) => sum + (item.postCount ?? 0), 0)} poteau(x) ; ${readyGuardrails.reduce((sum, item) => sum + (item.sectionCount ?? 0), 0)} section(s).`);
   }
   const compatibility = getProductCompatibility(input.board);
   diagnostics.push({

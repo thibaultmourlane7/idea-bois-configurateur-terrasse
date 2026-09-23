@@ -299,6 +299,28 @@ export function Preview3D({
       }
     };
 
+    const drawGuardrails = () => {
+      if (!layers.edgeCladding) return;
+      for (const guardrail of scene.guardrails) {
+        const postWidthPx = guardrail.postSectionWidthMm != null
+          ? Math.max(2.2, guardrail.postSectionWidthMm / 1000 * scale)
+          : 2.2;
+        for (const post of guardrail.posts) {
+          line(post.base, post.top, '#344956', postWidthPx, deckOffset);
+          line(
+            { ...post.base, zM: post.base.zM + .006 },
+            { ...post.top, zM: post.top.zM + .006 },
+            '#6d8492',
+            Math.max(1, postWidthPx * .35),
+            deckOffset,
+          );
+        }
+        for (const section of guardrail.sections) {
+          line(section.startTop, section.endTop, '#304b5c', Math.max(2.4, postWidthPx * .85), deckOffset);
+        }
+      }
+    };
+
     const drawEdges = () => {
       if (!layers.edgeCladding) return;
       for (const edge of scene.edges) {
@@ -367,6 +389,7 @@ export function Preview3D({
         .forEach((board) => drawBoard(board, photo));
 
       drawStairs(photo);
+      drawGuardrails();
       drawObstacles();
 
       const title = clientRender ? 'RENDU CLIENT' : 'VUE TECHNIQUE';
@@ -425,6 +448,7 @@ export function Preview3D({
         {layers.edgeCladding && scene.edges.some((edge) => edge.treatment !== 'none') && <span><i className="legend-edge" />Rives configurées</span>}
         {scene.terrain.platforms.length > 1 && <span className="terrain-3d-badge">{scene.terrain.platforms.length} plateformes • {scene.terrain.transitionCount} transition(s)</span>}
         {scene.stairs.length > 0 && <span className="terrain-3d-badge">{scene.stairs.length} escalier(s) • {scene.stairs.reduce((sum, stair) => sum + (stair.stepCount ?? 0), 0)} marche(s)</span>}
+        {scene.guardrails.length > 0 && <span className="terrain-3d-badge">{scene.guardrails.length} garde-corps • {scene.guardrails.reduce((sum, guardrail) => sum + (guardrail.postCount ?? 0), 0)} poteau(x)</span>}
       </div>
 
       <div className={`texture-quality-note ${texture.status}`}>

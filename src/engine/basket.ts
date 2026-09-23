@@ -20,6 +20,7 @@ import { getCommercialConstructionRule } from './constructionRules';
 import { boardForZone } from '../catalog/compatibility';
 import { hasEdgeTreatment } from './edges';
 import { computeStairs } from './stairs';
+import { computeGuardrails } from './guardrails';
 
 export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
@@ -420,6 +421,51 @@ function stairLines(input: ProjectInput): BasketLine[] {
   return lines;
 }
 
+function guardrailLines(input: ProjectInput): BasketLine[] {
+  const lines: BasketLine[] = [];
+  for (const guardrail of computeGuardrails(input).filter((item) => item.status === 'ready')) {
+    const sectionInfo = guardrail.sectionCount != null && guardrail.averageSectionLengthM != null
+      ? `${guardrail.sectionCount} section(s) • longueur moyenne ${guardrail.averageSectionLengthM.toFixed(2)} m`
+      : 'Sections à confirmer';
+
+    lines.push({
+      id: `guardrail-posts-${guardrail.id}`,
+      family: 'accessories',
+      label: `Poteaux garde-corps — ${guardrail.label}`,
+      productRef: guardrail.postReference,
+      quantity: guardrail.postCount,
+      unit: 'poteau(x)',
+      status: 'pending',
+      required: true,
+      note: `${guardrail.targetLabel} • ${guardrail.slopeLengthM?.toFixed(2) ?? '?'} ml géométriques • section poteau ${guardrail.postSectionWidthMm ?? '?'} × ${guardrail.postSectionDepthMm ?? '?'} mm. Prix et compatibilité à confirmer.`,
+    });
+
+    lines.push({
+      id: `guardrail-sections-${guardrail.id}`,
+      family: 'accessories',
+      label: `Sections garde-corps — ${guardrail.label}`,
+      productRef: guardrail.sectionReference,
+      quantity: guardrail.sectionCount,
+      unit: 'section(s)',
+      status: 'pending',
+      required: true,
+      note: `${sectionInfo}. Référence système ${guardrail.systemReference ?? 'à confirmer'}.`,
+    });
+
+    lines.push({
+      id: `guardrail-fixings-${guardrail.id}`,
+      family: 'fixings',
+      label: `Fixations garde-corps — ${guardrail.label}`,
+      productRef: guardrail.fixingReference,
+      unit: '—',
+      status: 'pending',
+      required: true,
+      note: 'Aucune quantité de fixation n’est déduite sans règle fabricant validée.',
+    });
+  }
+  return lines;
+}
+
 function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
   const lines: BasketLine[] = [];
 
@@ -583,6 +629,7 @@ export function computeBasket(
 
   lines.push(...accessoryLines(input, geometry));
   lines.push(...stairLines(input));
+  lines.push(...guardrailLines(input));
 
   const required = lines.filter((line) => line.required);
   const exactLines = required.filter((line) => line.status === 'exact');

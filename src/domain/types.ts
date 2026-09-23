@@ -125,6 +125,33 @@ export interface StairConfig {
   boardId?: string;
 }
 
+export type GuardrailTargetType = 'terrace-edge' | 'stair-side';
+export type GuardrailStairSide = 'left' | 'right';
+
+export interface GuardrailConfig {
+  id: string;
+  label: string;
+  targetType: GuardrailTargetType;
+  /** Rive terrasse lorsque targetType === 'terrace-edge'. */
+  edgeIndex?: number;
+  /** Escalier et côté lorsque targetType === 'stair-side'. */
+  stairId?: string;
+  stairSide?: GuardrailStairSide;
+  /** Hauteur verticale du garde-corps, saisie explicitement. */
+  heightMm?: number;
+  /** Nombre total de poteaux sur ce côté, saisi explicitement. */
+  postCount?: number;
+  /** Section du poteau, uniquement si connue. */
+  postSectionWidthMm?: number;
+  postSectionDepthMm?: number;
+  /** Références commerciales / fabricant, uniquement si connues. */
+  systemReference?: string;
+  postReference?: string;
+  sectionReference?: string;
+  fixingReference?: string;
+  note?: string;
+}
+
 export interface SupportLevelProfile {
   /** Profil du support existant utilisé pour calculer la hauteur de chaque plot. */
   mode: SupportLevelMode;
@@ -294,8 +321,10 @@ export interface ProjectInput {
   layingZones?: LayingZone[];
   /** Motif de départ des lames. */
   layingPattern?: DeckLayingPattern;
-  /** Sprint I : escaliers explicitement implantés sur les transitions de niveau. */
+  /** Sprint I : escaliers explicitement implantés sur les transitions de niveau ou rives extérieures. */
   stairs?: StairConfig[];
+  /** Sprint J : garde-corps explicitement placés sur une rive terrasse ou un côté d'escalier. */
+  guardrails?: GuardrailConfig[];
   board: BoardSpec;
   joist: JoistSpec;
   usage: 'residential';

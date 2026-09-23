@@ -15,6 +15,7 @@ import { SupportHeightMap } from './components/SupportHeightMap';
 import { LayingSetupEditor } from './components/LayingSetupEditor';
 import { CutOptimizationView } from './components/CutOptimizationView';
 import { EdgeSetupEditor } from './components/EdgeSetupEditor';
+import { GuardrailEditor } from './components/GuardrailEditor';
 import { ProductCompatibilityPanel } from './components/ProductCompatibilityPanel';
 import { hasEdgeTreatment } from './engine/edges';
 import { canUseBoardInZone, findBoard } from './catalog/compatibility';
@@ -69,6 +70,7 @@ const initialProject: ProjectInput = {
   layingZones: [],
   layingPattern: 'straight',
   stairs: [],
+  guardrails: [],
   board: defaultBoard,
   joist: demoJoist,
   usage: 'residential',
@@ -252,7 +254,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.3.1 • escaliers extérieurs + multi-niveaux</div>
+          <div className="header-note">V1.4 • garde-corps • côtés • poteaux • sections</div>
         </div>
       </header>
 
@@ -271,8 +273,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V1.3.1 — Escaliers corrigés</strong>
-                <span>Accès depuis une rive extérieure ou entre plateformes • marches et hauteurs calculées • quantités intégrées • aucune règle structurelle inventée.</span>
+                <strong>Version V1.4 — Garde-corps</strong>
+                <span>Côtés terrasse ou escalier • poteaux et sections calculés depuis les saisies • références explicites • aucune règle fabricant inventée.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
@@ -501,6 +503,7 @@ export default function App() {
                   />
                 </div>
                 {project.edgeFinishMode === 'per-edge' && <EdgeSetupEditor project={project} onChange={setProject} />}
+                <GuardrailEditor project={project} onChange={setProject} />
                 {hasEdgeTreatment(project, 'cladding') && (
                   <label className="single-field edge-height-field">
                     Hauteur de l’habillage

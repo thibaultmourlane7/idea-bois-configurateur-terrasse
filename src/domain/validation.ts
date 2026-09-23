@@ -6,6 +6,7 @@ import { zoneFitsBaseDeck, zonesOverlap } from '../engine/layingGeometry';
 import { canUseBoardInZone, findBoard } from '../catalog/compatibility';
 import { computeTerrainModel } from '../engine/terrain';
 import { computeStairs } from '../engine/stairs';
+import { computeGuardrails, guardrailTargetKey } from '../engine/guardrails';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -282,6 +283,63 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
             field: 'stairs',
           });
         }
+      }
+    }
+  }
+
+  const guardrailIds = new Set<string>();
+  const guardrailTargets = new Set<string>();
+  for (const guardrail of input.guardrails ?? []) {
+    if (!guardrail.id.trim() || !guardrail.label.trim()) {
+      diagnostics.push({
+        tag: 'SA-TERR-GUARD-001',
+        severity: 'blocking',
+        message: 'Chaque garde-corps doit avoir un identifiant et un nom.',
+        field: 'guardrails',
+      });
+    }
+    if (guardrailIds.has(guardrail.id)) {
+      diagnostics.push({
+        tag: 'SA-TERR-GUARD-002',
+        severity: 'blocking',
+        message: `L’identifiant de garde-corps ${guardrail.id} est utilisé plusieurs fois.`,
+        field: 'guardrails',
+      });
+    }
+    guardrailIds.add(guardrail.id);
+
+    const targetKey = guardrailTargetKey(guardrail);
+    if (guardrailTargets.has(targetKey)) {
+      diagnostics.push({
+        tag: 'SA-TERR-GUARD-003',
+        severity: 'blocking',
+        message: `${guardrail.label || 'Garde-corps'} : ce côté possède déjà un garde-corps configuré.`,
+        field: 'guardrails',
+      });
+    }
+    guardrailTargets.add(targetKey);
+  }
+
+  if (!diagnostics.some((item) => item.severity === 'blocking')) {
+    const guardrails = computeGuardrails(input);
+    for (const guardrail of guardrails) {
+      if (guardrail.status === 'pending' || guardrail.status === 'invalid') {
+        diagnostics.push({
+          tag: guardrail.status === 'invalid' ? 'SA-TERR-GUARD-GEO-002' : 'SA-TERR-GUARD-GEO-001',
+          severity: 'blocking',
+          message: `${guardrail.label} : ${guardrail.issues.join(' ')}`,
+          field: `guardrails.${guardrail.id}`,
+        });
+        continue;
+      }
+      for (const issue of guardrail.issues) {
+        diagnostics.push({
+          tag: 'SA-TERR-GUARD-REF-001',
+          severity: 'warning',
+          message: `${guardrail.label} : ${issue}`,
+          technicalMessage: 'La géométrie du garde-corps est calculée, mais les données fabricant manquantes restent explicitement à confirmer avant commande ou exécution.',
+          field: `guardrails.${guardrail.id}`,
+        });
       }
     }
   }

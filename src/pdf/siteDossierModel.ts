@@ -4,6 +4,7 @@ import { getProductCompatibility, findBoard } from '../catalog/compatibility';
 import { EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
 import { computeTerrainModel } from '../engine/terrain';
 import { computeStairs } from '../engine/stairs';
+import { computeGuardrails } from '../engine/guardrails';
 
 export type SiteDossierStatus = 'ready' | 'with-warnings' | 'blocked';
 
@@ -155,6 +156,26 @@ export interface SiteDossierStair {
   issues: string[];
 }
 
+export interface SiteDossierGuardrail {
+  id: string;
+  label: string;
+  targetLabel: string;
+  status: 'ready' | 'pending' | 'invalid';
+  heightMm?: number;
+  postCount?: number;
+  sectionCount?: number;
+  planLengthM?: number;
+  slopeLengthM?: number;
+  averageSectionLengthM?: number;
+  postSectionWidthMm?: number;
+  postSectionDepthMm?: number;
+  systemReference?: string;
+  postReference?: string;
+  sectionReference?: string;
+  fixingReference?: string;
+  issues: string[];
+}
+
 export interface SiteDossierModel {
   projectName: string;
   generatedAt: string;
@@ -166,6 +187,7 @@ export interface SiteDossierModel {
   structure: SiteDossierStructure;
   terrain: SiteDossierTerrain;
   stairs: SiteDossierStair[];
+  guardrails: SiteDossierGuardrail[];
   edges: SiteDossierEdge[];
   /** Liste d'achat = produits à fournir. */
   purchaseList: SiteDossierPurchaseLine[];
@@ -257,6 +279,7 @@ export function buildSiteDossierModel(
   const clientSummary = buildClientPdfModel(input, result, version, generatedAt);
   const terrainModel = computeTerrainModel(input);
   const stairModels = computeStairs(input);
+  const guardrailModels = computeGuardrails(input);
   const layout = result.layout;
   const supportPlan = result.supportPlan;
   const blocking = result.diagnostics.filter((item) => item.severity === 'blocking');
@@ -472,6 +495,25 @@ export function buildSiteDossierModel(
       structureLineCount: stair.structureLineCount,
       structureLinearM: stair.structureLinearM,
       issues: stair.issues,
+    })),
+    guardrails: guardrailModels.map((guardrail) => ({
+      id: guardrail.id,
+      label: guardrail.label,
+      targetLabel: guardrail.targetLabel,
+      status: guardrail.status,
+      heightMm: guardrail.heightMm,
+      postCount: guardrail.postCount,
+      sectionCount: guardrail.sectionCount,
+      planLengthM: guardrail.planLengthM,
+      slopeLengthM: guardrail.slopeLengthM,
+      averageSectionLengthM: guardrail.averageSectionLengthM,
+      postSectionWidthMm: guardrail.postSectionWidthMm,
+      postSectionDepthMm: guardrail.postSectionDepthMm,
+      systemReference: guardrail.systemReference,
+      postReference: guardrail.postReference,
+      sectionReference: guardrail.sectionReference,
+      fixingReference: guardrail.fixingReference,
+      issues: guardrail.issues,
     })),
     edges,
     purchaseList,

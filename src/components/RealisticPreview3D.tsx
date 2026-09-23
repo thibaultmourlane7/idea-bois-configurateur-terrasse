@@ -280,7 +280,11 @@ export function RealisticPreview3D({
     world.add(root);
 
     const boardMaterials = new Map<string, [THREE.MeshStandardMaterial, THREE.MeshStandardMaterial]>();
-    const getBoardMaterials = (boardId: string, baseColor: string, grainColor: string) => {
+    const getBoardMaterials = (
+      boardId: string,
+      baseColor: string,
+      grainColor: string,
+    ): [THREE.MeshStandardMaterial, THREE.MeshStandardMaterial] => {
       const cached = boardMaterials.get(boardId);
       if (cached) return cached;
       const board = findBoard(boardId);
@@ -303,7 +307,7 @@ export function RealisticPreview3D({
         metalness: 0,
       });
       boardMaterials.set(boardId, [top, side]);
-      return [top, side] as const;
+      return [top, side];
     };
 
     const deckOffset = exploded ? .34 : 0;

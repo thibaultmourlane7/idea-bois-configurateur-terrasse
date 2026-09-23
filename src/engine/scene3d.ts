@@ -8,6 +8,7 @@ import { findBoard } from '../catalog/compatibility';
 import { computeTerraceEdges } from './edges';
 import { getDeckBoundingSizeM, getDeckOutlinePointsM } from './geometry';
 import { computeTerrainModel, targetFinishedDeltaMm, type TerrainModel } from './terrain';
+import { computeStairs, type StairResult } from './stairs';
 
 export const SCENE_3D_TAG = 'SA-TERR-3D-110';
 
@@ -95,6 +96,7 @@ export interface Scene3DModel {
   edges: Scene3DEdge[];
   obstacles: Scene3DObstacle[];
   terrain: TerrainModel;
+  stairs: StairResult[];
   diagnostics: string[];
 }
 
@@ -246,6 +248,8 @@ export function buildProfessional3DScene(
   const edges = edgeObjects(input);
   const obstacles = obstacleObjects(input);
   const terrain = computeTerrainModel(input);
+  const allStairs = computeStairs(input);
+  const stairs = allStairs.filter((stair) => stair.status === 'ready');
   const deckOutline = getDeckOutlinePointsM(input).map((point) => ({
     xM: point.x,
     yM: point.y,
@@ -258,6 +262,8 @@ export function buildProfessional3DScene(
     ...boards.flatMap((board) => [...board.top, ...board.bottom].map((point) => point.zM)),
     ...joists.flatMap((joist) => [joist.start.zM - joist.heightM / 2, joist.end.zM + joist.heightM / 2]),
     ...supports.flatMap((support) => [support.bottomZM, support.topZM]),
+    ...stairs.flatMap((stair) => stair.treads.flatMap((tread) => tread.top.map((point) => point.zM))),
+    ...stairs.flatMap((stair) => stair.structureAxes.flatMap((axis) => [axis.start.zM, axis.end.zM])),
   ];
 
   const diagnostics: string[] = [];
@@ -272,6 +278,9 @@ export function buildProfessional3DScene(
     diagnostics.push('Contour courbe : la lambourde périphérique courbe reste à confirmer et n’est pas inventée en 3D.');
   }
   diagnostics.push(...terrain.diagnostics);
+  for (const stair of allStairs.filter((item) => item.status !== 'ready')) {
+    diagnostics.push(`${stair.label} : ${stair.issues.join(' ')}`);
+  }
 
   return {
     tag: SCENE_3D_TAG,
@@ -288,6 +297,7 @@ export function buildProfessional3DScene(
     edges,
     obstacles,
     terrain,
+    stairs,
     diagnostics,
   };
 }

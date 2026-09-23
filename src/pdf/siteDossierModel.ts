@@ -3,6 +3,7 @@ import { buildClientPdfModel } from './clientPdfModel';
 import { getProductCompatibility, findBoard } from '../catalog/compatibility';
 import { EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
 import { computeTerrainModel } from '../engine/terrain';
+import { computeStairs } from '../engine/stairs';
 
 export type SiteDossierStatus = 'ready' | 'with-warnings' | 'blocked';
 
@@ -133,6 +134,27 @@ export interface SiteDossierTerrain {
   transitionCount: number;
 }
 
+export interface SiteDossierStair {
+  id: string;
+  label: string;
+  status: 'ready' | 'pending' | 'invalid';
+  lowPlatformLabel?: string;
+  highPlatformLabel?: string;
+  widthM?: number;
+  treadDepthMm?: number;
+  stepCount?: number;
+  totalRunM?: number;
+  riseLeftMm?: number;
+  riseRightMm?: number;
+  riserHeightLeftMm?: number;
+  riserHeightRightMm?: number;
+  treadAreaM2?: number;
+  treadRequiredLinearM?: number;
+  structureLineCount?: number;
+  structureLinearM?: number;
+  issues: string[];
+}
+
 export interface SiteDossierModel {
   projectName: string;
   generatedAt: string;
@@ -143,6 +165,7 @@ export interface SiteDossierModel {
   products: SiteDossierProduct[];
   structure: SiteDossierStructure;
   terrain: SiteDossierTerrain;
+  stairs: SiteDossierStair[];
   edges: SiteDossierEdge[];
   /** Liste d'achat = produits à fournir. */
   purchaseList: SiteDossierPurchaseLine[];
@@ -233,6 +256,7 @@ export function buildSiteDossierModel(
 
   const clientSummary = buildClientPdfModel(input, result, version, generatedAt);
   const terrainModel = computeTerrainModel(input);
+  const stairModels = computeStairs(input);
   const layout = result.layout;
   const supportPlan = result.supportPlan;
   const blocking = result.diagnostics.filter((item) => item.severity === 'blocking');
@@ -429,6 +453,26 @@ export function buildSiteDossierModel(
       })),
       transitionCount: terrainModel.transitionCount,
     },
+    stairs: stairModels.map((stair) => ({
+      id: stair.id,
+      label: stair.label,
+      status: stair.status,
+      lowPlatformLabel: stair.lowPlatformLabel,
+      highPlatformLabel: stair.highPlatformLabel,
+      widthM: stair.widthM,
+      treadDepthMm: stair.treadDepthMm,
+      stepCount: stair.stepCount,
+      totalRunM: stair.totalRunM,
+      riseLeftMm: stair.riseLeftMm,
+      riseRightMm: stair.riseRightMm,
+      riserHeightLeftMm: stair.riserHeightLeftMm,
+      riserHeightRightMm: stair.riserHeightRightMm,
+      treadAreaM2: stair.treadAreaM2,
+      treadRequiredLinearM: stair.treadRequiredLinearM,
+      structureLineCount: stair.structureLineCount,
+      structureLinearM: stair.structureLinearM,
+      issues: stair.issues,
+    })),
     edges,
     purchaseList,
     cutList,

@@ -10,6 +10,7 @@ import { GeometryEditor } from './components/GeometryEditor';
 import { SideView } from './components/SideView';
 import { LayerControls } from './components/LayerControls';
 import { LevelingEditor } from './components/LevelingEditor';
+import { StairEditor } from './components/StairEditor';
 import { SupportHeightMap } from './components/SupportHeightMap';
 import { LayingSetupEditor } from './components/LayingSetupEditor';
 import { CutOptimizationView } from './components/CutOptimizationView';
@@ -67,6 +68,7 @@ const initialProject: ProjectInput = {
   layingStart: 'left',
   layingZones: [],
   layingPattern: 'straight',
+  stairs: [],
   board: defaultBoard,
   joist: demoJoist,
   usage: 'residential',
@@ -250,7 +252,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.2 • terrain avancé • plateformes multi-niveaux</div>
+          <div className="header-note">V1.3 • escaliers • marches • structure • quantités</div>
         </div>
       </header>
 
@@ -269,8 +271,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V1.2 — Terrain avancé</strong>
-                <span>Plateformes multi-niveaux • support et pente par zone • relations entre niveaux • plots et 3D recalculés.</span>
+                <strong>Version V1.3 — Escaliers</strong>
+                <span>Escaliers liés aux transitions réelles • marches et hauteurs calculées • quantités de lame intégrées • structure explicite sans règle inventée.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
@@ -453,6 +455,7 @@ export default function App() {
 
               <label className="single-field">Hauteur finie au point de référence<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support au-dessus de la lame au coin haut-gauche de référence.</small></label>
               <LevelingEditor project={project} onChange={setProject} />
+              <StairEditor project={project} onChange={setProject} />
               {project.supportSystem === 'adjustable-pedestals' && (
                 <SupportHeightMap project={project} plan={result.supportPlan} />
               )}

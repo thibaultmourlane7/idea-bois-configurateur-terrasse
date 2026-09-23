@@ -96,6 +96,27 @@ export interface ReferencePlanTransform {
 
 export type SupportLevelMode = 'flat' | 'four-corners';
 
+export interface StairConfig {
+  id: string;
+  label: string;
+  /** Relation de niveaux Sprint H sur laquelle l'escalier est implanté. */
+  relationId: string;
+  /** Segment de frontière utilisé lorsque la relation comporte plusieurs segments. */
+  boundarySegmentIndex: number;
+  /** Décalage depuis le début du segment de frontière. */
+  boundaryOffsetM?: number;
+  /** Largeur de l'escalier mesurée le long de la frontière. */
+  widthM?: number;
+  /** Profondeur horizontale d'une marche. */
+  treadDepthMm?: number;
+  /** Nombre de marches habillées ; la dernière rejoint le niveau haut. */
+  stepCount?: number;
+  /** Nombre de lignes porteuses / limons, renseigné explicitement par l'utilisateur. */
+  structureLineCount?: number;
+  /** Produit de lame des marches. Absent = produit principal du projet. */
+  boardId?: string;
+}
+
 export interface SupportLevelProfile {
   /** Profil du support existant utilisé pour calculer la hauteur de chaque plot. */
   mode: SupportLevelMode;
@@ -265,6 +286,8 @@ export interface ProjectInput {
   layingZones?: LayingZone[];
   /** Motif de départ des lames. */
   layingPattern?: DeckLayingPattern;
+  /** Sprint I : escaliers explicitement implantés sur les transitions de niveau. */
+  stairs?: StairConfig[];
   board: BoardSpec;
   joist: JoistSpec;
   usage: 'residential';

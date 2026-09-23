@@ -17,7 +17,7 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 11,
+    schemaVersion: 12,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -41,6 +41,7 @@ export function saveProjectLocally(project: ProjectInput): void {
     layingStartEdgeIndex: project.layingStartEdgeIndex,
     layingZones: project.layingZones,
     layingPattern: project.layingPattern ?? 'straight',
+    stairs: project.stairs,
     boardId: project.board.id,
   };
   localStorage.setItem(LOCAL_PROJECT_KEY, JSON.stringify(snapshot));
@@ -83,6 +84,7 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     layingStartEdgeIndex: Number.isInteger(snapshot.layingStartEdgeIndex) ? Number(snapshot.layingStartEdgeIndex) : fallback.layingStartEdgeIndex,
     layingZones: Array.isArray(snapshot.layingZones) ? snapshot.layingZones as ProjectInput['layingZones'] : fallback.layingZones,
     layingPattern: snapshot.layingPattern === 'half' || snapshot.layingPattern === 'third' ? snapshot.layingPattern : 'straight',
+    stairs: Array.isArray(snapshot.stairs) ? snapshot.stairs as ProjectInput['stairs'] : fallback.stairs,
     board,
     joist: demoJoist,
     usage: 'residential',

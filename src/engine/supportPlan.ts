@@ -13,6 +13,7 @@ import { getCommercialConstructionRule } from './constructionRules';
 import { getEffectiveBoundarySegmentsM } from './geometry';
 import { intervalsForRegionAtV, worldPointFromUV, type LayingBasis } from './layingGeometry';
 import { computeTerrainModel, supportSurfaceDeltaMm, targetFinishedDeltaMm } from './terrain';
+import { stairExclusionZones } from './stairs';
 
 export const SUPPORT_PLAN_TAG = 'SA-TERR-SUPPORT-PLAN-016';
 export const SUPPORT_PLAN_SOURCE_URL = 'https://www.idea-bois.com/art-plot-lambourde-terrasse-r-glable-40-60-mm-jouplast-2182.htm';
@@ -89,7 +90,9 @@ function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
     const explicitZone = zoneLayout.id === 'main'
       ? undefined
       : (input.layingZones ?? []).find((zone) => zone.id === zoneLayout.id);
-    const excludedZones = zoneLayout.id === 'main' ? (input.layingZones ?? []) : [];
+    const excludedZones = zoneLayout.id === 'main'
+      ? [...(input.layingZones ?? []), ...stairExclusionZones(input, 'main')]
+      : stairExclusionZones(input, zoneLayout.id);
     const buttAxes = zoneLayout.buttJointAxisPositionsMm;
     allButtAxes.push(...buttAxes);
 

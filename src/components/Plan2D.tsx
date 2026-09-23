@@ -10,6 +10,7 @@ import { resolveMaterialProfile } from '../visual/materialProfiles';
 import { resolveTextureVariant } from '../visual/textureVariants';
 import { boardOffsetFromRatio, buildGrooveLines, shouldRenderKnots } from '../visual/texturePainter';
 import { findBoard } from '../catalog/compatibility';
+import { computeStairs } from '../engine/stairs';
 import { vertexLabel } from '../editor/interactiveGeometry';
 
 function obstacleFill(kind: TerraceObstacle['kind']) {
@@ -62,6 +63,7 @@ export function Plan2D({
   const businessEdges = computeTerraceEdges(input);
   const claddingEdges = businessEdges.filter((edge) => edge.treatment === 'cladding');
   const edgeCladdingRequested = claddingEdges.length > 0;
+  const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
 
   const viewport = (() => {
     let minX = 0;
@@ -301,6 +303,42 @@ export function Plan2D({
           );
         })}
 
+        {layers.decking && stairs.map((stair) => (
+          <g key={`stair-${stair.id}`} className="stair-plan-overlay">
+            {stair.treads.map((tread) => {
+              const treadPoints = tread.top.map((point) => `${x + point.xM * scale},${y + point.yM * scale}`).join(' ');
+              return (
+                <polygon
+                  key={tread.id}
+                  points={treadPoints}
+                  fill="rgba(187,137,87,.34)"
+                  stroke="#8b5a32"
+                  strokeWidth="1.2"
+                />
+              );
+            })}
+            {stair.footprint && (
+              <polygon
+                points={stair.footprint.map((point) => `${x + point.xM * scale},${y + point.yM * scale}`).join(' ')}
+                fill="none"
+                stroke="#7b4c29"
+                strokeWidth="1.6"
+                strokeDasharray="5 3"
+              />
+            )}
+            {stair.footprint && (
+              <text
+                x={x + stair.footprint.reduce((sum, point) => sum + point.xM, 0) / stair.footprint.length * scale}
+                y={y + stair.footprint.reduce((sum, point) => sum + point.yM, 0) / stair.footprint.length * scale}
+                textAnchor="middle"
+                className="stair-plan-label"
+              >
+                {stair.label} · {stair.stepCount} marches
+              </text>
+            )}
+          </g>
+        ))}
+
         {input.edgeFinishMode === 'per-edge' && input.shape !== 'circle' && businessEdges.map((edge) => {
           const mx = x + ((edge.start.xM + edge.end.xM) / 2) * scale;
           const my = y + ((edge.start.yM + edge.end.yM) / 2) * scale;
@@ -429,6 +467,7 @@ export function Plan2D({
         {layers.plots && <span><i className="legend-plot" />Plots</span>}
         {layers.edgeCladding && edgeCladdingRequested && <span><i className="legend-edge" />Rives</span>}
         {layers.verticalJoists && edgeCladdingRequested && <span><i className="legend-vertical" />Supports verticaux</span>}
+        {layers.decking && stairs.length > 0 && <span><i className="legend-stair" />{stairs.length} escalier(s)</span>}
       </div>
 
       <div className={`texture-quality-note ${texture.status}`}>

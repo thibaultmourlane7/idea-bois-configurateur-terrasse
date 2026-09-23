@@ -4,6 +4,7 @@ import { buildProfessional3DScene, type Scene3DBoard, type Scene3DPoint } from '
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
+import { findBoard } from '../catalog/compatibility';
 
 type Projected = { x: number; y: number; depth: number };
 
@@ -263,6 +264,41 @@ export function Preview3D({
       }
     };
 
+    const drawStairs = (photo?: HTMLImageElement) => {
+      for (const stair of scene.stairs) {
+        const stairBoard = findBoard(stair.boardId) ?? input.board;
+        const thicknessM = stairBoard.thicknessMm / 1000;
+        if (layers.joists) {
+          for (const axis of stair.structureAxes) {
+            line(axis.start, axis.end, '#58412f', 8, joistOffset);
+            line(
+              { ...axis.start, zM: axis.start.zM + .015 },
+              { ...axis.end, zM: axis.end.zM + .015 },
+              '#8d6749',
+              3.2,
+              joistOffset,
+            );
+          }
+        }
+
+        if (!layers.decking) continue;
+        for (const tread of stair.treads) {
+          const bottom = tread.top.map((point) => ({ ...point, zM: point.zM - thicknessM })) as typeof tread.top;
+          const baseColor = stairBoard.visual?.baseColor ?? '#d8c3a4';
+          const grainColor = stairBoard.visual?.grainColor ?? '#8f775d';
+          polygon([bottom[1], bottom[2], tread.top[2], tread.top[1]], shade(baseColor, .68), shade(grainColor, .78), .6, deckOffset);
+          polygon([bottom[2], bottom[3], tread.top[3], tread.top[2]], shade(baseColor, .76), shade(grainColor, .82), .6, deckOffset);
+
+          let fill: string | CanvasPattern = baseColor;
+          if (photo && stairBoard.id === input.board.id) {
+            const pattern = ctx.createPattern(photo, 'repeat');
+            if (pattern) fill = pattern;
+          }
+          polygon(tread.top, fill, shade(grainColor, .82), .8, deckOffset);
+        }
+      }
+    };
+
     const drawEdges = () => {
       if (!layers.edgeCladding) return;
       for (const edge of scene.edges) {
@@ -330,6 +366,7 @@ export function Preview3D({
         .sort((a, b) => boardDepth(a) - boardDepth(b))
         .forEach((board) => drawBoard(board, photo));
 
+      drawStairs(photo);
       drawObstacles();
 
       const title = clientRender ? 'RENDU CLIENT' : 'VUE TECHNIQUE';
@@ -387,6 +424,7 @@ export function Preview3D({
         {layers.plots && <span><i className="legend-plot" />{scene.supports.length} points d’appui</span>}
         {layers.edgeCladding && scene.edges.some((edge) => edge.treatment !== 'none') && <span><i className="legend-edge" />Rives configurées</span>}
         {scene.terrain.platforms.length > 1 && <span className="terrain-3d-badge">{scene.terrain.platforms.length} plateformes • {scene.terrain.transitionCount} transition(s)</span>}
+        {scene.stairs.length > 0 && <span className="terrain-3d-badge">{scene.stairs.length} escalier(s) • {scene.stairs.reduce((sum, stair) => sum + (stair.stepCount ?? 0), 0)} marche(s)</span>}
       </div>
 
       <div className={`texture-quality-note ${texture.status}`}>

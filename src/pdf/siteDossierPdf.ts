@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import type { ConfiguratorResult, ProjectInput, TerraceEdgeTreatment } from '../domain/types';
 import { getDeckBoundingSizeM, getDeckOutlinePointsM } from '../engine/geometry';
 import { buildSiteDossierModel, type SiteDossierModel } from './siteDossierModel';
+import { computeStairs } from '../engine/stairs';
 
 type Pdf = InstanceType<typeof jsPDF>;
 
@@ -239,6 +240,31 @@ function drawTerrainPlan(doc: Pdf, input: ProjectInput, x: number, y: number, wi
   }
 }
 
+function drawStairsPlan(doc: Pdf, input: ProjectInput, x: number, y: number, width: number, height: number) {
+  const t = drawOutline(doc, input, x, y, width, height, false);
+  drawObstacles(doc, input, t.scale, t.ox, t.oy);
+  const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
+
+  for (const stair of stairs) {
+    for (const tread of stair.treads) {
+      const pts = tread.top.map((point) => [t.ox + point.xM * t.scale, t.oy + point.yM * t.scale] as const);
+      if (pts.length < 4) continue;
+      const first = pts[0];
+      const vectors = pts.slice(1).map((point, index) => [point[0] - pts[index][0], point[1] - pts[index][1]]);
+      doc.setFillColor(235, 220, 203);
+      doc.setDrawColor(BROWN[0], BROWN[1], BROWN[2]);
+      doc.setLineWidth(.45);
+      doc.lines(vectors, first[0], first[1], [1, 1], 'FD', true);
+    }
+    if (stair.footprint) {
+      const pts = stair.footprint.map((point) => [t.ox + point.xM * t.scale, t.oy + point.yM * t.scale] as const);
+      const cx = pts.reduce((sum, point) => sum + point[0], 0) / pts.length;
+      const cy = pts.reduce((sum, point) => sum + point[1], 0) / pts.length;
+      text(doc, `${stair.label} - ${stair.stepCount ?? 0} marche(s)`, cx - 12, cy, 5.8, true, BROWN);
+    }
+  }
+}
+
 function edgeColor(treatment: TerraceEdgeTreatment): readonly number[] {
   if (treatment === 'cladding') return BLUE;
   if (treatment === 'profile') return PURPLE;
@@ -388,7 +414,38 @@ export async function generateSiteDossierPdf(input: ProjectInput, result: Config
   }
   if (model.terrain.transitionCount > 0) {
     y = ensure(doc, y, 18, 'Niveaux et plateformes', version);
-    y = wrapped(doc, 'Les écarts entre plateformes sont calculés. Aucune marche, rampe ou pièce de transition n’est ajoutée automatiquement dans le Sprint H.', 14, y, 182, 7, AMBER) + 4;
+    y = wrapped(doc, model.stairs.length
+      ? 'Les transitions de niveau sont calculées. Les escaliers explicitement configurés sont détaillés à la page suivante ; les autres transitions restent à traiter.'
+      : 'Les écarts entre plateformes sont calculés. Aucune marche, rampe ou pièce de transition n’est ajoutée automatiquement tant qu’aucun escalier n’est explicitement configuré.', 14, y, 182, 7, AMBER) + 4;
+  }
+
+  if (model.stairs.length) {
+    y = addPage(doc, 'Escaliers', version);
+    drawStairsPlan(doc, input, 14, y, 182, 122);
+    y += 131;
+    for (const stair of model.stairs) {
+      y = ensure(doc, y, 28, 'Escaliers', version);
+      if (stair.status !== 'ready') {
+        y = row(doc, y, stair.label, `Statut ${stair.status} - ${stair.issues.join(' ')}`, 'À compléter');
+        continue;
+      }
+      y = row(
+        doc,
+        y,
+        stair.label,
+        `${stair.lowPlatformLabel ?? '?'} vers ${stair.highPlatformLabel ?? '?'} - largeur ${stair.widthM?.toFixed(2)} m - ${stair.stepCount} marche(s) de profondeur ${Math.round(stair.treadDepthMm ?? 0)} mm - hauteur totale ${stair.riseLeftMm?.toFixed(0)} à ${stair.riseRightMm?.toFixed(0)} mm - hauteur par marche ${stair.riserHeightLeftMm?.toFixed(0)} à ${stair.riserHeightRightMm?.toFixed(0)} mm - développement ${stair.totalRunM?.toFixed(2)} m`,
+      );
+      y = ensure(doc, y, 20, 'Escaliers', version);
+      y = wrapped(
+        doc,
+        `Marches : ${stair.treadAreaM2?.toFixed(2)} m² géométriques / ${stair.treadRequiredLinearM?.toFixed(2)} ml de lame. Structure : ${stair.structureLineCount ?? '?'} ligne(s) porteuse(s) / ${stair.structureLinearM?.toFixed(2) ?? '?'} ml géométriques. Section, référence et fixations de structure restent à valider.`,
+        18,
+        y,
+        174,
+        6.7,
+        stair.structureLineCount != null ? MUTED : AMBER,
+      ) + 4;
+    }
   }
 
   y = addPage(doc, 'Plan des finitions', version);

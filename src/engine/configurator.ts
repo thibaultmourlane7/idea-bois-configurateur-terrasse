@@ -13,14 +13,15 @@ import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 import { computeTerraceEdges, EDGE_TAG } from './edges';
 import { getProductCompatibility } from '../catalog/compatibility';
 import { computeTerrainModel, TERRAIN_TAG } from './terrain';
+import { computeStairs, STAIR_TAG } from './stairs';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.2.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.3.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.2.0 : Sprint H — terrain avancé, plateformes multi-niveaux et relations de niveau sans transition physique inventée.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.3.0 : Sprint I — escaliers liés aux transitions de niveau, marches et quantités calculées sans règle structurelle inventée.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -29,6 +30,13 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const geometry = computeGeometry(input);
   const terrain = computeTerrainModel(input);
   trace.push(`[${TERRAIN_TAG}] ${terrain.platforms.length} plateforme(s) ; ${terrain.relations.length} relation(s) ; ${terrain.transitionCount} transition(s) de niveau détectée(s).`);
+  const stairs = computeStairs(input);
+  if (stairs.length) {
+    const readyStairs = stairs.filter((stair) => stair.status === 'ready');
+    const treadLinearM = readyStairs.reduce((sum, stair) => sum + (stair.treadRequiredLinearM ?? 0), 0);
+    const structureLinearM = readyStairs.reduce((sum, stair) => sum + (stair.structureLinearM ?? 0), 0);
+    trace.push(`[${STAIR_TAG}] ${stairs.length} escalier(s) configuré(s) ; ${readyStairs.length} géométrie(s) calculée(s) ; marches ${treadLinearM.toFixed(2)} ml de lame ; structure géométrique ${structureLinearM.toFixed(2)} ml renseignés.`);
+  }
   const compatibility = getProductCompatibility(input.board);
   diagnostics.push({
     tag: 'SA-TERR-COMPAT-023',

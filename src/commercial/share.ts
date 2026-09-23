@@ -2,8 +2,8 @@ import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile, ReferencePlanTransform } from '../domain/types';
 import { sanitizeReferencePlanTransform } from '../domain/referencePlan';
 
-export interface ShareSnapshotV11 {
-  v: 11;
+export interface ShareSnapshotV12 {
+  v: 12;
   projectName: string;
   shape: ProjectInput['shape'];
   dimensions: ProjectInput['dimensions'];
@@ -27,6 +27,7 @@ export interface ShareSnapshotV11 {
   layingStartEdgeIndex?: number;
   layingZones?: ProjectInput['layingZones'];
   layingPattern?: ProjectInput['layingPattern'];
+  stairs?: ProjectInput['stairs'];
   boardId: string;
 }
 
@@ -54,8 +55,8 @@ function validShape(value: unknown): ShapeType {
 }
 
 export function projectToShareToken(project: ProjectInput): string {
-  const snapshot: ShareSnapshotV11 = {
-    v: 11,
+  const snapshot: ShareSnapshotV12 = {
+    v: 12,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -79,6 +80,7 @@ export function projectToShareToken(project: ProjectInput): string {
     layingStartEdgeIndex: project.layingStartEdgeIndex,
     layingZones: project.layingZones,
     layingPattern: project.layingPattern ?? 'straight',
+    stairs: project.stairs,
     boardId: project.board.id,
   };
   return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(snapshot)));
@@ -87,8 +89,8 @@ export function projectToShareToken(project: ProjectInput): string {
 export function projectFromShareToken(token: string, fallback: ProjectInput): ProjectInput {
   try {
     const raw = new TextDecoder().decode(base64UrlToBytes(token));
-    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV11>, 'v'> & { v?: number };
-    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7 && snapshot.v !== 8 && snapshot.v !== 9 && snapshot.v !== 10 && snapshot.v !== 11) || !snapshot.boardId || !snapshot.dimensions) return fallback;
+    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV12>, 'v'> & { v?: number };
+    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7 && snapshot.v !== 8 && snapshot.v !== 9 && snapshot.v !== 10 && snapshot.v !== 11 && snapshot.v !== 12) || !snapshot.boardId || !snapshot.dimensions) return fallback;
     const board = ideaBoisBoards.find((item) => item.id === snapshot.boardId);
     if (!board) return fallback;
 
@@ -123,6 +125,7 @@ export function projectFromShareToken(token: string, fallback: ProjectInput): Pr
       layingStartEdgeIndex: Number.isInteger(snapshot.layingStartEdgeIndex) ? snapshot.layingStartEdgeIndex : fallback.layingStartEdgeIndex,
       layingZones: Array.isArray(snapshot.layingZones) ? snapshot.layingZones : fallback.layingZones,
       layingPattern: snapshot.layingPattern === 'half' || snapshot.layingPattern === 'third' ? snapshot.layingPattern : 'straight',
+      stairs: Array.isArray(snapshot.stairs) ? snapshot.stairs : fallback.stairs,
       board,
       joist: demoJoist,
       usage: 'residential',

@@ -2,6 +2,7 @@ import type { BasketLine, ConfiguratorResult, ProjectInput } from '../domain/typ
 import { getDeckOutlinePointsM } from '../engine/geometry';
 import { computeTerraceEdges, EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
 import { computeTerrainModel } from '../engine/terrain';
+import { computeStairs } from '../engine/stairs';
 
 export interface ClientPdfLine {
   family: string;
@@ -213,6 +214,7 @@ export function buildClientPdfModel(
   const layout = result.layout;
   const supportPlan = result.supportPlan;
   const terrain = computeTerrainModel(input);
+  const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
   const jointAxisCount = layout
     ? layout.zones.reduce((sum, zone) => sum + zone.buttJointAxisPositionsMm.length, 0)
     : 0;
@@ -249,9 +251,12 @@ export function buildClientPdfModel(
   const baseLevelSummary = level
     ? `Support ${level.mode === 'flat' ? 'plan' : '4 coins'} - ecarts TL/TR/BR/BL : ${fmt(level.topLeftDeltaMm, 0)}/${fmt(level.topRightDeltaMm, 0)}/${fmt(level.bottomRightDeltaMm, 0)}/${fmt(level.bottomLeftDeltaMm, 0)} mm - pente finie X ${fmt(level.targetSlopeXPercent)} % / Y ${fmt(level.targetSlopeYPercent)} %`
     : 'Niveaux non renseignes';
-  const levelSummary = terrain.platforms.length > 1
+  const terrainSummary = terrain.platforms.length > 1
     ? `${baseLevelSummary} - ${terrain.platforms.length} plateformes - ${terrain.transitionCount} transition(s) de niveau - offsets finis ${fmt(terrain.minFinishedDeltaMm, 0)} a ${fmt(terrain.maxFinishedDeltaMm, 0)} mm`
     : baseLevelSummary;
+  const levelSummary = stairs.length
+    ? `${terrainSummary} - ${stairs.length} escalier(s) / ${stairs.reduce((sum, stair) => sum + (stair.stepCount ?? 0), 0)} marche(s)`
+    : terrainSummary;
 
   const referencePlanSummary = input.referencePlan
     ? input.referencePlan.calibrated

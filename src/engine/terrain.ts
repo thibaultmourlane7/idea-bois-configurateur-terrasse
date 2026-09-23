@@ -342,7 +342,7 @@ export function computeTerrainModel(input: ProjectInput): TerrainModel {
   const diagnostics = relations
     .filter((relation) => relation.transitionRequired)
     .map((relation) =>
-      `${relation.aLabel} ↔ ${relation.bLabel} : écart de niveau fini ${relation.finishedDeltaMinMm.toFixed(0)} à ${relation.finishedDeltaMaxMm.toFixed(0)} mm. La transition physique reste à traiter sans escalier automatique au Sprint H.`
+      `${relation.aLabel} ↔ ${relation.bLabel} : écart de niveau fini ${relation.finishedDeltaMinMm.toFixed(0)} à ${relation.finishedDeltaMaxMm.toFixed(0)} mm. La transition physique doit être traitée explicitement ; aucune marche ou rampe n’est créée automatiquement.`
     );
 
   return {

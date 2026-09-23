@@ -1285,3 +1285,172 @@
   .terrain-relation { flex-direction: column; align-items: stretch; }
   .terrain-level-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Sprint I V1.3 — escaliers */
+.stair-editor {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #dfE5eb;
+  border-radius: 16px;
+  background: linear-gradient(180deg,#fffdfb,#f9fbfc);
+}
+.stair-editor-heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:18px;
+}
+.stair-editor-heading h3 { margin:4px 0 5px; }
+.stair-editor-heading p { margin:0;color:#68798a;line-height:1.45; }
+.stair-editor-heading>strong {
+  flex:0 0 auto;
+  padding:8px 10px;
+  border-radius:12px;
+  background:#f5ede5;
+  color:#7b502d;
+}
+.stair-transition-list { display:grid;gap:8px;margin-top:14px; }
+.stair-transition-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  padding:11px 12px;
+  border:1px solid #e3e8ed;
+  border-radius:11px;
+  background:#fff;
+}
+.stair-transition-row strong,.stair-transition-row small { display:block; }
+.stair-transition-row small { margin-top:3px;color:#7b8995;font-size:9px; }
+.stair-transition-row button,
+.stair-reset-button {
+  border:1px solid #c9d9e4;
+  border-radius:9px;
+  background:#fff;
+  color:#2f658b;
+  padding:8px 10px;
+  font-size:10px;
+  font-weight:850;
+}
+.stair-card-list { display:grid;gap:12px;margin-top:14px; }
+.stair-card {
+  border:1px solid #dfE6ec;
+  border-radius:14px;
+  padding:14px;
+  background:#fff;
+}
+.stair-card-heading {
+  display:grid;
+  grid-template-columns:minmax(140px,1fr) auto auto;
+  gap:9px;
+  align-items:center;
+}
+.stair-card-heading input {
+  border:0;
+  border-bottom:1px solid #d6e0e7;
+  padding:8px 4px;
+  color:#173650;
+  font-weight:900;
+  outline:none;
+}
+.stair-card-heading .danger {
+  border:1px solid #edd4d4;
+  background:#fff5f5;
+  color:#a44848;
+  border-radius:8px;
+  padding:7px 9px;
+  font-size:10px;
+  font-weight:800;
+}
+.stair-status {
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:9px;
+  font-weight:900;
+}
+.stair-status.ready { background:#e6f5eb;color:#277146; }
+.stair-status.pending { background:#fff4dc;color:#85601a; }
+.stair-status.invalid { background:#fde9e9;color:#9d4141; }
+.stair-field-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin-top:13px;
+}
+.stair-field-grid label {
+  font-size:10px;
+  font-weight:850;
+  color:#607587;
+}
+.stair-field-grid label>small {
+  display:block;
+  margin-top:4px;
+  color:#84919c;
+  font-size:9px;
+  line-height:1.35;
+  font-weight:500;
+}
+.stair-field-grid select {
+  width:100%;
+  min-height:38px;
+  margin-top:4px;
+  border:1px solid #cfdbe3;
+  border-radius:8px;
+  background:#fff;
+  padding:7px 8px;
+  color:#294a62;
+}
+.stair-result-grid {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  margin-top:13px;
+}
+.stair-result-grid>div {
+  padding:9px 10px;
+  border-radius:10px;
+  background:#f7fafc;
+  border:1px solid #e4eaef;
+}
+.stair-result-grid span,.stair-result-grid strong { display:block; }
+.stair-result-grid span { font-size:8px;color:#7b8994;font-weight:750; }
+.stair-result-grid strong { margin-top:3px;font-size:10px;color:#294a62; }
+.stair-issues {
+  display:grid;
+  gap:4px;
+  margin-top:11px;
+  padding:10px 11px;
+  border-radius:10px;
+  background:#fff7e7;
+  color:#775a1c;
+  font-size:10px;
+}
+.stair-issues.invalid { background:#fff0f0;color:#963f3f; }
+.stair-rule-note {
+  margin:11px 0 0;
+  color:#71818e;
+  font-size:9px;
+  line-height:1.45;
+}
+.stair-plan-label {
+  fill:#633f24;
+  font-size:7px;
+  font-weight:900;
+  paint-order:stroke;
+  stroke:#fff;
+  stroke-width:2.5px;
+}
+.legend-stair {
+  background:#b98959;
+  border:1px solid #7b4c29;
+}
+@media(max-width:900px){
+  .stair-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stair-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .stair-editor-heading,.stair-transition-row{flex-direction:column;align-items:stretch}
+  .stair-field-grid,.stair-result-grid{grid-template-columns:1fr}
+  .stair-card-heading{grid-template-columns:1fr}
+}

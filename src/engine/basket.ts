@@ -19,6 +19,7 @@ import {
 import { getCommercialConstructionRule } from './constructionRules';
 import { boardForZone } from '../catalog/compatibility';
 import { hasEdgeTreatment } from './edges';
+import { computeStairs } from './stairs';
 
 export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
@@ -391,6 +392,34 @@ function unresolvedEdgeTreatmentLines(input: ProjectInput): BasketLine[] {
   return lines;
 }
 
+function stairLines(input: ProjectInput): BasketLine[] {
+  const lines: BasketLine[] = [];
+  for (const stair of computeStairs(input).filter((item) => item.status === 'ready')) {
+    lines.push({
+      id: `stair-structure-${stair.id}`,
+      family: 'joists',
+      label: `Structure escalier — ${stair.label}`,
+      quantity: stair.structureLinearM != null ? round2(stair.structureLinearM) : undefined,
+      unit: stair.structureLinearM != null ? 'ml géométriques' : '—',
+      status: 'pending',
+      required: true,
+      note: stair.structureLineCount != null
+        ? `${stair.structureLineCount} ligne(s) porteuse(s) saisie(s) • ${stair.structureLinearM?.toFixed(2)} ml géométriques. Section, essence/référence, découpe des limons et mode d’appui à valider : aucune règle fabricant n’est inventée.`
+        : 'Le nombre de lignes porteuses / limons doit être renseigné pour calculer la longueur géométrique de structure. Section et référence restent à valider.',
+    });
+    lines.push({
+      id: `stair-fixings-${stair.id}`,
+      family: 'fixings',
+      label: `Fixations escalier — ${stair.label}`,
+      unit: '—',
+      status: 'pending',
+      required: true,
+      note: 'La quantité et les références de fixation dépendent de la structure d’escalier validée. Aucun espacement ou nombre de vis universel n’est inventé.',
+    });
+  }
+  return lines;
+}
+
 function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
   const lines: BasketLine[] = [];
 
@@ -553,6 +582,7 @@ export function computeBasket(
   }
 
   lines.push(...accessoryLines(input, geometry));
+  lines.push(...stairLines(input));
 
   const required = lines.filter((line) => line.required);
   const exactLines = required.filter((line) => line.status === 'exact');

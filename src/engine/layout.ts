@@ -14,6 +14,7 @@ import type {
 } from '../domain/types';
 import { optimizeCutsDetailed } from './cuts';
 import { boardForZone } from '../catalog/compatibility';
+import { stairExclusionZones, stairRequiredPieces } from './stairs';
 import {
   effectiveProjectDirection,
   intervalsForRegionAtV,
@@ -76,7 +77,7 @@ function regions(input: ProjectInput): RegionSpec[] {
     pattern: input.layingPattern ?? 'straight',
     start: input.layingStart ?? 'left',
     startEdgeIndex: input.layingStartEdgeIndex,
-    excludedZones: zones,
+    excludedZones: [...zones, ...stairExclusionZones(input, 'main')],
     board: input.board,
   };
   return [
@@ -89,7 +90,7 @@ function regions(input: ProjectInput): RegionSpec[] {
       start: zone.start,
       startEdgeIndex: zone.startEdgeIndex,
       zone,
-      excludedZones: [],
+      excludedZones: stairExclusionZones(input, zone.id),
       board: boardForZone(input.board, zone.boardId),
     })),
   ];
@@ -232,6 +233,12 @@ export function computeLayout(input: ProjectInput): LayoutResult {
       buttJointAxisPositionsMm: [...new Set(zoneButtAxes.map((value) => Math.round(value * 1000) / 1000))].sort((a, b) => a - b),
     });
   }
+
+  const stairPieces = stairRequiredPieces(input).map((piece, index) => ({
+    ...piece,
+    rowIndex: globalRowIndex + index,
+  }));
+  requiredPieces.push(...stairPieces);
 
   const hasButtJoints = buttJoints.length > 0;
   const productIds = [...new Set(requiredPieces.map((piece) => piece.boardId ?? input.board.id))];

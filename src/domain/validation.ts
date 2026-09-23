@@ -5,6 +5,7 @@ import { hasEdgeTreatment } from '../engine/edges';
 import { zoneFitsBaseDeck, zonesOverlap } from '../engine/layingGeometry';
 import { canUseBoardInZone, findBoard } from '../catalog/compatibility';
 import { computeTerrainModel } from '../engine/terrain';
+import { computeStairs } from '../engine/stairs';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -205,6 +206,76 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
         technicalMessage: 'Sprint H calcule les niveaux et relations entre plateformes. Aucune marche, rampe ou pièce de transition n’est ajoutée automatiquement ; ces éléments relèvent du Sprint I ou d’une règle fabricant validée.',
         field: 'layingZones',
       });
+    }
+  }
+
+  const stairIds = new Set<string>();
+  for (const stair of input.stairs ?? []) {
+    if (!stair.id.trim() || !stair.label.trim()) {
+      diagnostics.push({
+        tag: 'SA-TERR-STAIR-001',
+        severity: 'blocking',
+        message: 'Chaque escalier doit avoir un identifiant et un nom.',
+        field: 'stairs',
+      });
+    }
+    if (stairIds.has(stair.id)) {
+      diagnostics.push({
+        tag: 'SA-TERR-STAIR-002',
+        severity: 'blocking',
+        message: `L’identifiant d’escalier ${stair.id} est utilisé plusieurs fois.`,
+        field: 'stairs',
+      });
+    }
+    stairIds.add(stair.id);
+    if (stair.structureLineCount != null && (!Number.isInteger(stair.structureLineCount) || stair.structureLineCount <= 0)) {
+      diagnostics.push({
+        tag: 'SA-TERR-STAIR-STRUCT-001',
+        severity: 'blocking',
+        message: `${stair.label || 'Escalier'} : le nombre de lignes porteuses / limons doit être un entier positif lorsqu’il est renseigné.`,
+        field: `stairs.${stair.id}.structureLineCount`,
+      });
+    }
+  }
+
+  if (!diagnostics.some((item) => item.severity === 'blocking')) {
+    const stairs = computeStairs(input);
+    for (const stair of stairs) {
+      if (stair.status === 'pending' || stair.status === 'invalid') {
+        diagnostics.push({
+          tag: stair.status === 'invalid' ? 'SA-TERR-STAIR-GEO-002' : 'SA-TERR-STAIR-GEO-001',
+          severity: 'blocking',
+          message: `${stair.label} : ${stair.issues.join(' ')}`,
+          field: `stairs.${stair.id}`,
+        });
+      } else if (stair.structureLineCount == null) {
+        diagnostics.push({
+          tag: 'SA-TERR-STAIR-STRUCT-002',
+          severity: 'warning',
+          message: `${stair.label} : marches calculées, mais le nombre de lignes porteuses / limons n’est pas renseigné.`,
+          technicalMessage: 'Le moteur ne déduit pas le nombre de limons sans règle fabricant ou choix humain validé. La quantité de structure et ses fixations restent à confirmer.',
+          field: `stairs.${stair.id}.structureLineCount`,
+        });
+      }
+    }
+
+    const ready = stairs.filter((stair) => stair.status === 'ready' && stair.widthM != null && stair.boundaryOffsetM != null);
+    for (let i = 0; i < ready.length; i += 1) {
+      for (let j = i + 1; j < ready.length; j += 1) {
+        if (ready[i].relationId !== ready[j].relationId || ready[i].boundarySegmentIndex !== ready[j].boundarySegmentIndex) continue;
+        const a0 = ready[i].boundaryOffsetM!;
+        const a1 = a0 + ready[i].widthM!;
+        const b0 = ready[j].boundaryOffsetM!;
+        const b1 = b0 + ready[j].widthM!;
+        if (Math.min(a1, b1) - Math.max(a0, b0) > 0.001) {
+          diagnostics.push({
+            tag: 'SA-TERR-STAIR-OVERLAP-001',
+            severity: 'blocking',
+            message: `${ready[i].label} et ${ready[j].label} se chevauchent sur la même frontière de niveau.`,
+            field: 'stairs',
+          });
+        }
+      }
     }
   }
 

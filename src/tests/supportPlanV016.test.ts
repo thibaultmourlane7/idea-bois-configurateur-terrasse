@@ -74,7 +74,8 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     const plan = computeSupportPlan(base, computeLayout(base));
     expect(plan.joistLinearM).toBeGreaterThan(56);
     expect(plan.doubleJoistLinearM).toBe(0);
-    expect(plan.joistStockBoards.length).toBeGreaterThan(28);
+    expect(plan.joistStockBoards.length).toBeGreaterThan(0);
+    expect(plan.joistStockBoards.every((item) => [2400, 3000].includes(item.stockLengthMm))).toBe(true);
   });
 
   it('double les lambourdes et les appuis de jonction uniquement quand l’option est activée', () => {

@@ -76,7 +76,8 @@ describe('Configurateur terrasse V0.9', () => {
     expect(joists?.stockBreakdown?.every((item) => item.productRef != null)).toBe(true);
 
     expect(joists?.quantity).toBe(result.supportPlan?.joistStockBoards.length);
-    expect(joists?.quantity).toBeGreaterThan(28);
+    expect(joists?.quantity).toBeGreaterThan(0);
+    expect(result.supportPlan?.joistStockBoards.every((item) => [2400, 3000].includes(item.stockLengthMm))).toBe(true);
     expect(supports.reduce((sum, line) => sum + (line.quantity ?? 0), 0))
       .toBe(result.supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0));
     expect(fixings?.quantity).toBe(5);

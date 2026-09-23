@@ -98,83 +98,54 @@ export function Plan2D({
   const patternIds = Array.from({ length: variantCount }, (_, index) => `texture-${baseId}-${index}`);
 
   const boardLines: ReactNode[] = [];
-  if (layers.decking && pitchMm > 0) {
-    let row = 0;
-    for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
-      const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
-      intervals.forEach(([start, end], segment) => {
-        const variant = resolveTextureVariant(row, segment, variantCount);
-        const patternId = patternIds[variant.index % patternIds.length];
-        const commonKey = `r-${row}-s-${segment}`;
-        const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
-
-        if (input.orientation === 'length') {
-          const x1 = x + (start / 1000) * scale;
-          const x2 = x + (end / 1000) * scale;
-          const yc = y + (center / 1000) * scale;
-
-          boardLines.push(
-            <g key={commonKey}>
-              <line x1={x1} y1={yc} x2={x2} y2={yc} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
-              <line x1={x1} y1={yc - boardWidthPx * 0.49} x2={x2} y2={yc - boardWidthPx * 0.49} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
-              <line x1={x1} y1={yc + boardWidthPx * 0.49} x2={x2} y2={yc + boardWidthPx * 0.49} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
-              {grooveLines.map((groove, grooveIndex) => {
-                const offset = boardOffsetFromRatio(groove.ratio, boardWidthPx);
-                return (
-                  <g key={grooveIndex}>
-                    <line x1={x1} y1={yc + offset} x2={x2} y2={yc + offset} stroke={`rgba(38,32,27,${groove.shadowOpacity})`} strokeWidth="0.72" />
-                    <line x1={x1} y1={yc + offset - 0.55} x2={x2} y2={yc + offset - 0.55} stroke={`rgba(236,226,202,${groove.highlightOpacity})`} strokeWidth="0.42" />
-                  </g>
-                );
-              })}
-              {shouldRenderKnots(materialProfile) && variant.knotRatios.map((ratio, knotIndex) => {
-                const cx = x1 + (x2 - x1) * ratio;
-                const ry = Math.max(1.2, boardWidthPx * 0.13);
-                const rx = Math.max(3.5, Math.min(8, (x2 - x1) * 0.018));
-                return (
-                  <g key={`k-${knotIndex}`} opacity="0.42">
-                    <ellipse cx={cx} cy={yc} rx={rx} ry={ry} fill="rgba(66,49,34,.42)" />
-                    <ellipse cx={cx} cy={yc} rx={rx * 0.55} ry={ry * 0.55} fill="rgba(38,29,22,.38)" />
-                  </g>
-                );
-              })}
-            </g>,
-          );
-        } else {
-          const xc = x + (center / 1000) * scale;
-          const y1 = y + (start / 1000) * scale;
-          const y2 = y + (end / 1000) * scale;
-
-          boardLines.push(
-            <g key={commonKey}>
-              <line x1={xc} y1={y1} x2={xc} y2={y2} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
-              <line x1={xc - boardWidthPx * 0.49} y1={y1} x2={xc - boardWidthPx * 0.49} y2={y2} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
-              <line x1={xc + boardWidthPx * 0.49} y1={y1} x2={xc + boardWidthPx * 0.49} y2={y2} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
-              {grooveLines.map((groove, grooveIndex) => {
-                const offset = boardOffsetFromRatio(groove.ratio, boardWidthPx);
-                return (
-                  <g key={grooveIndex}>
-                    <line x1={xc + offset} y1={y1} x2={xc + offset} y2={y2} stroke={`rgba(38,32,27,${groove.shadowOpacity})`} strokeWidth="0.72" />
-                    <line x1={xc + offset - 0.55} y1={y1} x2={xc + offset - 0.55} y2={y2} stroke={`rgba(236,226,202,${groove.highlightOpacity})`} strokeWidth="0.42" />
-                  </g>
-                );
-              })}
-              {shouldRenderKnots(materialProfile) && variant.knotRatios.map((ratio, knotIndex) => {
-                const cy = y1 + (y2 - y1) * ratio;
-                const rx = Math.max(1.2, boardWidthPx * 0.13);
-                const ry = Math.max(3.5, Math.min(8, (y2 - y1) * 0.018));
-                return (
-                  <g key={`k-${knotIndex}`} opacity="0.42">
-                    <ellipse cx={xc} cy={cy} rx={rx} ry={ry} fill="rgba(66,49,34,.42)" />
-                    <ellipse cx={xc} cy={cy} rx={rx * 0.55} ry={ry * 0.55} fill="rgba(38,29,22,.38)" />
-                  </g>
-                );
-              })}
-            </g>,
-          );
-        }
+  if (layers.decking && effectiveLayout?.boardSegments?.length) {
+    for (const segment of effectiveLayout.boardSegments) {
+      if (segment.x1M == null || segment.y1M == null || segment.x2M == null || segment.y2M == null) continue;
+      const variant = resolveTextureVariant(segment.rowIndex, segment.segmentIndex, variantCount);
+      const patternId = patternIds[variant.index % patternIds.length];
+      const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
+      const x1 = x + segment.x1M * scale;
+      const y1 = y + segment.y1M * scale;
+      const x2 = x + segment.x2M * scale;
+      const y2 = y + segment.y2M * scale;
+      const normalX = segment.normalX ?? (input.orientation === 'length' ? 0 : 1);
+      const normalY = segment.normalY ?? (input.orientation === 'length' ? 1 : 0);
+      const offsetPoint = (offsetPx: number) => ({
+        ax: x1 + normalX * offsetPx,
+        ay: y1 + normalY * offsetPx,
+        bx: x2 + normalX * offsetPx,
+        by: y2 + normalY * offsetPx,
       });
-      row += 1;
+      const edgeA = offsetPoint(-boardWidthPx * 0.49);
+      const edgeB = offsetPoint(boardWidthPx * 0.49);
+
+      boardLines.push(
+        <g key={segment.id}>
+          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
+          <line x1={edgeA.ax} y1={edgeA.ay} x2={edgeA.bx} y2={edgeA.by} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
+          <line x1={edgeB.ax} y1={edgeB.ay} x2={edgeB.bx} y2={edgeB.by} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
+          {grooveLines.map((groove, grooveIndex) => {
+            const grooveLine = offsetPoint(boardOffsetFromRatio(groove.ratio, boardWidthPx));
+            const highlight = offsetPoint(boardOffsetFromRatio(groove.ratio, boardWidthPx) - 0.55);
+            return (
+              <g key={grooveIndex}>
+                <line x1={grooveLine.ax} y1={grooveLine.ay} x2={grooveLine.bx} y2={grooveLine.by} stroke={`rgba(38,32,27,${groove.shadowOpacity})`} strokeWidth="0.72" />
+                <line x1={highlight.ax} y1={highlight.ay} x2={highlight.bx} y2={highlight.by} stroke={`rgba(236,226,202,${groove.highlightOpacity})`} strokeWidth="0.42" />
+              </g>
+            );
+          })}
+          {shouldRenderKnots(materialProfile) && variant.knotRatios.map((ratio, knotIndex) => {
+            const cx = x1 + (x2 - x1) * ratio;
+            const cy = y1 + (y2 - y1) * ratio;
+            return (
+              <g key={`k-${knotIndex}`} opacity="0.42">
+                <ellipse cx={cx} cy={cy} rx={Math.max(2.2, boardWidthPx * 0.18)} ry={Math.max(1.2, boardWidthPx * 0.10)} fill="rgba(66,49,34,.42)" />
+                <ellipse cx={cx} cy={cy} rx={Math.max(1.2, boardWidthPx * 0.09)} ry={Math.max(0.7, boardWidthPx * 0.05)} fill="rgba(38,29,22,.38)" />
+              </g>
+            );
+          })}
+        </g>,
+      );
     }
   }
 
@@ -290,22 +261,33 @@ export function Plan2D({
         )}
 
         {layers.decking && (effectiveLayout?.buttJoints ?? []).map((joint) => {
-          const cx = x + (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000 * scale;
-          const cy = y + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
+          const cx = joint.xM != null
+            ? x + joint.xM * scale
+            : x + (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000 * scale;
+          const cy = joint.yM != null
+            ? y + joint.yM * scale
+            : y + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
           const half = Math.max(3, boardWidthPx * 0.58);
-          return input.orientation === 'length'
-            ? (
-              <g key={joint.id} className="board-joint-marker">
-                <line x1={cx} y1={cy - half} x2={cx} y2={cy + half} className="board-butt-joint-gap" />
-                <line x1={cx} y1={cy - half} x2={cx} y2={cy + half} className="board-butt-joint" />
-              </g>
-            )
-            : (
-              <g key={joint.id} className="board-joint-marker">
-                <line x1={cx - half} y1={cy} x2={cx + half} y2={cy} className="board-butt-joint-gap" />
-                <line x1={cx - half} y1={cy} x2={cx + half} y2={cy} className="board-butt-joint" />
-              </g>
-            );
+          const nx = joint.normalX ?? (input.orientation === 'length' ? 0 : 1);
+          const ny = joint.normalY ?? (input.orientation === 'length' ? 1 : 0);
+          return (
+            <g key={joint.id} className="board-joint-marker">
+              <line x1={cx - nx * half} y1={cy - ny * half} x2={cx + nx * half} y2={cy + ny * half} className="board-butt-joint-gap" />
+              <line x1={cx - nx * half} y1={cy - ny * half} x2={cx + nx * half} y2={cy + ny * half} className="board-butt-joint" />
+            </g>
+          );
+        })}
+
+        {layers.decking && (input.layingZones ?? []).map((zone) => {
+          const zonePoints = zone.points.map((point) => `${x + point.xM * scale},${y + point.yM * scale}`).join(' ');
+          const cx = zone.points.reduce((sum, point) => sum + point.xM, 0) / Math.max(1, zone.points.length);
+          const cy = zone.points.reduce((sum, point) => sum + point.yM, 0) / Math.max(1, zone.points.length);
+          return (
+            <g key={`zone-outline-${zone.id}`} className="laying-zone-overlay">
+              <polygon points={zonePoints} fill="none" stroke="#1876c9" strokeWidth="1.3" strokeDasharray="7 5" />
+              <text x={x + cx * scale} y={y + cy * scale} textAnchor="middle" fontSize="8" fontWeight="900" fill="#155b92">{zone.label}</text>
+            </g>
+          );
         })}
 
         {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && (

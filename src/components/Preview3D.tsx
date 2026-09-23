@@ -213,42 +213,36 @@ export function Preview3D({
           ctx.restore();
         }
 
-        const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
-        const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
-        if (pitchMm > 0) {
-          for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
-            const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
-            for (const [start, end] of intervals) {
-              const drawParallel = (transverseOffsetMm: number, stroke: string, lineWidth: number) => {
-                const shifted = center + transverseOffsetMm;
-                const a = input.orientation === 'length'
-                  ? iso(start / 1000, shifted / 1000, deckLift)
-                  : iso(shifted / 1000, start / 1000, deckLift);
-                const b = input.orientation === 'length'
-                  ? iso(end / 1000, shifted / 1000, deckLift)
-                  : iso(shifted / 1000, end / 1000, deckLift);
-                ctx.strokeStyle = stroke;
-                ctx.lineWidth = lineWidth;
-                ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
-                ctx.stroke();
-              };
+        if (layout?.boardSegments?.length) {
+          for (const segment of layout.boardSegments) {
+            if (segment.x1M == null || segment.y1M == null || segment.x2M == null || segment.y2M == null) continue;
+            const normalX = segment.normalX ?? (input.orientation === 'length' ? 0 : 1);
+            const normalY = segment.normalY ?? (input.orientation === 'length' ? 1 : 0);
+            const drawParallel = (offsetMm: number, stroke: string, lineWidth: number) => {
+              const offsetM = offsetMm / 1000;
+              const a = iso(segment.x1M! + normalX * offsetM, segment.y1M! + normalY * offsetM, deckLift);
+              const b = iso(segment.x2M! + normalX * offsetM, segment.y2M! + normalY * offsetM, deckLift);
+              ctx.strokeStyle = stroke;
+              ctx.lineWidth = lineWidth;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            };
 
-              const halfWidth = input.board.widthMm / 2;
-              const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
-              drawParallel(-halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
-              drawParallel(halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
+            const halfWidth = input.board.widthMm / 2;
+            const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
+            drawParallel(-halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
+            drawParallel(halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
 
-              if (grooveLines.length) {
-                for (const groove of grooveLines) {
-                  const offsetMm = (groove.ratio - 0.5) * input.board.widthMm;
-                  drawParallel(offsetMm, `rgba(37,30,25,${groove.shadowOpacity})`, 0.62);
-                  drawParallel(offsetMm - 1.15, `rgba(237,226,201,${groove.highlightOpacity})`, 0.34);
-                }
-              } else {
-                drawParallel(0, photo ? 'rgba(78,61,43,.35)' : '#ccd5da', 0.55);
+            if (grooveLines.length) {
+              for (const groove of grooveLines) {
+                const offsetMm = (groove.ratio - 0.5) * input.board.widthMm;
+                drawParallel(offsetMm, `rgba(37,30,25,${groove.shadowOpacity})`, 0.62);
+                drawParallel(offsetMm - 1.15, `rgba(237,226,201,${groove.highlightOpacity})`, 0.34);
               }
+            } else {
+              drawParallel(0, photo ? 'rgba(78,61,43,.35)' : '#ccd5da', 0.55);
             }
           }
         }
@@ -259,15 +253,13 @@ export function Preview3D({
         ctx.strokeStyle = '#17212a';
         ctx.lineWidth = 1.8;
         for (const joint of layout.buttJoints) {
-          const centerM = joint.transverseCenterMm / 1000;
-          const axisM = joint.axisPositionMm / 1000;
           const halfM = Math.max(0.035, input.board.widthMm / 1000 * 0.55);
-          const a = input.orientation === 'length'
-            ? iso(axisM, centerM - halfM, deckLift - 0.5)
-            : iso(centerM - halfM, axisM, deckLift - 0.5);
-          const b = input.orientation === 'length'
-            ? iso(axisM, centerM + halfM, deckLift - 0.5)
-            : iso(centerM + halfM, axisM, deckLift - 0.5);
+          const cx = joint.xM ?? (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000;
+          const cy = joint.yM ?? (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000;
+          const nx = joint.normalX ?? (input.orientation === 'length' ? 0 : 1);
+          const ny = joint.normalY ?? (input.orientation === 'length' ? 1 : 0);
+          const a = iso(cx - nx * halfM, cy - ny * halfM, deckLift - 0.5);
+          const b = iso(cx + nx * halfM, cy + ny * halfM, deckLift - 0.5);
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);

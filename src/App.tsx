@@ -12,6 +12,7 @@ import { LayerControls } from './components/LayerControls';
 import { LevelingEditor } from './components/LevelingEditor';
 import { SupportHeightMap } from './components/SupportHeightMap';
 import { LayingSetupEditor } from './components/LayingSetupEditor';
+import { CutOptimizationView } from './components/CutOptimizationView';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
@@ -214,7 +215,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.20 • départs • diagonales • zones de pose</div>
+          <div className="header-note">V0.21 • calepinage • structure • optimisation des chutes</div>
         </div>
       </header>
 
@@ -233,8 +234,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.20</strong>
-                <span>Calepinage multi-direction • départ par côté/rive • zones de pose indépendantes • structure recalculée.</span>
+                <strong>Version V0.21</strong>
+                <span>Calepinage multi-direction • structure par zone • optimisation des chutes traçable dans un écran séparé.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
@@ -537,6 +538,7 @@ export default function App() {
                 </div>
               </div>
               <Results input={project} result={result} />
+              <CutOptimizationView layout={result.layout} />
               <CommercialActions project={project} result={result} version={VERSION_TAG} />
               <div className="preview-toolbar">
                 <div className="segmented small-segmented">

@@ -258,17 +258,56 @@ export interface RequiredPiece {
   lengthMm: number;
 }
 
+export type CutSourceType = 'stock-board' | 'offcut';
+export type CutOffcutStatus = 'reused' | 'remaining';
+
 export interface CutPlacement {
+  id: string;
   pieceId: string;
   rowIndex: number;
   lengthMm: number;
+  sourceType: CutSourceType;
+  sourceId: string;
+  sourceLengthBeforeMm: number;
+  remainingAfterMm: number;
+  resultingOffcutId?: string;
+}
+
+export interface CutOffcut {
+  id: string;
+  stockBoardId: string;
+  createdByCutId: string;
+  lengthMm: number;
+  status: CutOffcutStatus;
+  reusedByCutId?: string;
 }
 
 export interface StockBoard {
   index: number;
+  id: string;
   stockLengthMm: number;
   cuts: CutPlacement[];
   remainingMm: number;
+  finalOffcutId?: string;
+  reuseCount: number;
+}
+
+export interface CutReuseRules {
+  status: 'pending-manufacturer-validation' | 'validated';
+  minimumReusableLengthMm?: number;
+  minimumJointDistanceMm?: number;
+  kerfMm?: number;
+  note: string;
+}
+
+export interface CutOptimizationResult {
+  boards: StockBoard[];
+  offcuts: CutOffcut[];
+  totalStockMm: number;
+  totalRequiredMm: number;
+  finalRemainingMm: number;
+  reusedOffcutCount: number;
+  rules: CutReuseRules;
 }
 
 /** Segment réellement posé dans une rangée, utilisé pour rendre les raccords visibles. */
@@ -337,6 +376,7 @@ export interface LayoutResult {
   buttJoints: LayoutButtJoint[];
   totalRequiredLinearM: number;
   stockBoards: StockBoard[];
+  cutOptimization: CutOptimizationResult;
   purchasedLinearM: number;
   wasteLinearM: number;
   wastePercent: number;

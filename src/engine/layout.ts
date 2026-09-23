@@ -10,7 +10,7 @@ import type {
   ProjectInput,
   RequiredPiece,
 } from '../domain/types';
-import { optimizeCuts } from './cuts';
+import { optimizeCutsDetailed } from './cuts';
 import {
   effectiveProjectDirection,
   intervalsForRegionAtV,
@@ -222,7 +222,8 @@ export function computeLayout(input: ProjectInput): LayoutResult {
   }
 
   const hasButtJoints = buttJoints.length > 0;
-  const stockBoards = optimizeCuts(requiredPieces, stockLengthsMm);
+  const cutOptimization = optimizeCutsDetailed(requiredPieces, stockLengthsMm);
+  const stockBoards = cutOptimization.boards;
   const totalRequiredMm = requiredPieces.reduce((sum, piece) => sum + piece.lengthMm, 0);
   const purchasedMm = stockBoards.reduce((sum, board) => sum + board.stockLengthMm, 0);
   const wasteMm = Math.max(0, purchasedMm - totalRequiredMm);
@@ -236,6 +237,7 @@ export function computeLayout(input: ProjectInput): LayoutResult {
     buttJoints,
     totalRequiredLinearM: totalRequiredMm / 1000,
     stockBoards,
+    cutOptimization,
     purchasedLinearM: purchasedMm / 1000,
     wasteLinearM: wasteMm / 1000,
     wastePercent: purchasedMm > 0 ? (wasteMm / purchasedMm) * 100 : 0,

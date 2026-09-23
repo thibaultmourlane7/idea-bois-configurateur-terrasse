@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-020.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-021.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.20.0 : Sprint A — départ de calepinage, diagonales ±45°, zones de pose réelles et structure recalculée par zone.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.21.0 : Sprint B — optimisation des chutes traçable, identifiants de lames/pièces/chutes et écran dédié.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -30,7 +30,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   if (input.board.gapMm != null && Number.isFinite(input.board.gapMm) && input.board.gapMm >= 0) {
     layout = computeLayout(input);
     trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées sur ${layout.zones.length} zone(s) ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires ; ${layout.buttJoints.length} raccord(s) positionné(s).`);
-    trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames commerciales ; chute matière ${layout.wastePercent.toFixed(2)} %.`);
+    trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames commerciales ; ${layout.cutOptimization.reusedOffcutCount} réemploi(s) tracé(s) ; reste final brut ${(layout.cutOptimization.finalRemainingMm / 1000).toFixed(3)} ml. Seuil de chute réutilisable et trait de scie : à confirmer.`);
   } else {
     diagnostics.push({
       tag: GAP_TAG,

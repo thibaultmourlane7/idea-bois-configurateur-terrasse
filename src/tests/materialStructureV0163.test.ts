@@ -56,19 +56,34 @@ describe('Extension structure matériaux V0.16.3', () => {
     expect(computeSupportPlan(project, computeLayout(project)).status).toBe('exact');
   });
 
-  it('ne déclare pas Garapa et Padouk exacts tant que leur calepinage n’est pas disponible', () => {
+  it('exige un choix explicite de lambourde pour Garapa et Padouk', () => {
     for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
       const project = { ...base, board: board(id) };
       const rule = getCommercialConstructionRule(project)!;
       const plan = computeSupportPlan(project);
-      expect(rule.status).toBe('validated');
+      expect(rule.status).toBe('partial');
+      expect(rule.joistChoiceRequired).toBe(true);
       expect(plan.status).toBe('unavailable');
       expect(plan.joistSegments).toHaveLength(0);
-      expect(plan.note).toContain('Calepinage');
+      expect(plan.note).toContain('choisir');
     }
     expect(board('IDEA-TERR-G008').gapRangeMm).toEqual([8, 10]);
     expect(board('IDEA-TERR-G008').gapMm).toBeUndefined();
     expect(board('IDEA-TERR-G015').gapMm).toBeUndefined();
+  });
+
+  it('applique le choix Pin Classe 4 ou exotique sans substitution silencieuse', () => {
+    for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
+      const pinRule = getCommercialConstructionRule({ ...base, board: board(id), structureJoistChoice: 'pin-class4' })!;
+      expect(pinRule.status).toBe('validated');
+      expect(pinRule.joistLabel).toContain('pin Classe 4');
+      expect(pinRule.joistStockLengthsMm).toEqual([2400, 3000]);
+
+      const exoticRule = getCommercialConstructionRule({ ...base, board: board(id), structureJoistChoice: 'exotic' })!;
+      expect(exoticRule.status).toBe('validated');
+      expect(exoticRule.joistLabel).toContain('exotique');
+      expect(exoticRule.joistStockLengthsMm).toEqual([1850, 2450, 3950]);
+    }
   });
 
   it('calcule SILVADEC sur Réversil sans inventer le modèle de plot', () => {

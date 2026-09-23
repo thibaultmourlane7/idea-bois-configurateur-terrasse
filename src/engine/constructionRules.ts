@@ -1,4 +1,4 @@
-import type { ProjectInput } from '../domain/types';
+import type { ProjectInput, StructureJoistChoice } from '../domain/types';
 
 export type StructureRuleStatus = 'validated' | 'partial';
 
@@ -14,6 +14,86 @@ export interface CommercialConstructionRule {
   sourceUrl: string;
   sourceLabel: string;
   sourceNote: string;
+  joistChoiceRequired?: boolean;
+}
+
+export interface CommercialJoistOption {
+  id: StructureJoistChoice;
+  label: string;
+  subtitle: string;
+}
+
+export function getCommercialJoistOptions(input: ProjectInput): CommercialJoistOption[] {
+  const recipe = input.board.commercialRecipeId;
+  if (recipe !== 'idea-garapa-145x21' && recipe !== 'idea-padouk-120x21') return [];
+  return [
+    {
+      id: 'pin-class4',
+      label: 'Pin Classe 4',
+      subtitle: 'Lambourde 60 × 40 mm — solution documentée par IDEA Bois.',
+    },
+    {
+      id: 'exotic',
+      label: 'Bois exotique',
+      subtitle: 'Lambourde 65 × 42 mm — solution compatible documentée par IDEA Bois.',
+    },
+  ];
+}
+
+function selectableHardwoodRule(
+  input: ProjectInput,
+  recipe: 'idea-garapa-145x21' | 'idea-padouk-120x21',
+): CommercialConstructionRule {
+  const label = recipe === 'idea-garapa-145x21' ? 'Garapa' : 'Padouk';
+  const sourceUrl = recipe === 'idea-garapa-145x21'
+    ? 'https://www.idea-bois.com/art-lame-terrasse-bois-exotique-garapa-lisse-l-4-00-m-145x21-mm-visser-3471.htm'
+    : 'https://www.idea-bois.com/art-lame-terrasse-bois-exotique-padouk-lisse-longueur-2-45-m-120-x-21-mm-4760.htm';
+
+  if (!input.structureJoistChoice) {
+    return {
+      status: 'partial',
+      joistSpacingMm: 0,
+      joistLabel: 'Choix de lambourde requis',
+      joistStockLengthsMm: [],
+      joistHeightMm: 0,
+      plotSpacingMm: 700,
+      plotCatalogueValidated: true,
+      sourceUrl,
+      sourceLabel: `IDEA Bois — ${label} : plusieurs structures compatibles`,
+      sourceNote: `${label} : IDEA Bois documente plusieurs familles de lambourdes compatibles. Le client doit choisir Pin Classe 4 ou bois exotique avant le calcul structurel définitif.`,
+      joistChoiceRequired: true,
+    };
+  }
+
+  if (input.structureJoistChoice === 'pin-class4') {
+    return {
+      status: 'validated',
+      joistSpacingMm: 500,
+      joistLabel: 'Lambourde pin Classe 4 60 × 40 mm',
+      joistProductRef: 'L240060040SE',
+      joistStockLengthsMm: [2400, 3000],
+      joistHeightMm: 40,
+      plotSpacingMm: 700,
+      plotCatalogueValidated: true,
+      sourceUrl,
+      sourceLabel: `IDEA Bois — ${label} + lambourde pin Classe 4`,
+      sourceNote: `${label} : choix client Pin Classe 4. Entraxe retenu 50 cm, dans la plage documentée de 40 à 50 cm.`,
+    };
+  }
+
+  return {
+    status: 'validated',
+    joistSpacingMm: 500,
+    joistLabel: 'Lambourde bois exotique 65 × 42 mm',
+    joistProductRef: 'LEX395065042',
+    joistStockLengthsMm: [1850, 2450, 3950],
+    joistHeightMm: 42,
+    plotSpacingMm: 700,
+    plotCatalogueValidated: true,
+    sourceUrl: 'https://www.idea-bois.com/art-lambourde-bois-exotique-65x42-mm-pour-terrasse-long-3-95-m-3221.htm',
+    sourceLabel: `IDEA Bois — ${label} + lambourde bois exotique`,
+    sourceNote: `${label} : choix client bois exotique. IDEA Bois indique la compatibilité de la lambourde exotique 65 × 42 mm et un entraxe de 50 cm.`,
+  };
 }
 
 export function getCommercialConstructionRule(input: ProjectInput): CommercialConstructionRule | undefined {
@@ -52,35 +132,11 @@ export function getCommercialConstructionRule(input: ProjectInput): CommercialCo
   }
 
   if (recipe === 'idea-garapa-145x21') {
-    return {
-      status: 'validated',
-      joistSpacingMm: 500,
-      joistLabel: 'Lambourde bois exotique 65 × 42 mm',
-      joistProductRef: 'LEX395065042',
-      joistStockLengthsMm: [1850, 2450, 3950],
-      joistHeightMm: 42,
-      plotSpacingMm: 700,
-      plotCatalogueValidated: true,
-      sourceUrl: 'https://idea-bois.com/cat-lambourdes-ossatures-270.htm',
-      sourceLabel: 'IDEA Bois — Garapa + lambourde exotique + plots bois',
-      sourceNote: 'Garapa compatible lambourde exotique ou pin Classe 4 ; guide IDEA Bois : 40 à 50 cm, lambourde exotique à 50 cm.',
-    };
+    return selectableHardwoodRule(input, recipe);
   }
 
   if (recipe === 'idea-padouk-120x21') {
-    return {
-      status: 'validated',
-      joistSpacingMm: 500,
-      joistLabel: 'Lambourde bois exotique 65 × 42 mm',
-      joistProductRef: 'LEX395065042',
-      joistStockLengthsMm: [1850, 2450, 3950],
-      joistHeightMm: 42,
-      plotSpacingMm: 700,
-      plotCatalogueValidated: true,
-      sourceUrl: 'https://idea-bois.com/cat-lambourdes-ossatures-270.htm',
-      sourceLabel: 'IDEA Bois — pose Padouk + lambourde exotique + plots bois',
-      sourceNote: 'Padouk : lambourdes robustes/traitées espacées de 40 à 50 cm ; plots réglables autorisés.',
-    };
+    return selectableHardwoodRule(input, recipe);
   }
 
   if (recipe === 'idea-ipe-140x20') {

@@ -37,12 +37,14 @@ const base: ProjectInput = {
 
 describe('Parcours commercial V0.11', () => {
   it('partage et restaure réellement la configuration sans données client', () => {
-    const token = projectToShareToken(base);
+    const shared = { ...base, structureJoistChoice: 'exotic' as const };
+    const token = projectToShareToken(shared);
     const restored = projectFromShareToken(token, { ...base, projectName: 'fallback' });
     expect(restored.projectName).toBe('Terrasse été');
     expect(restored.shape).toBe('l-shape');
     expect(restored.orientation).toBe('width');
     expect(restored.board.id).toBe(base.board.id);
+    expect(restored.structureJoistChoice).toBe('exotic');
     expect(token).not.toContain('email');
     expect(token).not.toContain('phone');
   });

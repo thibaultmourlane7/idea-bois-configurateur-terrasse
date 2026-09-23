@@ -17,7 +17,7 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -29,6 +29,7 @@ export function saveProjectLocally(project: ProjectInput): void {
     doubleJoistsAtButtJoints: Boolean(project.doubleJoistsAtButtJoints),
     supportType: project.supportType,
     supportSystem: project.supportSystem,
+    structureJoistChoice: project.structureJoistChoice,
     edgeFinishMode: project.edgeFinishMode,
     edgeCladdingHeightCm: project.edgeCladdingHeightCm,
     includeGeotextile: project.includeGeotextile,
@@ -59,6 +60,9 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     doubleJoistsAtButtJoints: Boolean(snapshot.doubleJoistsAtButtJoints),
     supportType: (snapshot.supportType as ProjectInput['supportType']) ?? fallback.supportType,
     supportSystem: (snapshot.supportSystem as ProjectInput['supportSystem']) ?? fallback.supportSystem,
+    structureJoistChoice: snapshot.structureJoistChoice === 'pin-class4' || snapshot.structureJoistChoice === 'exotic'
+      ? snapshot.structureJoistChoice
+      : fallback.structureJoistChoice,
     edgeFinishMode: (snapshot.edgeFinishMode as ProjectInput['edgeFinishMode']) ?? fallback.edgeFinishMode,
     edgeCladdingHeightCm: Number(snapshot.edgeCladdingHeightCm) || fallback.edgeCladdingHeightCm,
     includeGeotextile: Boolean(snapshot.includeGeotextile),

@@ -12,8 +12,9 @@ import { LayerControls } from './components/LayerControls';
 import { LevelingEditor } from './components/LevelingEditor';
 import { SupportHeightMap } from './components/SupportHeightMap';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
-import type { BoardOrientation, DeckLayingPattern, DrainageAnswer, EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
+import type { BoardOrientation, DeckLayingPattern, DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
+import { getCommercialJoistOptions } from './engine/constructionRules';
 import { restoreProjectFromUrl } from './commercial/share';
 import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
 import { FINISHED_LAYERS, layersForStep, type ConstructionLayers, type VisualPreset } from './visual/layers';
@@ -118,6 +119,7 @@ export default function App() {
   const [visualPreset, setVisualPreset] = useState<VisualPreset>('finished');
   const [visualLayers, setVisualLayers] = useState<ConstructionLayers>({ ...FINISHED_LAYERS });
   const result = useMemo(() => runConfigurator(project), [project]);
+  const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board]);
   const progressiveLayers = useMemo(() => layersForStep(step), [step]);
   const geometryDiagnostics = result.diagnostics.filter((item) =>
     item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001')
@@ -208,7 +210,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.19.5 • habillage aligné structure • longueurs/SKU vérifiés</div>
+          <div className="header-note">Structure V0.19.6 • choix structure explicite • longueurs/SKU vérifiés</div>
         </div>
       </header>
 
@@ -227,7 +229,7 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.19.5</strong>
+                <strong>Version V0.19.6</strong>
                 <span>Forme libre dessinable + cotes saisissables • réservations débordantes autorisées • plan entièrement coté.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
@@ -273,7 +275,13 @@ export default function App() {
                   const comparing = compareIds.includes(board.id);
                   return (
                     <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
-                      <button type="button" className="product-select" onClick={() => setProject({ ...project, board })}>
+                      <button type="button" className="product-select" onClick={() => setProject({
+                            ...project,
+                            board,
+                            structureJoistChoice: board.commercialRecipeId === project.board.commercialRecipeId
+                              ? project.structureJoistChoice
+                              : undefined,
+                          })}>
                         <div
                           className={`product-swatch ${board.technical.materialFamily} texture-${texture.status} ${materialProfile ? 'pin-strie-b1' : texture.grooveCount ? 'has-grooves' : ''}`}
                           style={texture.textureImageUrl
@@ -317,7 +325,13 @@ export default function App() {
               <VariantComparator
                 project={project}
                 boards={compareBoards}
-                onChoose={(board) => setProject({ ...project, board })}
+                onChoose={(board) => setProject({
+                  ...project,
+                  board,
+                  structureJoistChoice: board.commercialRecipeId === project.board.commercialRecipeId
+                    ? project.structureJoistChoice
+                    : undefined,
+                })}
                 onRemove={(id) => setCompareIds((current) => current.filter((value) => value !== id))}
               />
 
@@ -382,6 +396,32 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {joistOptions.length > 0 && (
+                <div className="question-block">
+                  <h3>Quel type de lambourde souhaitez-vous ?</h3>
+                  <p className="finish-help">
+                    IDEA Bois documente plusieurs solutions compatibles pour cette lame. Le configurateur ne choisit pas à votre place.
+                  </p>
+                  <div className="choice-grid two-choice">
+                    {joistOptions.map((option) => (
+                      <ChoiceCard
+                        key={option.id}
+                        active={project.structureJoistChoice === option.id}
+                        title={option.label}
+                        subtitle={option.subtitle}
+                        onClick={() => setProject({ ...project, structureJoistChoice: option.id as StructureJoistChoice })}
+                      />
+                    ))}
+                  </div>
+                  {!project.structureJoistChoice && (
+                    <div className="customer-check-note">
+                      <span>i</span>
+                      <div><strong>Choix nécessaire</strong><p>La structure et son prix resteront à confirmer tant que vous n’avez pas choisi la famille de lambourde.</p></div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="question-block double-joist-visible-setting">
                 <div className="double-joist-heading">

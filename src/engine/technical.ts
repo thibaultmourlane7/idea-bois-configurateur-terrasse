@@ -14,6 +14,17 @@ export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | n
   const diagnostics: Diagnostic[] = [];
   const commercial = getCommercialConstructionRule(input);
 
+  if (commercial?.status === 'partial' && commercial.joistChoiceRequired) {
+    diagnostics.push({
+      tag: RULE_TAGS.manufacturerRules,
+      severity: 'blocking',
+      message: 'Choisissez le type de lambourde avant de valider la structure.',
+      technicalMessage: commercial.sourceNote,
+      source: commercial.sourceUrl,
+    });
+    return { boardMaxSupportSpacingMm: 0, joistMaxSupportSpacingMm: 0, diagnostics };
+  }
+
   if (commercial?.status === 'validated') {
     diagnostics.push({
       tag: RULE_TAGS.manufacturerRules,

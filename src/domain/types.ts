@@ -4,6 +4,7 @@ export type DeckLayingPattern = 'straight' | 'half' | 'third';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
 export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
+export type StructureJoistChoice = 'pin-class4' | 'exotic';
 export type EdgeFinishMode = 'none' | 'full-perimeter';
 export type DrainageAnswer = 'yes' | 'no' | 'unknown';
 export type MaterialFamily = 'solid-wood' | 'composite';
@@ -194,6 +195,8 @@ export interface ProjectInput {
   doubleJoistsAtButtJoints?: boolean;
   supportType: SupportType;
   supportSystem: SupportSystem;
+  /** Choix explicite quand plusieurs familles de lambourdes sont documentées pour la lame. */
+  structureJoistChoice?: StructureJoistChoice;
   edgeFinishMode: EdgeFinishMode;
   edgeCladdingHeightCm: number;
   includeGeotextile: boolean;

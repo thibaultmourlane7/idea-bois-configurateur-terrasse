@@ -191,6 +191,7 @@ export function buildClientPdfModel(
 
   const edgeResults = computeTerraceEdges(input);
   const treatedEdges = edgeResults.filter((edge) => edge.treatment !== 'none');
+  const guardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready');
   const finishParts = [
     input.edgeFinishMode === 'full-perimeter'
       ? `Habillage lateral du pourtour - hauteur ${fmt(input.edgeCladdingHeightCm)} cm`
@@ -219,7 +220,6 @@ export function buildClientPdfModel(
   const supportPlan = result.supportPlan;
   const terrain = computeTerrainModel(input);
   const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
-  const guardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready');
   const jointAxisCount = layout
     ? layout.zones.reduce((sum, zone) => sum + zone.buttJointAxisPositionsMm.length, 0)
     : 0;

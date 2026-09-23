@@ -82,6 +82,15 @@ export interface BoardTechnicalData {
   sourceVersion?: string;
 }
 
+export interface BoardCatalogVariant {
+  lengthMm: number;
+  /** Référence fabricant / produit uniquement quand elle est explicitement vérifiée. */
+  productRef?: string;
+  unitPriceTtcPerM2?: number;
+  sourceUrl: string;
+  sourceDate: string;
+}
+
 export interface BoardCatalogData {
   internalCodes: string[];
   family: string;
@@ -95,6 +104,8 @@ export interface BoardCatalogData {
   sourceUrl: string;
   sourceDate: string;
   sourceStatus: string;
+  /** Variantes longueur issues de pages/catégories IDEA Bois vérifiées. */
+  variants?: BoardCatalogVariant[];
 }
 
 export type TextureQualityStatus = 'exact' | 'close' | 'neutral';

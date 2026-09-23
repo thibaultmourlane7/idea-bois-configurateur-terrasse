@@ -10,7 +10,8 @@ import type {
 import { PLOT_OPTIONS, type PlotMaterial } from '../catalog/materials';
 import { optimizeCuts } from './cuts';
 import { getCommercialConstructionRule } from './constructionRules';
-import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getEffectiveBoundarySegmentsM } from './geometry';
+import { getDeckBoundingSizeM, getEffectiveBoundarySegmentsM } from './geometry';
+import { intervalsForRegionAtV, worldPointFromUV, type LayingBasis } from './layingGeometry';
 
 export const SUPPORT_PLAN_TAG = 'SA-TERR-SUPPORT-PLAN-016';
 export const SUPPORT_PLAN_SOURCE_URL = 'https://www.idea-bois.com/art-plot-lambourde-terrasse-r-glable-40-60-mm-jouplast-2182.htm';
@@ -62,45 +63,18 @@ function targetFinishedDeltaMm(input: ProjectInput, xM: number, yM: number): num
   return xM * profile.targetSlopeXPercent * 10 + yM * profile.targetSlopeYPercent * 10;
 }
 
-function boardButtJointAxisPositionsMm(input: ProjectInput, layout: LayoutResult | undefined): number[] {
-  if (!layout?.hasButtJoints) return [];
-  if (layout.buttJoints?.length) {
-    return uniqueSorted(layout.buttJoints.map((joint) => joint.axisPositionMm));
-  }
-
-  // Compatibilité avec un LayoutResult ancien : reconstitution déterministe à partir de la longueur commerciale max.
-  const stockLengths = input.board.availableLengthsMm?.length
-    ? input.board.availableLengthsMm
-    : [input.board.lengthMm];
-  const maxStockLengthMm = Math.max(...stockLengths);
-  if (!Number.isFinite(maxStockLengthMm) || maxStockLengthMm <= 0) return [];
-
-  const bounds = getDeckBoundingSizeM(input);
-  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
-  const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
-  const joints: number[] = [];
-
-  for (let centerMm = input.board.widthMm / 2; centerMm <= transverseMm + 0.001; centerMm += pitchMm) {
-    const intervals = getDeckIntervalsAtMm(input, centerMm, input.orientation, input.board.widthMm / 2);
-    for (const [startMm, endMm] of intervals) {
-      const lengthMm = endMm - startMm;
-      if (lengthMm <= maxStockLengthMm + 0.001) continue;
-      for (let jointMm = startMm + maxStockLengthMm; jointMm < endMm - 0.001; jointMm += maxStockLengthMm) {
-        joints.push(jointMm);
-      }
-    }
-  }
-
-  return uniqueSorted(joints);
-}
-
 function axisPositionsWithMandatoryJoints(
-  axisLengthMm: number,
+  minAxisMm: number,
+  maxAxisMm: number,
   maxSpacingMm: number,
   jointsMm: number[],
   doubleButtJoints: boolean,
 ): Array<{ axisPositionMm: number; multiplicity: 1 | 2; buttJointSupport: boolean }> {
-  const mandatory = uniqueSorted([0, ...jointsMm.filter((value) => value > 0 && value < axisLengthMm), axisLengthMm]);
+  const mandatory = uniqueSorted([
+    minAxisMm,
+    ...jointsMm.filter((value) => value > minAxisMm + 0.001 && value < maxAxisMm - 0.001),
+    maxAxisMm,
+  ]);
   const positions: number[] = [];
 
   for (let i = 0; i < mandatory.length - 1; i += 1) {
@@ -122,68 +96,74 @@ function axisPositionsWithMandatoryJoints(
   });
 }
 
-function fieldJoistSegments(input: ProjectInput, layout: LayoutResult | undefined): {
+function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
   segments: PlannedJoistSegment[];
   buttJointAxisPositionsMm: number[];
 } {
   const rule = getCommercialConstructionRule(input);
   if (!rule) return { segments: [], buttJointAxisPositionsMm: [] };
 
-  const bounds = getDeckBoundingSizeM(input);
-  const axisLengthMm = (input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000;
-  const joistOrientation = input.orientation === 'length' ? 'width' : 'length';
-  const buttJointAxisPositionsMm = boardButtJointAxisPositionsMm(input, layout);
-  const axisPositions = axisPositionsWithMandatoryJoints(
-    axisLengthMm,
-    rule.joistSpacingMm,
-    buttJointAxisPositionsMm,
-    Boolean(input.doubleJoistsAtButtJoints),
-  );
-
   const segments: PlannedJoistSegment[] = [];
+  const allButtAxes: number[] = [];
   let id = 1;
 
-  for (const axis of axisPositions) {
-    const queryPositionMm = axis.axisPositionMm >= axisLengthMm - 0.0001
-      ? Math.max(0, axisLengthMm - 1)
-      : axis.axisPositionMm;
-    const intervals = getDeckIntervalsAtMm(input, queryPositionMm, joistOrientation, 0);
+  for (const zoneLayout of layout.zones) {
+    const explicitZone = zoneLayout.id === 'main'
+      ? undefined
+      : (input.layingZones ?? []).find((zone) => zone.id === zoneLayout.id);
+    const excludedZones = zoneLayout.id === 'main' ? (input.layingZones ?? []) : [];
+    const buttAxes = zoneLayout.buttJointAxisPositionsMm;
+    allButtAxes.push(...buttAxes);
 
-    for (const [startMm, endMm] of intervals) {
-      const lengthMm = endMm - startMm;
-      if (lengthMm <= 1) continue;
+    const axes = axisPositionsWithMandatoryJoints(
+      zoneLayout.minUMm,
+      zoneLayout.maxUMm,
+      rule.joistSpacingMm,
+      buttAxes,
+      Boolean(input.doubleJoistsAtButtJoints),
+    );
 
-      if (input.orientation === 'length') {
+    const joistBasis: LayingBasis = {
+      dirX: zoneLayout.normalX,
+      dirY: zoneLayout.normalY,
+      normalX: -zoneLayout.dirX,
+      normalY: -zoneLayout.dirY,
+    };
+
+    for (const axis of axes) {
+      const fixedTransverseMm = -axis.axisPositionMm;
+      const intervals = intervalsForRegionAtV(
+        input,
+        joistBasis,
+        fixedTransverseMm,
+        0,
+        explicitZone,
+        excludedZones,
+      );
+
+      for (const [startMm, endMm] of intervals) {
+        const lengthMm = endMm - startMm;
+        if (lengthMm <= 1) continue;
+        const a = worldPointFromUV(startMm, fixedTransverseMm, joistBasis);
+        const b = worldPointFromUV(endMm, fixedTransverseMm, joistBasis);
         segments.push({
           id: `CJ${id++}`,
           axisPositionMm: axis.axisPositionMm,
-          x1M: axis.axisPositionMm / 1000,
-          y1M: startMm / 1000,
-          x2M: axis.axisPositionMm / 1000,
-          y2M: endMm / 1000,
+          x1M: a.xM,
+          y1M: a.yM,
+          x2M: b.xM,
+          y2M: b.yM,
           lengthMm,
           multiplicity: axis.multiplicity,
           buttJointSupport: axis.buttJointSupport,
           role: axis.buttJointSupport ? 'butt-joint' : 'field',
-        });
-      } else {
-        segments.push({
-          id: `CJ${id++}`,
-          axisPositionMm: axis.axisPositionMm,
-          x1M: startMm / 1000,
-          y1M: axis.axisPositionMm / 1000,
-          x2M: endMm / 1000,
-          y2M: axis.axisPositionMm / 1000,
-          lengthMm,
-          multiplicity: axis.multiplicity,
-          buttJointSupport: axis.buttJointSupport,
-          role: axis.buttJointSupport ? 'butt-joint' : 'field',
+          zoneId: zoneLayout.id,
         });
       }
     }
   }
 
-  return { segments, buttJointAxisPositionsMm };
+  return { segments, buttJointAxisPositionsMm: uniqueSorted(allButtAxes) };
 }
 
 function collinearAndCovered(candidate: PlannedJoistSegment, existing: PlannedJoistSegment): boolean {
@@ -238,15 +218,48 @@ function perimeterJoistSegments(input: ProjectInput, fieldSegments: PlannedJoist
   return { segments: out, pendingCurved };
 }
 
+function zoneBoundaryJoistSegments(input: ProjectInput, existingSegments: PlannedJoistSegment[]): PlannedJoistSegment[] {
+  const out: PlannedJoistSegment[] = [];
+  let id = 1;
+  for (const zone of input.layingZones ?? []) {
+    for (let i = 0; i < zone.points.length; i += 1) {
+      const a = zone.points[i];
+      const b = zone.points[(i + 1) % zone.points.length];
+      const lengthM = Math.hypot(b.xM - a.xM, b.yM - a.yM);
+      if (lengthM <= GEOMETRY_EPS_M) continue;
+      const candidate: PlannedJoistSegment = {
+        id: `ZB${id++}`,
+        axisPositionMm: -1,
+        x1M: a.xM,
+        y1M: a.yM,
+        x2M: b.xM,
+        y2M: b.yM,
+        lengthMm: lengthM * 1000,
+        multiplicity: 1,
+        buttJointSupport: false,
+        role: 'zone-boundary',
+        zoneId: zone.id,
+      };
+      if ([...existingSegments, ...out].some((existing) => collinearAndCovered(candidate, existing))) continue;
+      out.push(candidate);
+    }
+  }
+  return out;
+}
+
 function plannedJoistSegments(input: ProjectInput, layout: LayoutResult | undefined): {
   segments: PlannedJoistSegment[];
   buttJointAxisPositionsMm: number[];
   pendingCurvedPerimeter: boolean;
 } {
+  if (!layout) {
+    return { segments: [], buttJointAxisPositionsMm: [], pendingCurvedPerimeter: false };
+  }
   const field = fieldJoistSegments(input, layout);
   const perimeter = perimeterJoistSegments(input, field.segments);
+  const zoneBoundaries = zoneBoundaryJoistSegments(input, [...field.segments, ...perimeter.segments]);
   return {
-    segments: [...field.segments, ...perimeter.segments],
+    segments: [...field.segments, ...perimeter.segments, ...zoneBoundaries],
     buttJointAxisPositionsMm: field.buttJointAxisPositionsMm,
     pendingCurvedPerimeter: perimeter.pendingCurved,
   };
@@ -416,6 +429,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
   const plotGroups = groupPlots(supportPoints);
   const heights = supportPoints.map((point) => point.requiredPlotHeightMm);
   const perimeterCount = segments.filter((segment) => segment.role === 'perimeter').length;
+  const zoneBoundaryCount = segments.filter((segment) => segment.role === 'zone-boundary').length;
 
   return {
     status: unsupportedPointCount > 0 || pendingCurvedPerimeter ? 'partial' : 'exact',
@@ -434,7 +448,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     sourceLabel: rule.sourceLabel,
     sourceUrl: rule.sourceUrl,
     pendingCurvedPerimeter,
-    note: `${perimeterCount} segment(s) de lambourde périphérique droite calculé(s). ${pendingCurvedPerimeter ? 'Contour courbe détecté : la solution de lambourde périphérique sur arc reste à confirmer et n’est pas comptée. ' : ''}${buttJointAxisPositionsMm.length
+    note: `${perimeterCount} segment(s) de lambourde périphérique droite calculé(s). ${zoneBoundaryCount ? `${zoneBoundaryCount} segment(s) de séparation entre zones ajoutés. ` : ''}${pendingCurvedPerimeter ? 'Contour courbe détecté : la solution de lambourde périphérique sur arc reste à confirmer et n’est pas comptée. ' : ''}${buttJointAxisPositionsMm.length
       ? input.doubleJoistsAtButtJoints
         ? 'Les axes de jonction de lames sont repérés et l’option double lambourdage est activée.'
         : 'Les axes de jonction de lames sont repérés. Le double lambourdage est désactivé : une seule lambourde est comptée sur chaque axe.'

@@ -29,7 +29,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   let layout: LayoutResult | undefined;
   if (input.board.gapMm != null && Number.isFinite(input.board.gapMm) && input.board.gapMm >= 0) {
     layout = computeLayout(input);
-    trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées ; motif ${input.layingPattern ?? 'straight'} ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires ; ${new Set(layout.buttJoints.map((joint) => Math.round(joint.axisPositionMm))).size} axe(s) de raccord.`);
+    trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées sur ${layout.zones.length} zone(s) ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires ; ${layout.buttJoints.length} raccord(s) positionné(s).`);
     trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames commerciales ; chute matière ${layout.wastePercent.toFixed(2)} %.`);
   } else {
     diagnostics.push({
@@ -111,7 +111,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
     };
   }
 
-  const structure = computeStructure(input, technical.boardMaxSupportSpacingMm, technical.joistMaxSupportSpacingMm);
+  const structure = computeStructure(input, technical.boardMaxSupportSpacingMm, technical.joistMaxSupportSpacingMm, layout);
   trace.push(`[${RULE_TAGS.boardSpan}] Entraxe maxi lame ${technical.boardMaxSupportSpacingMm} mm ; entraxe réel ${structure.joistActualSpacingMm.toFixed(1)} mm.`);
   trace.push(`[${RULE_TAGS.joistSpan}] Appuis lambourdes ≤ ${structure.joistSupportMaxSpacingMm} mm ; ${structure.supportPointCount} appuis calculés.`);
 

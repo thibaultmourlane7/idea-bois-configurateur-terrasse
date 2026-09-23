@@ -378,7 +378,7 @@ export interface SupportPlanGroup {
   sourceUrl: string;
 }
 
-export type PlannedJoistRole = 'field' | 'perimeter' | 'butt-joint';
+export type PlannedJoistRole = 'field' | 'perimeter' | 'butt-joint' | 'zone-boundary';
 
 export interface PlannedJoistSegment {
   id: string;

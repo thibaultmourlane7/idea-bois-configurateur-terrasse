@@ -1,18 +1,25 @@
-import type { ProjectInput, StructureResult } from '../domain/types';
+import type { JoistLine, LayoutResult, ProjectInput, StructureResult } from '../domain/types';
 import { NF_DTU_51_4_2018 } from '../referentials/nf-dtu-51-4-2018';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, isPointInsideDeck } from './geometry';
+import { intervalsForRegionAtV, type LayingBasis } from './layingGeometry';
 
-function boardRowCenters(input: ProjectInput): number[] {
-  if (input.board.gapMm == null) throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
-  const bounds = getDeckBoundingSizeM(input);
-  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
-  const pitch = input.board.widthMm + input.board.gapMm;
-  const centers: number[] = [];
-  for (let pos = input.board.widthMm / 2; pos <= transverseMm + 0.001; pos += pitch) centers.push(pos);
-  return centers;
+function uniqueSorted(values: number[]): number[] {
+  return [...new Set(values.map((value) => Math.round(value * 1000) / 1000))].sort((a, b) => a - b);
 }
 
-export function computeStructure(
+function axesForZone(minU: number, maxU: number, maxSpacingMm: number, mandatory: number[]): number[] {
+  const anchors = uniqueSorted([minU, ...mandatory.filter((x) => x > minU + 0.001 && x < maxU - 0.001), maxU]);
+  const positions: number[] = [];
+  for (let i = 0; i + 1 < anchors.length; i += 1) {
+    const start = anchors[i];
+    const end = anchors[i + 1];
+    const count = Math.max(1, Math.ceil((end - start) / maxSpacingMm));
+    for (let n = 0; n <= count; n += 1) positions.push(start + ((end - start) * n) / count);
+  }
+  return uniqueSorted(positions);
+}
+
+function legacyStructure(
   input: ProjectInput,
   boardMaxSupportSpacingMm: number,
   joistMaxSupportSpacingMm: number,
@@ -28,18 +35,19 @@ export function computeStructure(
     const segments = getDeckIntervalsAtMm(input, axisPositionMm, joistOrientation, 0);
     const lengthMm = segments.reduce((sum, [start, end]) => sum + (end - start), 0);
     const supportCount = segments.reduce((sum, [start, end]) => {
-      const segmentLength = end - start;
-      if (segmentLength <= 1) return sum;
-      const supportIntervals = Math.max(1, Math.ceil(segmentLength / joistMaxSupportSpacingMm));
-      return sum + supportIntervals + 1;
+      const length = end - start;
+      if (length <= 1) return sum;
+      return sum + Math.max(1, Math.ceil(length / joistMaxSupportSpacingMm)) + 1;
     }, 0);
     return { index: i, axisPositionMm, lengthMm, supportCount };
   }).filter((line) => line.lengthMm > 1);
 
-  const joistLinearM = joistLines.reduce((sum, line) => sum + line.lengthMm, 0) / 1000;
-  const supportPointCount = joistLines.reduce((sum, line) => sum + line.supportCount, 0);
+  const rowCenters: number[] = [];
+  if (input.board.gapMm == null) throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
+  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
+  const pitch = input.board.widthMm + input.board.gapMm;
+  for (let pos = input.board.widthMm / 2; pos <= transverseMm + 0.001; pos += pitch) rowCenters.push(pos);
 
-  const rowCenters = boardRowCenters(input);
   let crossings = 0;
   for (const joist of joistLines) {
     for (const rowCenter of rowCenters) {
@@ -50,14 +58,73 @@ export function computeStructure(
   }
 
   const screwsPerCrossing = input.board.widthMm >= NF_DTU_51_4_2018.fixing.twoScrewsFromBoardWidthMm ? 2 : 1;
-
   return {
     joistMaxSpacingMm: boardMaxSupportSpacingMm,
     joistActualSpacingMm: actualSpacing,
     joistSupportMaxSpacingMm: joistMaxSupportSpacingMm,
     joistLines,
-    joistLinearM,
-    supportPointCount,
+    joistLinearM: joistLines.reduce((sum, line) => sum + line.lengthMm, 0) / 1000,
+    supportPointCount: joistLines.reduce((sum, line) => sum + line.supportCount, 0),
+    fixingCount: crossings * screwsPerCrossing,
+    fixingStatus: 'exact',
+  };
+}
+
+export function computeStructure(
+  input: ProjectInput,
+  boardMaxSupportSpacingMm: number,
+  joistMaxSupportSpacingMm: number,
+  layout?: LayoutResult,
+): StructureResult {
+  if (!layout?.zones?.length) return legacyStructure(input, boardMaxSupportSpacingMm, joistMaxSupportSpacingMm);
+
+  const joistLines: JoistLine[] = [];
+  const axesByZone = new Map<string, number[]>();
+  const spacings: number[] = [];
+  let index = 0;
+
+  for (const zone of layout.zones) {
+    const axes = axesForZone(zone.minUMm, zone.maxUMm, boardMaxSupportSpacingMm, zone.buttJointAxisPositionsMm);
+    axesByZone.set(zone.id, axes);
+    for (let i = 0; i + 1 < axes.length; i += 1) spacings.push(axes[i + 1] - axes[i]);
+
+    const explicitZone = zone.id === 'main' ? undefined : (input.layingZones ?? []).find((item) => item.id === zone.id);
+    const excludedZones = zone.id === 'main' ? (input.layingZones ?? []) : [];
+    const basis: LayingBasis = {
+      dirX: zone.normalX,
+      dirY: zone.normalY,
+      normalX: -zone.dirX,
+      normalY: -zone.dirY,
+    };
+
+    for (const axis of axes) {
+      const intervals = intervalsForRegionAtV(input, basis, -axis, 0, explicitZone, excludedZones);
+      const lengthMm = intervals.reduce((sum, [start, end]) => sum + (end - start), 0);
+      if (lengthMm <= 1) continue;
+      const supportCount = intervals.reduce((sum, [start, end]) => {
+        const length = end - start;
+        return length <= 1 ? sum : sum + Math.max(1, Math.ceil(length / joistMaxSupportSpacingMm)) + 1;
+      }, 0);
+      joistLines.push({ index: index++, axisPositionMm: axis, lengthMm, supportCount });
+    }
+  }
+
+  let crossings = 0;
+  for (const segment of layout.boardSegments) {
+    const axes = axesByZone.get(segment.zoneId ?? 'main') ?? [];
+    const lo = Math.min(segment.startMm, segment.endMm);
+    const hi = Math.max(segment.startMm, segment.endMm);
+    crossings += axes.filter((axis) => axis >= lo - 0.5 && axis <= hi + 0.5).length;
+  }
+
+  const screwsPerCrossing = input.board.widthMm >= NF_DTU_51_4_2018.fixing.twoScrewsFromBoardWidthMm ? 2 : 1;
+  return {
+    joistMaxSpacingMm: boardMaxSupportSpacingMm,
+    joistActualSpacingMm: spacings.length ? Math.max(...spacings) : 0,
+    joistSupportMaxSpacingMm: joistMaxSupportSpacingMm,
+    joistLines,
+    joistLinearM: joistLines.reduce((sum, line) => sum + line.lengthMm, 0) / 1000,
+    supportPointCount: joistLines.reduce((sum, line) => sum + line.supportCount, 0),
     fixingCount: crossings * screwsPerCrossing,
     fixingStatus: 'exact',
   };

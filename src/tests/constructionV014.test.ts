@@ -76,6 +76,8 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(cladding.verticalSupportCount).toBe(44);
     expect(cladding.verticalJoistRequiredLinearM).toBeCloseTo(22, 6);
     expect(cladding.verticalJoistStockBoards).toHaveLength(11);
+    expect(cladding.edgeBoardFixingCount).toBe(352);
+    expect(cladding.edgeFixingSourceUrl).toContain('product_File/470.pdf');
 
     const result = runConfigurator(project);
     const finish = result.basket?.lines.find((line) => line.id === 'edge-finish');
@@ -85,6 +87,10 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(vertical?.quantity).toBe(11);
     expect(vertical?.note).toContain('44 support');
     expect(vertical?.note).toContain('50 cm');
+    const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
+    expect(fixings?.note).toContain('352 vis d’habillage latéral');
+    expect(fixings?.quantityMin).toBe(6);
+    expect(fixings?.quantityMax).toBe(7);
   });
 
   it('optimise différemment les lambourdes verticales quand la hauteur change', () => {

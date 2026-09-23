@@ -151,11 +151,14 @@ describe('Configurateur terrasse V0.9', () => {
     });
     const finish = result.basket?.lines.find((line) => line.id === 'edge-finish');
     const vertical = result.basket?.lines.find((line) => line.id === 'edge-vertical-joists');
+    const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
     expect(finish?.status).toBe('exact');
     expect(finish?.productRef).toBe(board.catalog?.internalCodes.join(', '));
     expect(finish?.totalTtc).toBeGreaterThan(0);
     expect(vertical?.status).toBe('exact');
     expect(vertical?.quantity).toBeGreaterThan(0);
+    expect(fixings?.quantity).toBe(6);
+    expect(fixings?.note).toContain('176 vis d’habillage latéral');
   });
 
   it('optimise sur plusieurs longueurs commerciales autorisées', () => {

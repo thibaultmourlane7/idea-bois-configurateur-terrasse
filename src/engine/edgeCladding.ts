@@ -21,6 +21,9 @@ export interface EdgeCladdingCalculation {
   verticalJoistRequiredLinearM?: number;
   verticalJoistStockBoards?: StockBoard[];
   verticalJoistTotalTtc?: number;
+  /** Vis nécessaires pour fixer les lames de rive aux supports verticaux : 2 vis par lame et par support. */
+  edgeBoardFixingCount?: number;
+  edgeFixingSourceUrl?: string;
   edgeLengthsM: number[];
 }
 
@@ -151,6 +154,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
   const verticalJoistStockBoards = optimizeCuts(vertical.pieces, [2400]);
   const verticalJoistRequiredLinearM = vertical.pieces.reduce((sum, piece) => sum + piece.lengthMm, 0) / 1000;
   const verticalJoistTotalTtc = round2(verticalJoistStockBoards.length * PIN_JOIST_60X40_2400.unitPriceTtc);
+  const edgeBoardFixingCount = rowCount * vertical.count * 2;
 
   return {
     status: 'exact',
@@ -168,6 +172,8 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
     verticalJoistRequiredLinearM,
     verticalJoistStockBoards,
     verticalJoistTotalTtc,
+    edgeBoardFixingCount,
+    edgeFixingSourceUrl: 'https://www.idea-bois.com/userfiles/product_File/470.pdf',
     edgeLengthsM: lengthsM,
   };
 }

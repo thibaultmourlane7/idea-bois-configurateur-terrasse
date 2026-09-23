@@ -182,8 +182,12 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
   if (input.board.thicknessMm >= 20 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
     const hardwoodRecipe = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '');
     const screwMaterial = hardwoodRecipe ? HARDWOOD_SCREWS_5X60_200 : PGB_SCREWS_5X60_200;
-    const screwMin = Math.ceil(area * 35);
-    const screwMax = Math.ceil(area * 40);
+    const claddingForFixings = input.edgeFinishMode === 'full-perimeter' ? computeEdgeCladding(input) : undefined;
+    const edgeScrewCount = claddingForFixings?.status === 'exact' && claddingForFixings.mode === 'same-decking'
+      ? claddingForFixings.edgeBoardFixingCount ?? 0
+      : 0;
+    const screwMin = Math.ceil(area * 35) + edgeScrewCount;
+    const screwMax = Math.ceil(area * 40) + edgeScrewCount;
     const packMin = Math.ceil(screwMin / 200);
     const packMax = Math.ceil(screwMax / 200);
     const exact = packMin === packMax;
@@ -202,7 +206,7 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
       totalMaxTtc: exact ? undefined : round2(packMax * screwMaterial.unitPriceTtc),
       status: exact ? 'exact' : 'range',
       required: true,
-      note: 'IDEA Bois indique 35 à 40 vis/m² ; conditionnement de 200.',
+      note: `IDEA Bois indique 35 à 40 vis/m² pour le platelage${edgeScrewCount ? ` + ${edgeScrewCount} vis d’habillage latéral (2 vis par lame et par support vertical)` : ''} ; conditionnement de 200.`,
       sourceUrl: screwMaterial.sourceUrl,
     });
   } else {
@@ -450,6 +454,12 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         'Lambourdes verticales d’habillage',
         cladding.reason ?? 'L’entraxe des supports verticaux doit être validé pour cette gamme.',
       ));
+      lines.push(pending(
+        'edge-finish-screws',
+        'fixings',
+        'Visserie de l’habillage latéral',
+        'La règle IDEA Bois est de 2 vis par lame de rive et par support vertical ; la quantité attend la validation des supports verticaux.',
+      ));
     } else {
       lines.push(pending(
         'edge-finish',
@@ -462,6 +472,12 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         'joists',
         'Lambourdes verticales d’habillage',
         cladding.reason ?? 'La structure verticale doit être validée.',
+      ));
+      lines.push(pending(
+        'edge-finish-screws',
+        'fixings',
+        'Visserie de l’habillage latéral',
+        'La quantité ne peut pas être calculée tant que l’habillage et ses supports verticaux ne sont pas validés.',
       ));
     }
   }

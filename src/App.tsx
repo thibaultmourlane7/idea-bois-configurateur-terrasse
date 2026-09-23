@@ -14,7 +14,9 @@ import { SupportHeightMap } from './components/SupportHeightMap';
 import { LayingSetupEditor } from './components/LayingSetupEditor';
 import { CutOptimizationView } from './components/CutOptimizationView';
 import { EdgeSetupEditor } from './components/EdgeSetupEditor';
+import { ProductCompatibilityPanel } from './components/ProductCompatibilityPanel';
 import { hasEdgeTreatment } from './engine/edges';
+import { canUseBoardInZone, findBoard } from './catalog/compatibility';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
@@ -157,6 +159,21 @@ export default function App() {
     [compareIds],
   );
 
+  const chooseBoard = (board: ProjectInput['board']) => {
+    const sameRecipe = board.commercialRecipeId === project.board.commercialRecipeId;
+    const layingZones = (project.layingZones ?? []).map((zone) => {
+      if (!sameRecipe || !zone.boardId) return sameRecipe ? zone : { ...zone, boardId: undefined };
+      const candidate = findBoard(zone.boardId);
+      return candidate && canUseBoardInZone(board, candidate).allowed ? zone : { ...zone, boardId: undefined };
+    });
+    setProject({
+      ...project,
+      board,
+      layingZones,
+      structureJoistChoice: sameRecipe ? project.structureJoistChoice : undefined,
+    });
+  };
+
   const toggleCompare = (boardId: string) => {
     setCompareIds((current) => {
       if (current.includes(boardId)) return current.filter((id) => id !== boardId);
@@ -218,7 +235,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V0.22 • calepinage • chutes • rives métier</div>
+          <div className="header-note">V0.23 • catalogue • compatibilités • produits par zone</div>
         </div>
       </header>
 
@@ -237,8 +254,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.22</strong>
-                <span>Rives métier • contexte chantier • traitements rive par rive • quantités sans données inventées.</span>
+                <strong>Version V0.23</strong>
+                <span>Matrice produit • compatibilités explicites • produit différent par zone dans un même système validé.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
@@ -283,13 +300,7 @@ export default function App() {
                   const comparing = compareIds.includes(board.id);
                   return (
                     <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
-                      <button type="button" className="product-select" onClick={() => setProject({
-                            ...project,
-                            board,
-                            structureJoistChoice: board.commercialRecipeId === project.board.commercialRecipeId
-                              ? project.structureJoistChoice
-                              : undefined,
-                          })}>
+                      <button type="button" className="product-select" onClick={() => chooseBoard(board)}>
                         <div
                           className={`product-swatch ${board.technical.materialFamily} texture-${texture.status} ${materialProfile ? 'pin-strie-b1' : texture.grooveCount ? 'has-grooves' : ''}`}
                           style={texture.textureImageUrl
@@ -333,17 +344,12 @@ export default function App() {
               <VariantComparator
                 project={project}
                 boards={compareBoards}
-                onChoose={(board) => setProject({
-                  ...project,
-                  board,
-                  structureJoistChoice: board.commercialRecipeId === project.board.commercialRecipeId
-                    ? project.structureJoistChoice
-                    : undefined,
-                })}
+                onChoose={chooseBoard}
                 onRemove={(id) => setCompareIds((current) => current.filter((value) => value !== id))}
               />
 
               <LayingSetupEditor project={project} onChange={setProject} />
+              <ProductCompatibilityPanel board={project.board} />
             </div>
           )}
 

@@ -69,6 +69,8 @@ export interface LayingZone {
   pattern: DeckLayingPattern;
   start: LayingStart;
   startEdgeIndex?: number;
+  /** Sprint D : produit de lame propre à la zone. Absent = produit principal du projet. */
+  boardId?: string;
 }
 
 export interface ReferencePlanTransform {
@@ -286,6 +288,8 @@ export interface RequiredPiece {
   id: string;
   rowIndex: number;
   lengthMm: number;
+  boardId?: string;
+  zoneId?: string;
 }
 
 export type CutSourceType = 'stock-board' | 'offcut';
@@ -351,6 +355,7 @@ export interface LayoutBoardSegment {
   endMm: number;
   lengthMm: number;
   zoneId?: string;
+  boardId?: string;
   direction?: LayingDirection;
   x1M?: number;
   y1M?: number;
@@ -380,6 +385,8 @@ export interface LayoutButtJoint {
 export interface LayoutZoneResult {
   id: string;
   label: string;
+  boardId: string;
+  boardLabel: string;
   direction: LayingDirection;
   pattern: DeckLayingPattern;
   start: LayingStart;
@@ -395,6 +402,20 @@ export interface LayoutZoneResult {
   buttJointAxisPositionsMm: number[];
 }
 
+export interface LayoutProductSummary {
+  boardId: string;
+  boardLabel: string;
+  zoneIds: string[];
+  requiredPieces: RequiredPiece[];
+  stockBoards: StockBoard[];
+  cutOptimization: CutOptimizationResult;
+  totalRequiredLinearM: number;
+  purchasedLinearM: number;
+  wasteLinearM: number;
+  wastePercent: number;
+  purchasedAreaM2: number;
+}
+
 export interface LayoutResult {
   rowCount: number;
   requiredPieces: RequiredPiece[];
@@ -405,6 +426,8 @@ export interface LayoutResult {
   /** Raccords de lames réels, rangée par rangée. */
   buttJoints: LayoutButtJoint[];
   totalRequiredLinearM: number;
+  /** Synthèses d'achat séparées par référence de lame lorsque plusieurs produits sont utilisés par zone. */
+  productSummaries: LayoutProductSummary[];
   stockBoards: StockBoard[];
   cutOptimization: CutOptimizationResult;
   purchasedLinearM: number;

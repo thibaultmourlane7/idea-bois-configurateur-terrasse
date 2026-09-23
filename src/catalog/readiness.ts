@@ -1,5 +1,6 @@
 import type { BoardSpec, ProjectInput } from '../domain/types';
 import { runConfigurator } from '../engine/configurator';
+import { getProductCompatibility } from './compatibility';
 
 export type ProductReadiness = 'complete' | 'calculable' | 'partial' | 'price-only';
 
@@ -10,20 +11,21 @@ export interface ProductReadinessInfo {
 }
 
 export function getProductReadiness(board: BoardSpec): ProductReadinessInfo {
-  if (board.commercialRecipeId === 'idea-pin-nord-145x27' || board.commercialRecipeId === 'idea-cumaru-145x21' || board.commercialRecipeId === 'idea-ipe-140x20') {
-    return { level: 'complete', label: 'Panier calculable', detail: 'Jeu, structure et fixations commerciales documentés.' };
+  const compatibility = getProductCompatibility(board);
+  const core = [compatibility.layout, compatibility.structure, compatibility.fixings];
+  const coreValidated = core.every((item) => item.state === 'validated');
+
+  if (coreValidated && compatibility.supports.state === 'validated') {
+    return { level: 'complete', label: 'Panier calculable', detail: 'Calepinage, structure, fixations et appuis sont documentés dans la matrice V0.23.' };
   }
-  if (board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
-    return { level: 'calculable', label: 'Calcul avancé', detail: 'Lames et clips calculables ; structure à finaliser.' };
+  if (coreValidated) {
+    return { level: 'calculable', label: 'Calcul avancé', detail: 'Le calepinage et la structure sont calculables ; une famille commerciale reste partielle.' };
   }
-  if (board.commercialRecipeId === 'idea-garapa-145x21' || board.commercialRecipeId === 'idea-padouk-120x21' || board.commercialRecipeId === 'idea-resineux-class4') {
-    return { level: 'partial', label: 'Calcul partiel', detail: 'Structure documentée ; jeu de pose ou donnée commerciale finale encore à confirmer.' };
-  }
-  if (board.commercialRecipeId === 'idea-bamboo-137x20') {
-    return { level: 'partial', label: 'Structure à confirmer', detail: 'Support bois et clips documentés ; entraxe/plots insuffisamment documentés.' };
+  if (board.commercialRecipeId) {
+    return { level: 'partial', label: 'Calcul partiel', detail: 'La matrice identifie précisément les compatibilités encore incomplètes.' };
   }
   if (board.priceTtcPerM2 != null) {
-    return { level: 'price-only', label: 'Prix disponible', detail: 'Prix catalogue connu, règles techniques incomplètes.' };
+    return { level: 'price-only', label: 'Prix disponible', detail: 'Prix catalogue connu, système constructif non mappé.' };
   }
   return { level: 'price-only', label: 'À compléter', detail: 'Données insuffisantes pour un calcul commercial complet.' };
 }

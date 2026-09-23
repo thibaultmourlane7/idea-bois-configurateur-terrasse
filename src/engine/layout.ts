@@ -9,8 +9,11 @@ import type {
   LayoutZoneResult,
   ProjectInput,
   RequiredPiece,
+  BoardSpec,
+  CutOptimizationResult,
 } from '../domain/types';
 import { optimizeCutsDetailed } from './cuts';
+import { boardForZone } from '../catalog/compatibility';
 import {
   effectiveProjectDirection,
   intervalsForRegionAtV,
@@ -36,6 +39,7 @@ interface RegionSpec {
   startEdgeIndex?: number;
   zone?: LayingZone;
   excludedZones: LayingZone[];
+  board: BoardSpec;
 }
 
 function starterLengthForPattern(pattern: DeckLayingPattern, rowIndex: number, materialLengthMm: number): number {
@@ -73,6 +77,7 @@ function regions(input: ProjectInput): RegionSpec[] {
     start: input.layingStart ?? 'left',
     startEdgeIndex: input.layingStartEdgeIndex,
     excludedZones: zones,
+    board: input.board,
   };
   return [
     primary,
@@ -85,6 +90,7 @@ function regions(input: ProjectInput): RegionSpec[] {
       startEdgeIndex: zone.startEdgeIndex,
       zone,
       excludedZones: [],
+      board: boardForZone(input.board, zone.boardId),
     })),
   ];
 }
@@ -101,25 +107,28 @@ export function computeLayout(input: ProjectInput): LayoutResult {
     throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
   }
 
-  const pitchMm = input.board.widthMm + input.board.gapMm;
   const requiredPieces: RequiredPiece[] = [];
   const boardSegments: LayoutBoardSegment[] = [];
   const buttJoints: LayoutButtJoint[] = [];
   const zoneResults: LayoutZoneResult[] = [];
-  const stockLengthsMm = input.board.availableLengthsMm?.length
-    ? input.board.availableLengthsMm
-    : [input.board.lengthMm];
-  const maxStockLengthMm = Math.max(...stockLengthsMm);
   let globalRowIndex = 0;
 
   for (const region of regions(input)) {
+    if (region.board.gapMm == null || !Number.isFinite(region.board.gapMm) || region.board.gapMm < 0) {
+      throw new Error(`SA-TERR-GAP-001: jeu entre lames non validé pour ${region.board.label}.`);
+    }
+    const pitchMm = region.board.widthMm + region.board.gapMm;
+    const stockLengthsMm = region.board.availableLengthsMm?.length
+      ? region.board.availableLengthsMm
+      : [region.board.lengthMm];
+    const maxStockLengthMm = Math.max(...stockLengthsMm);
     const basis = resolveLayingBasis(input, region.direction, region.start, region.zone, region.startEdgeIndex);
     const bounds = zoneProjectedBounds(input, basis, region.zone);
     const zoneButtAxes: number[] = [];
     let zoneRowCount = 0;
 
     for (
-      let centerMm = bounds.minV + input.board.widthMm / 2;
+      let centerMm = bounds.minV + region.board.widthMm / 2;
       centerMm <= bounds.maxV + 0.001;
       centerMm += pitchMm
     ) {
@@ -127,7 +136,7 @@ export function computeLayout(input: ProjectInput): LayoutResult {
         input,
         basis,
         centerMm,
-        input.board.widthMm / 2,
+        region.board.widthMm / 2,
         region.zone,
         region.excludedZones,
       );
@@ -160,6 +169,7 @@ export function computeLayout(input: ProjectInput): LayoutResult {
             endMm,
             lengthMm: endMm - startMm,
             zoneId: region.id,
+            boardId: region.board.id,
             direction: region.direction,
             x1M: a.xM,
             y1M: a.yM,
@@ -172,7 +182,7 @@ export function computeLayout(input: ProjectInput): LayoutResult {
           };
           installed.push(segment);
           boardSegments.push(segment);
-          requiredPieces.push({ id, rowIndex: globalRowIndex, lengthMm: segment.lengthMm });
+          requiredPieces.push({ id, rowIndex: globalRowIndex, lengthMm: segment.lengthMm, boardId: region.board.id, zoneId: region.id });
         }
 
         for (let i = 0; i + 1 < installed.length; i += 1) {
@@ -205,6 +215,8 @@ export function computeLayout(input: ProjectInput): LayoutResult {
     zoneResults.push({
       id: region.id,
       label: region.label,
+      boardId: region.board.id,
+      boardLabel: region.board.label,
       direction: region.direction,
       pattern: region.pattern,
       start: region.start,
@@ -222,12 +234,78 @@ export function computeLayout(input: ProjectInput): LayoutResult {
   }
 
   const hasButtJoints = buttJoints.length > 0;
-  const cutOptimization = optimizeCutsDetailed(requiredPieces, stockLengthsMm);
-  const stockBoards = cutOptimization.boards;
-  const totalRequiredMm = requiredPieces.reduce((sum, piece) => sum + piece.lengthMm, 0);
-  const purchasedMm = stockBoards.reduce((sum, board) => sum + board.stockLengthMm, 0);
-  const wasteMm = Math.max(0, purchasedMm - totalRequiredMm);
-  const purchasedAreaM2 = (purchasedMm / 1000) * (input.board.widthMm / 1000);
+  const productIds = [...new Set(requiredPieces.map((piece) => piece.boardId ?? input.board.id))];
+  const productSummaries = productIds.map((boardId) => {
+    const board = boardForZone(input.board, boardId);
+    const pieces = requiredPieces.filter((piece) => (piece.boardId ?? input.board.id) === boardId);
+    const stockLengthsMm = board.availableLengthsMm?.length ? board.availableLengthsMm : [board.lengthMm];
+    const cutOptimization = optimizeCutsDetailed(pieces, stockLengthsMm);
+    const totalRequiredMm = pieces.reduce((sum, piece) => sum + piece.lengthMm, 0);
+    const purchasedMm = cutOptimization.boards.reduce((sum, stock) => sum + stock.stockLengthMm, 0);
+    const wasteMm = Math.max(0, purchasedMm - totalRequiredMm);
+    return {
+      boardId,
+      boardLabel: board.label,
+      zoneIds: [...new Set(pieces.map((piece) => piece.zoneId ?? 'main'))],
+      requiredPieces: pieces,
+      stockBoards: cutOptimization.boards,
+      cutOptimization,
+      totalRequiredLinearM: totalRequiredMm / 1000,
+      purchasedLinearM: purchasedMm / 1000,
+      wasteLinearM: wasteMm / 1000,
+      wastePercent: purchasedMm > 0 ? (wasteMm / purchasedMm) * 100 : 0,
+      purchasedAreaM2: (purchasedMm / 1000) * (board.widthMm / 1000),
+    };
+  });
+
+  const namespaceOptimization = (summary: typeof productSummaries[number], index: number): CutOptimizationResult => {
+    if (productSummaries.length === 1) return summary.cutOptimization;
+    const prefix = `P${index + 1}-`;
+    const idMap = new Map<string, string>();
+    for (const stock of summary.cutOptimization.boards) idMap.set(stock.id, prefix + stock.id);
+    for (const offcut of summary.cutOptimization.offcuts) idMap.set(offcut.id, prefix + offcut.id);
+    for (const stock of summary.cutOptimization.boards) for (const cut of stock.cuts) idMap.set(cut.id, prefix + cut.id);
+    return {
+      ...summary.cutOptimization,
+      boards: summary.cutOptimization.boards.map((stock) => ({
+        ...stock,
+        id: idMap.get(stock.id) ?? stock.id,
+        finalOffcutId: stock.finalOffcutId ? idMap.get(stock.finalOffcutId) : undefined,
+        cuts: stock.cuts.map((cut) => ({
+          ...cut,
+          id: idMap.get(cut.id) ?? cut.id,
+          sourceId: idMap.get(cut.sourceId) ?? cut.sourceId,
+          resultingOffcutId: cut.resultingOffcutId ? idMap.get(cut.resultingOffcutId) : undefined,
+        })),
+      })),
+      offcuts: summary.cutOptimization.offcuts.map((offcut) => ({
+        ...offcut,
+        id: idMap.get(offcut.id) ?? offcut.id,
+        stockBoardId: idMap.get(offcut.stockBoardId) ?? offcut.stockBoardId,
+        createdByCutId: idMap.get(offcut.createdByCutId) ?? offcut.createdByCutId,
+        reusedByCutId: offcut.reusedByCutId ? idMap.get(offcut.reusedByCutId) : undefined,
+      })),
+    };
+  };
+
+  const namespaced = productSummaries.map(namespaceOptimization);
+  const stockBoards = namespaced.flatMap((item) => item.boards);
+  const totalRequiredMm = productSummaries.reduce((sum, item) => sum + item.totalRequiredLinearM * 1000, 0);
+  const purchasedMm = productSummaries.reduce((sum, item) => sum + item.purchasedLinearM * 1000, 0);
+  const wasteMm = productSummaries.reduce((sum, item) => sum + item.wasteLinearM * 1000, 0);
+  const purchasedAreaM2 = productSummaries.reduce((sum, item) => sum + item.purchasedAreaM2, 0);
+  const cutOptimization: CutOptimizationResult = {
+    boards: stockBoards,
+    offcuts: namespaced.flatMap((item) => item.offcuts),
+    totalStockMm: namespaced.reduce((sum, item) => sum + item.totalStockMm, 0),
+    totalRequiredMm: namespaced.reduce((sum, item) => sum + item.totalRequiredMm, 0),
+    finalRemainingMm: namespaced.reduce((sum, item) => sum + item.finalRemainingMm, 0),
+    reusedOffcutCount: namespaced.reduce((sum, item) => sum + item.reusedOffcutCount, 0),
+    rules: namespaced[0]?.rules ?? {
+      status: 'pending-manufacturer-validation',
+      note: 'Règles de réemploi à confirmer.',
+    },
+  };
 
   return {
     rowCount: globalRowIndex,
@@ -236,6 +314,7 @@ export function computeLayout(input: ProjectInput): LayoutResult {
     boardSegments,
     buttJoints,
     totalRequiredLinearM: totalRequiredMm / 1000,
+    productSummaries,
     stockBoards,
     cutOptimization,
     purchasedLinearM: purchasedMm / 1000,

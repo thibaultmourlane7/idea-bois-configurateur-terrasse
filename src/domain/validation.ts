@@ -3,6 +3,7 @@ import { referencePlanDiagnostics } from './referencePlan';
 import { getDeckOutlinePointsM, isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
 import { hasEdgeTreatment } from '../engine/edges';
 import { zoneFitsBaseDeck, zonesOverlap } from '../engine/layingGeometry';
+import { canUseBoardInZone, findBoard } from '../catalog/compatibility';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -101,6 +102,29 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
 
   const zones = input.layingZones ?? [];
   for (const zone of zones) {
+    if (zone.boardId) {
+      const zoneBoard = findBoard(zone.boardId);
+      if (!zoneBoard) {
+        diagnostics.push({
+          tag: 'SA-TERR-COMPAT-ZONE-001',
+          severity: 'blocking',
+          message: `${zone.label || 'Zone'} : la référence de lame sélectionnée n’existe plus dans le catalogue.`,
+          field: `layingZones.${zone.id}.boardId`,
+        });
+      } else {
+        const compatibility = canUseBoardInZone(board, zoneBoard);
+        if (!compatibility.allowed) {
+          diagnostics.push({
+            tag: 'SA-TERR-COMPAT-ZONE-002',
+            severity: 'blocking',
+            message: `${zone.label || 'Zone'} : ${compatibility.reason}`,
+            technicalMessage: `Produit principal : ${board.label}. Produit de zone : ${zoneBoard.label}.`,
+            field: `layingZones.${zone.id}.boardId`,
+          });
+        }
+      }
+    }
+
     if (!zone.id.trim() || !zone.label.trim()) {
       diagnostics.push({ tag: 'SA-TERR-ZONE-001', severity: 'blocking', message: 'Chaque zone de pose doit avoir un identifiant et un nom.' });
       continue;

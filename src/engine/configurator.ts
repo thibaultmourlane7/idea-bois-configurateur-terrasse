@@ -11,20 +11,30 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 import { computeTerraceEdges, EDGE_TAG } from './edges';
+import { getProductCompatibility } from '../catalog/compatibility';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-022.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-023.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.22.0 : Sprint C — rives métier, contextes chantier et traitements rive par rive.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.23.0 : Sprint D — matrice complète de compatibilités et produit par zone sous garde-fou de système constructif.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
   }
 
   const geometry = computeGeometry(input);
+  const compatibility = getProductCompatibility(input.board);
+  diagnostics.push({
+    tag: 'SA-TERR-COMPAT-023',
+    severity: compatibility.overall === 'missing' ? 'warning' : 'info',
+    message: `Matrice produit : ${compatibility.overall === 'validated' ? 'compatibilités complètes' : compatibility.overall === 'partial' ? 'compatibilités partielles' : 'compatibilités à compléter'}.`,
+    technicalMessage: [compatibility.layout, compatibility.structure, compatibility.fixings, compatibility.supports, compatibility.edgeFinish]
+      .map((item) => `${item.label}: ${item.state}`).join(' • '),
+    source: input.board.catalog?.sourceUrl,
+  });
   const edges = computeTerraceEdges(input);
   trace.push(`[${EDGE_TAG}] ${edges.length} rive(s) métier ; ${edges.filter((edge) => edge.treatment !== 'none').length} rive(s) avec traitement demandé.`);
   trace.push(`[${GEOMETRY_TAG}] Surface brute ${geometry.grossAreaM2.toFixed(3)} m² ; exclusions ${geometry.excludedAreaM2.toFixed(3)} m² ; surface nette ${geometry.areaM2.toFixed(3)} m² ; périmètre extérieur ${geometry.perimeterM.toFixed(3)} m.`);
@@ -32,7 +42,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   let layout: LayoutResult | undefined;
   if (input.board.gapMm != null && Number.isFinite(input.board.gapMm) && input.board.gapMm >= 0) {
     layout = computeLayout(input);
-    trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées sur ${layout.zones.length} zone(s) ; ${layout.totalRequiredLinearM.toFixed(3)} ml de lames nécessaires ; ${layout.buttJoints.length} raccord(s) positionné(s).`);
+    trace.push(`[${LAYOUT_TAG}] ${layout.rowCount} rangées sur ${layout.zones.length} zone(s) ; ${layout.productSummaries.length} référence(s) de lame ; ${layout.totalRequiredLinearM.toFixed(3)} ml nécessaires ; ${layout.buttJoints.length} raccord(s) positionné(s).`);
     trace.push(`[${CUT_TAG}] ${layout.stockBoards.length} lames commerciales ; ${layout.cutOptimization.reusedOffcutCount} réemploi(s) tracé(s) ; reste final brut ${(layout.cutOptimization.finalRemainingMm / 1000).toFixed(3)} ml. Seuil de chute réutilisable et trait de scie : à confirmer.`);
   } else {
     diagnostics.push({

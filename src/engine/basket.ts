@@ -17,6 +17,8 @@ import {
   UBBINK_BAND_20M,
 } from '../catalog/materials';
 import { getCommercialConstructionRule } from './constructionRules';
+import { boardForZone } from '../catalog/compatibility';
+import { hasEdgeTreatment } from './edges';
 
 export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
@@ -39,10 +41,14 @@ function stockLengthBreakdown(
     }));
 }
 
-function boardRefsByLength(input: ProjectInput): Map<number, string | undefined> {
+function boardRefsByLengthFor(board: ProjectInput['board']): Map<number, string | undefined> {
   return new Map(
-    (input.board.catalog?.variants ?? []).map((variant) => [variant.lengthMm, variant.productRef]),
+    (board.catalog?.variants ?? []).map((variant) => [variant.lengthMm, variant.productRef]),
   );
+}
+
+function boardRefsByLength(input: ProjectInput): Map<number, string | undefined> {
+  return boardRefsByLengthFor(input.board);
 }
 
 function joistVariantsFor(input: ProjectInput) {
@@ -62,30 +68,34 @@ function joistVariantsFor(input: ProjectInput) {
 }
 
 
-function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, pricing: PricingResult): BasketLine {
-  if (layout && pricing.boardPurchaseTtc != null) {
-    const breakdown = stockLengthBreakdown(layout.stockBoards, boardRefsByLength(input));
-    const allRefsKnown = Boolean(breakdown.length) && breakdown.every((item) => item.productRef);
-    return {
-      id: 'decking',
-      family: 'decking',
-      label: input.board.label,
-      productRef: allRefsKnown
-        ? [...new Set(breakdown.map((item) => item.productRef).filter((value): value is string => Boolean(value)))].join(', ')
-        : undefined,
-      quantity: layout.stockBoards.length,
-      unit: 'lame(s)',
-      unitPriceTtc: input.board.priceTtcPerM2,
-      totalTtc: round2(pricing.boardPurchaseTtc),
-      status: 'exact',
-      required: true,
-      note: `${layout.purchasedLinearM.toFixed(2)} ml achetés • ${layout.wastePercent.toFixed(1)} % de chute`,
-      stockBreakdown: breakdown,
-      sourceUrl: input.board.catalog?.sourceUrl,
-    };
+function deckingLines(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, pricing: PricingResult): BasketLine[] {
+  if (layout?.productSummaries?.length) {
+    return layout.productSummaries.map((summary, index) => {
+      const board = boardForZone(input.board, summary.boardId);
+      const breakdown = stockLengthBreakdown(summary.stockBoards, boardRefsByLengthFor(board));
+      const allRefsKnown = Boolean(breakdown.length) && breakdown.every((item) => item.productRef);
+      const totalTtc = board.priceTtcPerM2 == null ? undefined : round2(summary.purchasedAreaM2 * board.priceTtcPerM2);
+      return {
+        id: index === 0 ? 'decking' : `decking-${board.id}`,
+        family: 'decking',
+        label: layout.productSummaries.length > 1 ? `${board.label} — ${summary.zoneIds.join(', ')}` : board.label,
+        productRef: allRefsKnown
+          ? [...new Set(breakdown.map((item) => item.productRef).filter((value): value is string => Boolean(value)))].join(', ')
+          : undefined,
+        quantity: summary.stockBoards.length,
+        unit: 'lame(s)',
+        unitPriceTtc: board.priceTtcPerM2,
+        totalTtc,
+        status: totalTtc != null ? 'exact' : 'pending',
+        required: true,
+        note: `${summary.purchasedLinearM.toFixed(2)} ml achetés • ${summary.wastePercent.toFixed(1)} % de chute • zone(s) ${summary.zoneIds.join(', ')}.`,
+        stockBreakdown: breakdown,
+        sourceUrl: board.catalog?.sourceUrl,
+      };
+    });
   }
 
-  return {
+  return [{
     id: 'decking',
     family: 'decking',
     label: input.board.label,
@@ -100,7 +110,7 @@ function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: Layo
       ? 'Prix sur surface nette : quantité de commande à finaliser après validation du jeu de pose.'
       : 'Prix catalogue à confirmer.',
     sourceUrl: input.board.catalog?.sourceUrl,
-  };
+  }];
 }
 
 function pending(id: string, family: BasketLine['family'], label: string, note: string): BasketLine {
@@ -199,7 +209,7 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
   if (input.board.thicknessMm >= 20 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
     const hardwoodRecipe = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '');
     const screwMaterial = hardwoodRecipe ? HARDWOOD_SCREWS_5X60_200 : PGB_SCREWS_5X60_200;
-    const claddingForFixings = input.edgeFinishMode === 'full-perimeter' ? computeEdgeCladding(input) : undefined;
+    const claddingForFixings = hasEdgeTreatment(input, 'cladding') ? computeEdgeCladding(input) : undefined;
     const edgeScrewCount = claddingForFixings?.status === 'exact' && claddingForFixings.mode === 'same-decking'
       ? claddingForFixings.edgeBoardFixingCount ?? 0
       : 0;
@@ -527,7 +537,7 @@ export function computeBasket(
   pricing: PricingResult,
   supportPlan?: SupportPlanResult,
 ): BasketResult {
-  const lines: BasketLine[] = [deckingLine(input, geometry, layout, pricing)];
+  const lines: BasketLine[] = deckingLines(input, geometry, layout, pricing);
 
   if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
     lines.push(...silvadecLines(input, geometry, layout, supportPlan));

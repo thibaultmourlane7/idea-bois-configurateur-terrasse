@@ -8,6 +8,7 @@ import type {
 } from '../domain/types';
 import { getDeckBoundingSizeM, getDeckOutlinePointsM } from '../engine/geometry';
 import { vertexLabel } from '../editor/interactiveGeometry';
+import { compatibleZoneBoards } from '../catalog/compatibility';
 
 type Props = {
   project: ProjectInput;
@@ -61,6 +62,7 @@ export function LayingSetupEditor({ project, onChange }: Props) {
   const start = project.layingStart ?? 'left';
   const pattern = project.layingPattern ?? 'straight';
   const zones = project.layingZones ?? [];
+  const zoneBoardOptions = compatibleZoneBoards(project.board);
 
   const setDirection = (value: LayingDirection) => {
     onChange({
@@ -252,6 +254,17 @@ export function LayingSetupEditor({ project, onChange }: Props) {
                 </div>
 
                 <div className="zone-settings-grid">
+                  <label>Produit de lame
+                    <select
+                      value={zone.boardId ?? project.board.id}
+                      onChange={(event) => patchZone(zone.id, { boardId: event.target.value === project.board.id ? undefined : event.target.value })}
+                    >
+                      {zoneBoardOptions.map((board) => (
+                        <option key={board.id} value={board.id}>{board.label} — {board.subtitle}</option>
+                      ))}
+                    </select>
+                    <small>Même système constructif uniquement. Les mélanges incompatibles sont bloqués.</small>
+                  </label>
                   <label>Direction
                     <select value={zone.direction} onChange={(event) => patchZone(zone.id, { direction: event.target.value as LayingDirection })}>
                       {directionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}

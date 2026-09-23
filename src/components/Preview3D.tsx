@@ -7,6 +7,7 @@ import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
 import { buildGrooveLines } from '../visual/texturePainter';
+import { findBoard } from '../catalog/compatibility';
 
 function obstacleColor(kind: TerraceObstacle['kind']) {
   if (kind === 'pool') return '#bfe8fb';
@@ -225,6 +226,9 @@ export function Preview3D({
         if (layout?.boardSegments?.length) {
           for (const segment of layout.boardSegments) {
             if (segment.x1M == null || segment.y1M == null || segment.x2M == null || segment.y2M == null) continue;
+            const segmentBoard = findBoard(segment.boardId) ?? input.board;
+            const segmentProfile = resolveMaterialProfile(segmentBoard);
+            const segmentGrooves = buildGrooveLines(segmentProfile);
             const normalX = segment.normalX ?? (input.orientation === 'length' ? 0 : 1);
             const normalY = segment.normalY ?? (input.orientation === 'length' ? 1 : 0);
             const drawParallel = (offsetMm: number, stroke: string, lineWidth: number) => {
@@ -239,19 +243,22 @@ export function Preview3D({
               ctx.stroke();
             };
 
-            const halfWidth = input.board.widthMm / 2;
-            const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
+            const halfWidth = segmentBoard.widthMm / 2;
+            const edgeOpacity = segmentProfile?.boardEdgeOpacity ?? 0.50;
+            if (segmentBoard.id !== input.board.id) {
+              drawParallel(0, segmentBoard.visual?.baseColor ?? '#c7ab82', Math.max(3.5, Math.min(9, segmentBoard.widthMm / 18)));
+            }
             drawParallel(-halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
             drawParallel(halfWidth, `rgba(42,34,28,${edgeOpacity})`, 0.85);
 
-            if (grooveLines.length) {
-              for (const groove of grooveLines) {
-                const offsetMm = (groove.ratio - 0.5) * input.board.widthMm;
+            if (segmentGrooves.length) {
+              for (const groove of segmentGrooves) {
+                const offsetMm = (groove.ratio - 0.5) * segmentBoard.widthMm;
                 drawParallel(offsetMm, `rgba(37,30,25,${groove.shadowOpacity})`, 0.62);
                 drawParallel(offsetMm - 1.15, `rgba(237,226,201,${groove.highlightOpacity})`, 0.34);
               }
             } else {
-              drawParallel(0, photo ? 'rgba(78,61,43,.35)' : '#ccd5da', 0.55);
+              drawParallel(0, segmentBoard.id === input.board.id && photo ? 'rgba(78,61,43,.35)' : '#ccd5da', 0.55);
             }
           }
         }

@@ -1,4 +1,5 @@
 import type { GeometryResult, LayoutResult, PricingResult, ProjectInput } from '../domain/types';
+import { boardForZone } from '../catalog/compatibility';
 
 export const PRICE_TAG = 'SA-TERR-PRICE-001';
 
@@ -28,13 +29,20 @@ export function computePricing(input: ProjectInput, geometry: GeometryResult, la
     };
   }
 
-  const boardPurchaseTtc = layout.purchasedAreaM2 * unit;
+  const productTotals = layout.productSummaries.map((summary) => {
+    const board = boardForZone(input.board, summary.boardId);
+    return board.priceTtcPerM2 == null ? undefined : summary.purchasedAreaM2 * board.priceTtcPerM2;
+  });
+  const boardPurchaseTtc = productTotals.some((value) => value == null)
+    ? undefined
+    : productTotals.reduce((sum, value) => sum + (value ?? 0), 0);
+
   return {
-    unitPriceTtcPerM2: unit,
+    unitPriceTtcPerM2: layout.productSummaries.length === 1 ? unit : undefined,
     surfaceNetTtc,
     boardPurchaseTtc,
     materialTtc: boardPurchaseTtc,
-    status: 'board-purchase',
+    status: boardPurchaseTtc == null ? 'surface-price' : 'board-purchase',
     isCompleteMaterialTotal: false,
     missingCostFamilies,
     sourceDate,

@@ -219,19 +219,19 @@ export function buildClientPdfModel(
   const doubleJoists = supportPlan?.joistSegments.filter((segment) => segment.multiplicity === 2).length ?? 0;
 
   const boardLayout = layout
-    ? `${layout.rowCount} rangees - ${layout.boardSegments.length} segments poses - ${layout.buttJoints.length} raccords sur ${jointAxisCount} axe(s) locaux - ${layout.zones.length} zone(s) de pose`
+    ? `${layout.rowCount} rangees - ${layout.boardSegments.length} segments poses - ${layout.buttJoints.length} raccords sur ${jointAxisCount} axe(s) locaux - ${layout.zones.length} zone(s) de pose - ${layout.productSummaries.length} reference(s) de lame`
     : 'Calepinage final a confirmer';
 
   const stockSummary = layout
-    ? (() => {
+    ? layout.productSummaries.map((summary) => {
         const grouped = new Map<number, number>();
-        for (const stock of layout.stockBoards) grouped.set(stock.stockLengthMm, (grouped.get(stock.stockLengthMm) ?? 0) + 1);
+        for (const stock of summary.stockBoards) grouped.set(stock.stockLengthMm, (grouped.get(stock.stockLengthMm) ?? 0) + 1);
         const breakdown = [...grouped.entries()]
           .sort((a, b) => b[0] - a[0])
           .map(([lengthMm, qty]) => `${qty} x ${fmt(lengthMm / 1000)} m`)
           .join(' + ');
-        return `${layout.stockBoards.length} lames commerciales - ${breakdown} - ${fmt(layout.purchasedLinearM)} ml achetes - chute ${fmt(layout.wastePercent, 1)} %`;
-      })()
+        return `${summary.boardLabel}: ${summary.stockBoards.length} lames - ${breakdown} - ${fmt(summary.purchasedLinearM)} ml - chute ${fmt(summary.wastePercent, 1)} % - zones ${summary.zoneIds.join(', ')}`;
+      }).join(' | ')
     : 'Longueurs de commande a confirmer';
 
   const structureSummary = supportPlan && supportPlan.status !== 'unavailable'

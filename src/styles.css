@@ -1012,3 +1012,81 @@
   .edge-editor-row { grid-template-columns: 1fr; align-items: stretch; }
   .edge-note-field { grid-column: auto; }
 }
+
+
+/* Sprint D V0.23 — matrice de compatibilités */
+.compatibility-panel {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid #dbe5ee;
+  border-radius: 16px;
+  background: #fbfdff;
+}
+.compatibility-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+.compatibility-heading h3 { margin: 4px 0 5px; }
+.compatibility-heading p { margin: 0; color: #667587; }
+.compat-overall {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 900;
+}
+.compat-overall.validated { background: #e8f6ed; color: #23683b; }
+.compat-overall.partial { background: #fff5dd; color: #7d5c16; }
+.compat-overall.missing { background: #fdeaea; color: #9d3f3f; }
+.compatibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.compatibility-grid article {
+  border: 1px solid #e1e8ef;
+  border-radius: 12px;
+  background: white;
+  padding: 12px;
+}
+.compatibility-grid article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.compatibility-grid article > span {
+  display: block;
+  margin-top: 6px;
+  font-weight: 800;
+  color: #2b455c;
+}
+.compatibility-grid article > small {
+  display: block;
+  margin-top: 4px;
+  color: #6c7885;
+  line-height: 1.35;
+}
+.compat-state {
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: .68rem;
+  font-weight: 900;
+}
+.compat-state.validated { background: #e8f6ed; color: #23683b; }
+.compat-state.partial { background: #fff5dd; color: #7d5c16; }
+.compat-state.missing { background: #fdeaea; color: #9d3f3f; }
+.zone-settings-grid label small {
+  display: block;
+  margin-top: 5px;
+  color: #778493;
+  font-size: .72rem;
+  line-height: 1.25;
+}
+@media (max-width: 720px) {
+  .compatibility-heading { flex-direction: column; }
+  .compatibility-grid { grid-template-columns: 1fr; }
+}

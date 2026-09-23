@@ -9,6 +9,7 @@ import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardT
 import { resolveMaterialProfile } from '../visual/materialProfiles';
 import { resolveTextureVariant } from '../visual/textureVariants';
 import { boardOffsetFromRatio, buildGrooveLines, shouldRenderKnots } from '../visual/texturePainter';
+import { findBoard } from '../catalog/compatibility';
 import { vertexLabel } from '../editor/interactiveGeometry';
 
 function obstacleFill(kind: TerraceObstacle['kind']) {
@@ -105,9 +106,15 @@ export function Plan2D({
   if (layers.decking && effectiveLayout?.boardSegments?.length) {
     for (const segment of effectiveLayout.boardSegments) {
       if (segment.x1M == null || segment.y1M == null || segment.x2M == null || segment.y2M == null) continue;
+      const segmentBoard = findBoard(segment.boardId) ?? input.board;
+      const segmentProfile = resolveMaterialProfile(segmentBoard);
+      const segmentGrooves = buildGrooveLines(segmentProfile);
+      const segmentWidthPx = Math.max(2.2, (segmentBoard.widthMm / 1000) * scale);
       const variant = resolveTextureVariant(segment.rowIndex, segment.segmentIndex, variantCount);
       const patternId = patternIds[variant.index % patternIds.length];
-      const edgeOpacity = materialProfile?.boardEdgeOpacity ?? 0.50;
+      const edgeOpacity = segmentProfile?.boardEdgeOpacity ?? 0.50;
+      const isPrimaryTexture = segmentBoard.id === input.board.id;
+      const boardStroke = isPrimaryTexture ? `url(#${patternId})` : (segmentBoard.visual?.baseColor ?? '#d7c4a6');
       const x1 = x + segment.x1M * scale;
       const y1 = y + segment.y1M * scale;
       const x2 = x + segment.x2M * scale;
@@ -120,17 +127,17 @@ export function Plan2D({
         bx: x2 + normalX * offsetPx,
         by: y2 + normalY * offsetPx,
       });
-      const edgeA = offsetPoint(-boardWidthPx * 0.49);
-      const edgeB = offsetPoint(boardWidthPx * 0.49);
+      const edgeA = offsetPoint(-segmentWidthPx * 0.49);
+      const edgeB = offsetPoint(segmentWidthPx * 0.49);
 
       boardLines.push(
         <g key={segment.id}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={`url(#${patternId})`} strokeWidth={boardWidthPx} strokeLinecap="butt" />
+          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={boardStroke} strokeWidth={segmentWidthPx} strokeLinecap="butt" />
           <line x1={edgeA.ax} y1={edgeA.ay} x2={edgeA.bx} y2={edgeA.by} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
           <line x1={edgeB.ax} y1={edgeB.ay} x2={edgeB.bx} y2={edgeB.by} stroke={`rgba(46,39,31,${edgeOpacity})`} strokeWidth="0.7" />
-          {grooveLines.map((groove, grooveIndex) => {
-            const grooveLine = offsetPoint(boardOffsetFromRatio(groove.ratio, boardWidthPx));
-            const highlight = offsetPoint(boardOffsetFromRatio(groove.ratio, boardWidthPx) - 0.55);
+          {segmentGrooves.map((groove, grooveIndex) => {
+            const grooveLine = offsetPoint(boardOffsetFromRatio(groove.ratio, segmentWidthPx));
+            const highlight = offsetPoint(boardOffsetFromRatio(groove.ratio, segmentWidthPx) - 0.55);
             return (
               <g key={grooveIndex}>
                 <line x1={grooveLine.ax} y1={grooveLine.ay} x2={grooveLine.bx} y2={grooveLine.by} stroke={`rgba(38,32,27,${groove.shadowOpacity})`} strokeWidth="0.72" />
@@ -138,13 +145,13 @@ export function Plan2D({
               </g>
             );
           })}
-          {shouldRenderKnots(materialProfile) && variant.knotRatios.map((ratio, knotIndex) => {
+          {shouldRenderKnots(segmentProfile) && variant.knotRatios.map((ratio, knotIndex) => {
             const cx = x1 + (x2 - x1) * ratio;
             const cy = y1 + (y2 - y1) * ratio;
             return (
               <g key={`k-${knotIndex}`} opacity="0.42">
-                <ellipse cx={cx} cy={cy} rx={Math.max(2.2, boardWidthPx * 0.18)} ry={Math.max(1.2, boardWidthPx * 0.10)} fill="rgba(66,49,34,.42)" />
-                <ellipse cx={cx} cy={cy} rx={Math.max(1.2, boardWidthPx * 0.09)} ry={Math.max(0.7, boardWidthPx * 0.05)} fill="rgba(38,29,22,.38)" />
+                <ellipse cx={cx} cy={cy} rx={Math.max(2.2, segmentWidthPx * 0.18)} ry={Math.max(1.2, segmentWidthPx * 0.10)} fill="rgba(66,49,34,.42)" />
+                <ellipse cx={cx} cy={cy} rx={Math.max(1.2, segmentWidthPx * 0.09)} ry={Math.max(0.7, segmentWidthPx * 0.05)} fill="rgba(38,29,22,.38)" />
               </g>
             );
           })}

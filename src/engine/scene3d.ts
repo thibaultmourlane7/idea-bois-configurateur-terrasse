@@ -6,7 +6,7 @@ import type {
 } from '../domain/types';
 import { findBoard } from '../catalog/compatibility';
 import { computeTerraceEdges } from './edges';
-import { getDeckBoundingSizeM, getDeckOutlinePointsM } from './geometry';
+import { getDeckOutlinePointsM } from './geometry';
 import { computeTerrainModel, targetFinishedDeltaMm, type TerrainModel } from './terrain';
 import { computeStairs, type StairResult } from './stairs';
 
@@ -84,6 +84,10 @@ export interface Scene3DObstacle {
 export interface Scene3DModel {
   tag: typeof SCENE_3D_TAG;
   bounds: {
+    minXM: number;
+    maxXM: number;
+    minYM: number;
+    maxYM: number;
     lengthM: number;
     widthM: number;
     minZM: number;
@@ -239,7 +243,6 @@ export function buildProfessional3DScene(
   layout?: LayoutResult,
   supportPlan?: SupportPlanResult,
 ): Scene3DModel {
-  const bounds = getDeckBoundingSizeM(input);
   const boards = layout?.boardSegments
     .map((_segment, index) => boardObject(input, layout, index))
     .filter((item): item is Scene3DBoard => Boolean(item)) ?? [];
@@ -255,6 +258,19 @@ export function buildProfessional3DScene(
     yM: point.y,
     zM: finishedTopZM(input, point.x, point.y, 'main'),
   }));
+
+  const xyPoints = [
+    ...deckOutline.map((point) => ({ xM: point.xM, yM: point.yM })),
+    ...stairs.flatMap((stair) => stair.treads.flatMap((tread) => tread.top.map((point) => ({ xM: point.xM, yM: point.yM })))),
+    ...stairs.flatMap((stair) => stair.structureAxes.flatMap((axis) => [
+      { xM: axis.start.xM, yM: axis.start.yM },
+      { xM: axis.end.xM, yM: axis.end.yM },
+    ])),
+  ];
+  const minXM = xyPoints.length ? Math.min(...xyPoints.map((point) => point.xM)) : 0;
+  const maxXM = xyPoints.length ? Math.max(...xyPoints.map((point) => point.xM)) : 1;
+  const minYM = xyPoints.length ? Math.min(...xyPoints.map((point) => point.yM)) : 0;
+  const maxYM = xyPoints.length ? Math.max(...xyPoints.map((point) => point.yM)) : 1;
 
   const zValues = [
     0,
@@ -285,8 +301,12 @@ export function buildProfessional3DScene(
   return {
     tag: SCENE_3D_TAG,
     bounds: {
-      lengthM: bounds.lengthM,
-      widthM: bounds.widthM,
+      minXM,
+      maxXM,
+      minYM,
+      maxYM,
+      lengthM: Math.max(.1, maxXM - minXM),
+      widthM: Math.max(.1, maxYM - minYM),
       minZM: Math.min(...zValues),
       maxZM: Math.max(...zValues),
     },

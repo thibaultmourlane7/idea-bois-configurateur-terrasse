@@ -198,12 +198,19 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
 
   if (!diagnostics.some((item) => item.severity === 'blocking')) {
     const terrain = computeTerrainModel(input);
+    const configuredStairRelations = new Set(
+      (input.stairs ?? [])
+        .filter((stair) => (stair.mode ?? (stair.relationId ? 'platform-transition' : 'external-edge')) === 'platform-transition')
+        .map((stair) => stair.relationId)
+        .filter((value): value is string => Boolean(value)),
+    );
     for (const relation of terrain.relations.filter((item) => item.transitionRequired)) {
+      if (configuredStairRelations.has(relation.id)) continue;
       diagnostics.push({
         tag: 'SA-TERR-TERRAIN-TRANSITION-120',
         severity: 'warning',
         message: `${relation.aLabel} / ${relation.bLabel} : différence de niveau fini ${relation.finishedDeltaMinMm.toFixed(0)} à ${relation.finishedDeltaMaxMm.toFixed(0)} mm sur ${relation.sharedBoundaryLengthM.toFixed(2)} m de frontière.`,
-        technicalMessage: 'Sprint H calcule les niveaux et relations entre plateformes. Aucune marche, rampe ou pièce de transition n’est ajoutée automatiquement ; ces éléments relèvent du Sprint I ou d’une règle fabricant validée.',
+        technicalMessage: 'Cette transition n’a pas encore d’escalier configuré ni d’autre traitement explicite. Aucune marche ou rampe n’est ajoutée automatiquement.',
         field: 'layingZones',
       });
     }

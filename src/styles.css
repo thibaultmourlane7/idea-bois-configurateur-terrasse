@@ -1454,3 +1454,73 @@
   .stair-field-grid,.stair-result-grid{grid-template-columns:1fr}
   .stair-card-heading{grid-template-columns:1fr}
 }
+
+
+/* Sprint I correctif V1.3.1 — accès extérieur */
+.stair-source-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:15px;
+}
+.stair-source-panel {
+  padding:13px;
+  border:1px solid #e0e7ec;
+  border-radius:12px;
+  background:#fff;
+}
+.stair-source-panel h4 { margin:0;color:#294a62; }
+.stair-source-panel>p { margin:5px 0 10px;color:#758491;font-size:10px;line-height:1.4; }
+.stair-source-options { display:grid;gap:7px; }
+.stair-source-options button {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  text-align:left;
+  border:1px solid #cfdae2;
+  border-radius:9px;
+  padding:9px 10px;
+  background:#fafdff;
+  color:#2c5874;
+  font-size:10px;
+  font-weight:850;
+}
+.stair-source-options button small { color:#7d8a95;font-size:8px;font-weight:650; }
+.stair-mode-switch {
+  display:flex;
+  gap:7px;
+  margin-top:12px;
+}
+.stair-mode-switch button {
+  border:1px solid #ccd9e2;
+  border-radius:9px;
+  padding:8px 10px;
+  background:#fff;
+  color:#587185;
+  font-size:9px;
+  font-weight:850;
+}
+.stair-mode-switch button.active {
+  background:#eaf4fb;
+  border-color:#9fc7e3;
+  color:#175f91;
+}
+.stair-mode-switch button:disabled { opacity:.45;cursor:not-allowed; }
+.stair-readonly-value {
+  min-height:38px;
+  margin-top:4px;
+  display:flex;
+  align-items:center;
+  padding:7px 9px;
+  border:1px solid #d7e1e8;
+  border-radius:8px;
+  background:#f7fafc;
+  color:#48677e;
+  font-weight:700;
+}
+@media(max-width:760px){
+  .stair-source-grid{grid-template-columns:1fr}
+  .stair-mode-switch{flex-direction:column}
+}

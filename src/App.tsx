@@ -252,7 +252,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.3 • escaliers • marches • structure • quantités</div>
+          <div className="header-note">V1.3.1 • escaliers extérieurs + multi-niveaux</div>
         </div>
       </header>
 
@@ -271,8 +271,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V1.3 — Escaliers</strong>
-                <span>Escaliers liés aux transitions réelles • marches et hauteurs calculées • quantités de lame intégrées • structure explicite sans règle inventée.</span>
+                <strong>Version V1.3.1 — Escaliers corrigés</strong>
+                <span>Accès depuis une rive extérieure ou entre plateformes • marches et hauteurs calculées • quantités intégrées • aucune règle structurelle inventée.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (

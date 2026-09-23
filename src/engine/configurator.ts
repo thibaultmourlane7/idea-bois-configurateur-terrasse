@@ -15,13 +15,13 @@ import { getProductCompatibility } from '../catalog/compatibility';
 import { computeTerrainModel, TERRAIN_TAG } from './terrain';
 import { computeStairs, STAIR_TAG } from './stairs';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.3.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.3.1';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.3.0 : Sprint I — escaliers liés aux transitions de niveau, marches et quantités calculées sans règle structurelle inventée.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.3.1 : Sprint I corrigé — escaliers extérieurs depuis une rive et escaliers entre plateformes, sans règle structurelle inventée.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

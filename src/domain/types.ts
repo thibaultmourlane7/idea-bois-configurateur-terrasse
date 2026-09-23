@@ -96,20 +96,28 @@ export interface ReferencePlanTransform {
 
 export type SupportLevelMode = 'flat' | 'four-corners';
 
+export type StairMode = 'platform-transition' | 'external-edge';
+
 export interface StairConfig {
   id: string;
   label: string;
-  /** Relation de niveaux Sprint H sur laquelle l'escalier est implanté. */
-  relationId: string;
+  /** Type d'accès : entre deux plateformes ou depuis une rive extérieure vers un niveau d'arrivée. */
+  mode?: StairMode;
+  /** Relation de niveaux Sprint H pour un escalier entre plateformes. */
+  relationId?: string;
   /** Segment de frontière utilisé lorsque la relation comporte plusieurs segments. */
-  boundarySegmentIndex: number;
-  /** Décalage depuis le début du segment de frontière. */
+  boundarySegmentIndex?: number;
+  /** Rive extérieure du contour lorsque mode === 'external-edge'. */
+  edgeIndex?: number;
+  /** Niveau d'arrivée extérieur en mm par rapport au support de référence du projet. */
+  landingLevelOffsetMm?: number;
+  /** Décalage depuis le début de la frontière / rive. */
   boundaryOffsetM?: number;
-  /** Largeur de l'escalier mesurée le long de la frontière. */
+  /** Largeur de l'escalier mesurée le long de la frontière / rive. */
   widthM?: number;
   /** Profondeur horizontale d'une marche. */
   treadDepthMm?: number;
-  /** Nombre de marches habillées ; la dernière rejoint le niveau haut. */
+  /** Nombre de marches habillées entre le niveau de départ et le niveau d'arrivée. */
   stepCount?: number;
   /** Nombre de lignes porteuses / limons, renseigné explicitement par l'utilisateur. */
   structureLineCount?: number;

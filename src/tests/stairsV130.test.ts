@@ -86,7 +86,96 @@ function withStair(overrides: Partial<NonNullable<ProjectInput['stairs']>[number
   };
 }
 
-describe('Sprint I V1.3 — escaliers', () => {
+describe('Sprint I V1.3.1 — escaliers', () => {
+  it('crée un escalier extérieur sur une terrasse simple sans plateforme multi-niveau', () => {
+    const project: ProjectInput = {
+      ...base,
+      layingZones: [],
+      stairs: [{
+        id: 'EXT-1',
+        label: 'Accès jardin',
+        mode: 'external-edge',
+        edgeIndex: 0,
+        boundarySegmentIndex: 0,
+        landingLevelOffsetMm: 0,
+        boundaryOffsetM: 1,
+        widthM: 1.2,
+        treadDepthMm: 300,
+        stepCount: 2,
+        structureLineCount: 2,
+      }],
+    };
+
+    const stair = computeStairs(project)[0];
+    expect(stair.status).toBe('ready');
+    expect(stair.mode).toBe('external-edge');
+    expect(stair.relationId).toBe('EDGE-0');
+    expect(stair.riseLeftMm).toBeCloseTo(200, 5);
+    expect(stair.riseRightMm).toBeCloseTo(200, 5);
+    expect(stair.riserHeightLeftMm).toBeCloseTo(100, 5);
+    expect(stair.footprint?.some((point) => point.yM < 0)).toBe(true);
+
+    const result = runConfigurator(project);
+    expect(result.valid).toBe(true);
+    expect(result.layout?.requiredPieces.some((piece) => piece.zoneId === 'stair:EXT-1')).toBe(true);
+
+    const scene = buildProfessional3DScene(project, result.layout, result.supportPlan);
+    expect(scene.stairs).toHaveLength(1);
+    expect(scene.bounds.minYM).toBeLessThan(0);
+  });
+
+  it('bloque un escalier extérieur tant que le niveau d’arrivée n’est pas renseigné', () => {
+    const project: ProjectInput = {
+      ...base,
+      layingZones: [],
+      stairs: [{
+        id: 'EXT-2',
+        label: 'Accès extérieur incomplet',
+        mode: 'external-edge',
+        edgeIndex: 0,
+        boundarySegmentIndex: 0,
+        boundaryOffsetM: 0.5,
+        widthM: 1,
+        treadDepthMm: 300,
+        stepCount: 2,
+      }],
+    };
+
+    const stair = computeStairs(project)[0];
+    expect(stair.status).toBe('pending');
+    expect(stair.issues.join(' ')).toContain('Niveau d’arrivée');
+    const result = runConfigurator(project);
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((item) => item.tag === 'SA-TERR-STAIR-GEO-001')).toBe(true);
+  });
+
+  it('gère aussi un niveau extérieur plus haut que la terrasse sans inverser la géométrie', () => {
+    const project: ProjectInput = {
+      ...base,
+      layingZones: [],
+      stairs: [{
+        id: 'EXT-3',
+        label: 'Accès niveau haut',
+        mode: 'external-edge',
+        edgeIndex: 0,
+        boundarySegmentIndex: 0,
+        landingLevelOffsetMm: 500,
+        boundaryOffsetM: 1,
+        widthM: 1,
+        treadDepthMm: 250,
+        stepCount: 3,
+        structureLineCount: 2,
+      }],
+    };
+
+    const stair = computeStairs(project)[0];
+    expect(stair.status).toBe('ready');
+    expect(stair.lowPlatformLabel).toBe('Plateforme principale');
+    expect(stair.highPlatformLabel).toBe('Niveau d’arrivée extérieur');
+    expect(stair.riseLeftMm).toBeCloseTo(300, 5);
+    expect(stair.treads[1].top[0].zM).toBeGreaterThan(stair.treads[0].top[0].zM);
+  });
+
   it('calcule marches, hauteurs, développement et quantité de lame depuis une transition réelle', () => {
     const stair = computeStairs(withStair())[0];
 

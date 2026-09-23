@@ -69,13 +69,13 @@ export function Preview3D({
     const angle = azimuthDeg * Math.PI / 180;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    const cx = scene.bounds.lengthM / 2;
-    const cy = scene.bounds.widthM / 2;
+    const cx = (scene.bounds.minXM + scene.bounds.maxXM) / 2;
+    const cy = (scene.bounds.minYM + scene.bounds.maxYM) / 2;
     const rotated = [
-      { x: 0, y: 0 },
-      { x: scene.bounds.lengthM, y: 0 },
-      { x: scene.bounds.lengthM, y: scene.bounds.widthM },
-      { x: 0, y: scene.bounds.widthM },
+      { x: scene.bounds.minXM, y: scene.bounds.minYM },
+      { x: scene.bounds.maxXM, y: scene.bounds.minYM },
+      { x: scene.bounds.maxXM, y: scene.bounds.maxYM },
+      { x: scene.bounds.minXM, y: scene.bounds.maxYM },
     ].map((point) => ({
       x: (point.x - cx) * cos - (point.y - cy) * sin,
       y: (point.x - cx) * sin + (point.y - cy) * cos,
@@ -162,10 +162,10 @@ export function Preview3D({
       const margin = 1.1;
       const groundZ = scene.bounds.minZM - .03;
       const ground = [
-        { xM: -margin, yM: -margin, zM: groundZ },
-        { xM: scene.bounds.lengthM + margin, yM: -margin, zM: groundZ },
-        { xM: scene.bounds.lengthM + margin, yM: scene.bounds.widthM + margin, zM: groundZ },
-        { xM: -margin, yM: scene.bounds.widthM + margin, zM: groundZ },
+        { xM: scene.bounds.minXM - margin, yM: scene.bounds.minYM - margin, zM: groundZ },
+        { xM: scene.bounds.maxXM + margin, yM: scene.bounds.minYM - margin, zM: groundZ },
+        { xM: scene.bounds.maxXM + margin, yM: scene.bounds.maxYM + margin, zM: groundZ },
+        { xM: scene.bounds.minXM - margin, yM: scene.bounds.maxYM + margin, zM: groundZ },
       ];
       polygon(ground, clientRender ? '#e8e3d4' : '#edf1f3', clientRender ? '#d0c8b5' : '#d9e0e4', 1);
 

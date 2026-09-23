@@ -241,13 +241,38 @@ function drawTerrainPlan(doc: Pdf, input: ProjectInput, x: number, y: number, wi
 }
 
 function drawStairsPlan(doc: Pdf, input: ProjectInput, x: number, y: number, width: number, height: number) {
-  const t = drawOutline(doc, input, x, y, width, height, false);
-  drawObstacles(doc, input, t.scale, t.ox, t.oy);
   const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
+  const outline = getDeckOutlinePointsM(input);
+  const stairPoints = stairs.flatMap((stair) => stair.footprint ?? []);
+  const all = [
+    ...outline.map((point) => ({ xM: point.x, yM: point.y })),
+    ...stairPoints,
+  ];
+  const minX = all.length ? Math.min(...all.map((point) => point.xM)) : 0;
+  const maxX = all.length ? Math.max(...all.map((point) => point.xM)) : 1;
+  const minY = all.length ? Math.min(...all.map((point) => point.yM)) : 0;
+  const maxY = all.length ? Math.max(...all.map((point) => point.yM)) : 1;
+  const spanX = Math.max(.1, maxX - minX);
+  const spanY = Math.max(.1, maxY - minY);
+  const scale = Math.min((width - 12) / spanX, (height - 12) / spanY);
+  const ox = x + (width - spanX * scale) / 2 - minX * scale;
+  const oy = y + (height - spanY * scale) / 2 - minY * scale;
+
+  doc.setFillColor(250, 252, 254);
+  doc.roundedRect(x, y, width, height, 3, 3, 'F');
+  const deckPoints = outline.map((point) => [ox + point.x * scale, oy + point.y * scale] as const);
+  if (deckPoints.length >= 3) {
+    const first = deckPoints[0];
+    const vectors = deckPoints.slice(1).map((point, index) => [point[0] - deckPoints[index][0], point[1] - deckPoints[index][1]]);
+    doc.setDrawColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.setLineWidth(.55);
+    doc.lines(vectors, first[0], first[1], [1, 1], 'S', true);
+  }
+  drawObstacles(doc, input, scale, ox, oy);
 
   for (const stair of stairs) {
     for (const tread of stair.treads) {
-      const pts = tread.top.map((point) => [t.ox + point.xM * t.scale, t.oy + point.yM * t.scale] as const);
+      const pts = tread.top.map((point) => [ox + point.xM * scale, oy + point.yM * scale] as const);
       if (pts.length < 4) continue;
       const first = pts[0];
       const vectors = pts.slice(1).map((point, index) => [point[0] - pts[index][0], point[1] - pts[index][1]]);
@@ -257,10 +282,10 @@ function drawStairsPlan(doc: Pdf, input: ProjectInput, x: number, y: number, wid
       doc.lines(vectors, first[0], first[1], [1, 1], 'FD', true);
     }
     if (stair.footprint) {
-      const pts = stair.footprint.map((point) => [t.ox + point.xM * t.scale, t.oy + point.yM * t.scale] as const);
+      const pts = stair.footprint.map((point) => [ox + point.xM * scale, oy + point.yM * scale] as const);
       const cx = pts.reduce((sum, point) => sum + point[0], 0) / pts.length;
       const cy = pts.reduce((sum, point) => sum + point[1], 0) / pts.length;
-      text(doc, `${stair.label} - ${stair.stepCount ?? 0} marche(s)`, cx - 12, cy, 5.8, true, BROWN);
+      text(doc, `${stair.label} - ${stair.mode === 'external-edge' ? 'extérieur - ' : ''}${stair.stepCount ?? 0} marche(s)`, cx - 14, cy, 5.8, true, BROWN);
     }
   }
 }

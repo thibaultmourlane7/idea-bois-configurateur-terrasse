@@ -77,6 +77,14 @@ export function Plan2D({
       maxX = Math.max(maxX, obstacle.xM + size.widthM);
       maxY = Math.max(maxY, obstacle.yM + size.heightM);
     }
+    for (const stair of stairs) {
+      for (const point of stair.footprint ?? []) {
+        minX = Math.min(minX, point.xM);
+        minY = Math.min(minY, point.yM);
+        maxX = Math.max(maxX, point.xM);
+        maxY = Math.max(maxY, point.yM);
+      }
+    }
     return {
       minX,
       minY,

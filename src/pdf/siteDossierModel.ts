@@ -69,7 +69,8 @@ export interface SiteDossierEdge {
   note?: string;
 }
 
-export interface SiteDossierBasketLine {
+export interface SiteDossierPurchaseLine {
+  id: string;
   family: string;
   label: string;
   reference?: string;
@@ -77,6 +78,21 @@ export interface SiteDossierBasketLine {
   amount: string;
   status: BasketLine['status'];
   note?: string;
+}
+
+export interface SiteDossierCutLine {
+  boardId: string;
+  boardLabel: string;
+  zoneId: string;
+  stockBoardId: string;
+  stockLengthMm: number;
+  cutId: string;
+  pieceId: string;
+  cutLengthMm: number;
+  sourceId: string;
+  sourceType: 'stock-board' | 'offcut';
+  remainingAfterMm: number;
+  resultingOffcutId?: string;
 }
 
 export interface SiteDossierIssue {
@@ -102,7 +118,12 @@ export interface SiteDossierModel {
   products: SiteDossierProduct[];
   structure: SiteDossierStructure;
   edges: SiteDossierEdge[];
-  basket: SiteDossierBasketLine[];
+  /** Liste d'achat = produits à fournir. */
+  purchaseList: SiteDossierPurchaseLine[];
+  /** Liste de débit = découpes atelier/chantier, distincte de la liste d'achat. */
+  cutList: SiteDossierCutLine[];
+  /** Six plans séparés exigés par la roadmap V1. */
+  planManifest: Array<'general' | 'boards' | 'structure' | 'supports' | 'cuts' | 'finishes'>;
   issues: SiteDossierIssue[];
   compatibility: SiteDossierCompatibility[];
   trace: string[];
@@ -274,7 +295,8 @@ export function buildSiteDossierModel(
     note: edge.note,
   }));
 
-  const basket: SiteDossierBasketLine[] = (result.basket?.lines ?? []).map((line) => ({
+  const purchaseList: SiteDossierPurchaseLine[] = (result.basket?.lines ?? []).map((line) => ({
+    id: line.id,
     family: line.family,
     label: line.label,
     reference: line.productRef,
@@ -283,6 +305,29 @@ export function buildSiteDossierModel(
     status: line.status,
     note: line.note,
   }));
+
+  const cutList: SiteDossierCutLine[] = [];
+  for (const summary of layout?.productSummaries ?? []) {
+    const pieceZones = new Map(summary.requiredPieces.map((piece) => [piece.id, piece.zoneId ?? 'main']));
+    for (const stock of summary.stockBoards) {
+      for (const cut of stock.cuts) {
+        cutList.push({
+          boardId: summary.boardId,
+          boardLabel: summary.boardLabel,
+          zoneId: pieceZones.get(cut.pieceId) ?? 'main',
+          stockBoardId: stock.id,
+          stockLengthMm: stock.stockLengthMm,
+          cutId: cut.id,
+          pieceId: cut.pieceId,
+          cutLengthMm: cut.lengthMm,
+          sourceId: cut.sourceId,
+          sourceType: cut.sourceType,
+          remainingAfterMm: cut.remainingAfterMm,
+          resultingOffcutId: cut.resultingOffcutId,
+        });
+      }
+    }
+  }
 
   const issues: SiteDossierIssue[] = [
     ...result.diagnostics
@@ -335,7 +380,9 @@ export function buildSiteDossierModel(
     products,
     structure,
     edges,
-    basket,
+    purchaseList,
+    cutList,
+    planManifest: ['general', 'boards', 'structure', 'supports', 'cuts', 'finishes'],
     issues,
     compatibility,
     trace: [...result.trace],

@@ -77,7 +77,9 @@ describe('Sprint E V0.24 — dossier chantier professionnel', () => {
     expect(dossier.structure.joistSegmentCount).toBeGreaterThan(0);
     expect(dossier.structure.supportPointCount).toBeGreaterThan(0);
     expect(dossier.edges).toHaveLength(4);
-    expect(dossier.basket.length).toBeGreaterThan(3);
+    expect(dossier.purchaseList.length).toBeGreaterThan(3);
+    expect(dossier.cutList.length).toBeGreaterThan(0);
+    expect(dossier.planManifest).toEqual(['general', 'boards', 'structure', 'supports', 'cuts', 'finishes']);
     expect(dossier.trace.length).toBeGreaterThan(5);
   });
 
@@ -90,6 +92,17 @@ describe('Sprint E V0.24 — dossier chantier professionnel', () => {
       expect(product.purchasedLinearM).toBeGreaterThanOrEqual(product.requiredLinearM);
       expect(product.cutRulesNote).toContain('confirmer');
     }
+    expect(dossier.cutList.every((cut) => cut.stockBoardId && cut.pieceId && cut.cutId)).toBe(true);
+    expect(dossier.cutList.every((cut) => cut.cutLengthMm > 0 && cut.stockLengthMm >= cut.cutLengthMm)).toBe(true);
+  });
+
+  it('sépare strictement la liste d’achat de la liste de débit', () => {
+    const dossier = buildSiteDossierModel(base, runConfigurator(base), 'IB-TERR-VERSION-024.0');
+    expect(dossier.purchaseList.some((line) => line.family === 'decking')).toBe(true);
+    expect(dossier.purchaseList.some((line) => line.family === 'joists')).toBe(true);
+    expect(dossier.cutList.length).toBeGreaterThan(dossier.products.length);
+    expect(dossier.cutList.every((line) => !('amount' in line))).toBe(true);
+    expect(dossier.purchaseList.every((line) => !('cutLengthMm' in line))).toBe(true);
   });
 
   it('reprend les rives métier et les données à confirmer sans les transformer en valeurs sûres', () => {

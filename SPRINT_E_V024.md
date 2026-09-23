@@ -80,7 +80,20 @@ Pour chaque produit utilisé :
 
 Chaque famille reste classée **validée / partielle / manquante**.
 
-### 7. Optimisation des coupes
+### 7. Liste de débit + plan de coupe
+La **liste de débit** est distincte de la liste d’achat et contient, pour chaque coupe :
+- produit et zone ;
+- lame stock d’origine ;
+- longueur commerciale ;
+- identifiant de coupe ;
+- identifiant de pièce ;
+- longueur de coupe ;
+- source lame neuve ou chute ;
+- reste après coupe ;
+- identifiant de la chute générée lorsqu’elle existe.
+
+Le **plan de coupe** représente graphiquement chaque lame commerciale et ses morceaux.
+
 Pour chaque référence :
 - chaque lame commerciale ;
 - pièces découpées ;
@@ -119,6 +132,15 @@ Le dossier reprend :
 - **Bloqué — corrections requises** : état réservé aux blocages détectés après obtention d’une géométrie exploitable.
 
 Si un blocage empêche le calcul de la géométrie réelle, le dossier chantier n’est pas généré. Le configurateur refuse plutôt que de produire un document technique incomplet ou trompeur.
+
+## Six plans séparés
+Le dossier contient maintenant six vues distinctes :
+1. plan général ;
+2. plan des lames ;
+3. plan structure ;
+4. plan des plots / appuis ;
+5. plan de coupe ;
+6. plan des finitions.
 
 ## Interface
 Dans le récapitulatif final :

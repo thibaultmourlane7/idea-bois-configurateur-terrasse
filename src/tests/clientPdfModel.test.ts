@@ -50,7 +50,7 @@ describe('PDF client V0.10', () => {
     expect(model.sources.length).toBeGreaterThan(0);
     const deckingLine = model.lines.find((line) => line.family === 'Lames');
     expect(deckingLine?.detail).toContain('Longueurs a commander');
-    expect(deckingLine?.detail).toContain('References catalogue non associees automatiquement aux longueurs');
+    expect(deckingLine?.detail).toMatch(/TSL|SKU/);
     expect(model.stockSummary).toContain('lames commerciales');
   });
 

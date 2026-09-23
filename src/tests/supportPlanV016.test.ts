@@ -239,6 +239,6 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     const plan = computeSupportPlan(project, computeLayout(project));
     expect(plan.status).toBe('exact');
     expect(plan.joistSpacingMm).toBe(450);
-    expect(plan.joistStockBoards.every((item) => item.stockLengthMm === 3950)).toBe(true);
+    expect(plan.joistStockBoards.every((item) => [1850, 2450, 3950].includes(item.stockLengthMm))).toBe(true);
   });
 });

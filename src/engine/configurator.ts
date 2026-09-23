@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-019.2';
+export const VERSION_TAG = 'IB-TERR-VERSION-019.3';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.19.2 : détail des longueurs commerciales et garde-fou d’exactitude structurelle, calepinage CALPI, plan/photo calibré, PDF technique et 3D enrichie.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.19.3 : longueurs et SKU catalogue vérifiés, détail des longueurs commerciales et garde-fou d’exactitude structurelle, calepinage CALPI, plan/photo calibré, PDF technique et 3D enrichie.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

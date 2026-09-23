@@ -71,7 +71,9 @@ describe('Configurateur terrasse V0.9', () => {
     const actualByLength = new Map((decking?.stockBreakdown ?? []).map((item) => [item.lengthMm, item.quantity]));
     expect(actualByLength).toEqual(expectedByLength);
     expect((decking?.stockBreakdown ?? []).reduce((sum, item) => sum + item.quantity, 0)).toBe(result.layout?.stockBoards.length);
-    expect(decking?.stockBreakdown?.every((item) => item.productRef == null)).toBe(true);
+    expect(decking?.stockBreakdown?.every((item) => item.productRef != null || item.lengthMm === 5100)).toBe(true);
+    expect(decking?.stockBreakdown?.some((item) => item.productRef?.startsWith('TSL'))).toBe(true);
+    expect(joists?.stockBreakdown?.every((item) => item.productRef != null)).toBe(true);
 
     expect(joists?.quantity).toBe(result.supportPlan?.joistStockBoards.length);
     expect(joists?.quantity).toBeGreaterThan(28);

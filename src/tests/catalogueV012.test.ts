@@ -35,6 +35,22 @@ const project: ProjectInput = {
 const board = (id: string) => ideaBoisBoards.find((item) => item.id === id)!;
 
 describe('Catalogue et comparateur V0.12', () => {
+  it('trace les longueurs et SKU revérifiés sans inventer les correspondances manquantes', () => {
+    const pin = board('IDEA-TERR-G027');
+    const cumaru = board('IDEA-TERR-G005');
+    const ipe = board('IDEA-TERR-G011');
+
+    expect(pin.catalog?.variants?.find((item) => item.lengthMm === 5400)?.productRef).toBe('TSL540145027E');
+    expect(pin.catalog?.variants?.find((item) => item.lengthMm === 5100)?.productRef).toBeUndefined();
+
+    expect(cumaru.availableLengthsMm).toContain(5500);
+    expect(cumaru.catalog?.variants?.find((item) => item.lengthMm === 5500)?.productRef).toBe('TCL550145021');
+
+    expect(ipe.availableLengthsMm).toEqual(expect.arrayContaining([2450, 3950, 4600, 4900, 4950, 5200]));
+    expect(ipe.catalog?.variants?.find((item) => item.lengthMm === 5200)?.productRef).toBeUndefined();
+  });
+
+
   it('étend la recette Pin du Nord aux variantes documentées', () => {
     for (const id of ['IDEA-TERR-G027','IDEA-TERR-G028','IDEA-TERR-G030','IDEA-TERR-G031']) {
       expect(board(id).commercialRecipeId).toBe('idea-pin-nord-145x27');

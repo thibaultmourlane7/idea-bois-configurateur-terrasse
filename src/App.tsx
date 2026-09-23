@@ -208,7 +208,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.19.2 • longueurs de commande • garde-fou exactitude</div>
+          <div className="header-note">Structure V0.19.3 • longueurs/SKU vérifiés • garde-fou exactitude</div>
         </div>
       </header>
 
@@ -227,7 +227,7 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.19</strong>
+                <strong>Version V0.19.3</strong>
                 <span>Forme libre dessinable + cotes saisissables • réservations débordantes autorisées • plan entièrement coté.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />

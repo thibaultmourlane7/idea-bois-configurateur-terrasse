@@ -43,7 +43,8 @@ describe('Extension structure matériaux V0.16.3', () => {
     expect(rule.joistSpacingMm).toBe(450);
     expect(rule.joistProductRef).toBe('LEX395065042');
     expect(plan.status).toBe('exact');
-    expect(plan.joistStockBoards.every((item) => item.stockLengthMm === 3950)).toBe(true);
+    expect(rule.joistStockLengthsMm).toEqual([1850, 2450, 3950]);
+    expect(plan.joistStockBoards.every((item) => [1850, 2450, 3950].includes(item.stockLengthMm))).toBe(true);
   });
 
   it('active Ipé à 400 mm avec jeu catalogue de 5 mm dans la plage 4–5 mm', () => {

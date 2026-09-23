@@ -2,8 +2,8 @@ import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile, ReferencePlanTransform } from '../domain/types';
 import { sanitizeReferencePlanTransform } from '../domain/referencePlan';
 
-export interface ShareSnapshotV8 {
-  v: 8;
+export interface ShareSnapshotV9 {
+  v: 9;
   projectName: string;
   shape: ProjectInput['shape'];
   dimensions: ProjectInput['dimensions'];
@@ -21,6 +21,10 @@ export interface ShareSnapshotV8 {
   includeGeotextile: boolean;
   drainage: ProjectInput['drainage'];
   orientation: ProjectInput['orientation'];
+  layingDirection?: ProjectInput['layingDirection'];
+  layingStart?: ProjectInput['layingStart'];
+  layingStartEdgeIndex?: number;
+  layingZones?: ProjectInput['layingZones'];
   layingPattern?: ProjectInput['layingPattern'];
   boardId: string;
 }
@@ -49,8 +53,8 @@ function validShape(value: unknown): ShapeType {
 }
 
 export function projectToShareToken(project: ProjectInput): string {
-  const snapshot: ShareSnapshotV8 = {
-    v: 8,
+  const snapshot: ShareSnapshotV9 = {
+    v: 9,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -68,6 +72,10 @@ export function projectToShareToken(project: ProjectInput): string {
     includeGeotextile: project.includeGeotextile,
     drainage: project.drainage,
     orientation: project.orientation,
+    layingDirection: project.layingDirection,
+    layingStart: project.layingStart,
+    layingStartEdgeIndex: project.layingStartEdgeIndex,
+    layingZones: project.layingZones,
     layingPattern: project.layingPattern ?? 'straight',
     boardId: project.board.id,
   };
@@ -77,8 +85,8 @@ export function projectToShareToken(project: ProjectInput): string {
 export function projectFromShareToken(token: string, fallback: ProjectInput): ProjectInput {
   try {
     const raw = new TextDecoder().decode(base64UrlToBytes(token));
-    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV8>, 'v'> & { v?: number };
-    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7 && snapshot.v !== 8) || !snapshot.boardId || !snapshot.dimensions) return fallback;
+    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV9>, 'v'> & { v?: number };
+    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7 && snapshot.v !== 8 && snapshot.v !== 9) || !snapshot.boardId || !snapshot.dimensions) return fallback;
     const board = ideaBoisBoards.find((item) => item.id === snapshot.boardId);
     if (!board) return fallback;
 
@@ -103,6 +111,14 @@ export function projectFromShareToken(token: string, fallback: ProjectInput): Pr
       includeGeotextile: Boolean(snapshot.includeGeotextile),
       drainage: snapshot.drainage ?? fallback.drainage,
       orientation: snapshot.orientation ?? fallback.orientation,
+      layingDirection: snapshot.layingDirection === 'length' || snapshot.layingDirection === 'width' || snapshot.layingDirection === 'diagonal-45' || snapshot.layingDirection === 'diagonal--45'
+        ? snapshot.layingDirection
+        : fallback.layingDirection,
+      layingStart: snapshot.layingStart === 'left' || snapshot.layingStart === 'right' || snapshot.layingStart === 'top' || snapshot.layingStart === 'bottom' || snapshot.layingStart === 'edge'
+        ? snapshot.layingStart
+        : fallback.layingStart,
+      layingStartEdgeIndex: Number.isInteger(snapshot.layingStartEdgeIndex) ? snapshot.layingStartEdgeIndex : fallback.layingStartEdgeIndex,
+      layingZones: Array.isArray(snapshot.layingZones) ? snapshot.layingZones : fallback.layingZones,
       layingPattern: snapshot.layingPattern === 'half' || snapshot.layingPattern === 'third' ? snapshot.layingPattern : 'straight',
       board,
       joist: demoJoist,

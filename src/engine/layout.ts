@@ -1,20 +1,41 @@
 import type {
   DeckLayingPattern,
+  LayingDirection,
+  LayingStart,
+  LayingZone,
   LayoutBoardSegment,
   LayoutButtJoint,
   LayoutResult,
+  LayoutZoneResult,
   ProjectInput,
   RequiredPiece,
 } from '../domain/types';
 import { optimizeCuts } from './cuts';
-import { getDeckBoundingSizeM, getDeckIntervalsAtMm } from './geometry';
+import {
+  effectiveProjectDirection,
+  intervalsForRegionAtV,
+  resolveLayingBasis,
+  worldPointFromUV,
+  zoneProjectedBounds,
+} from './layingGeometry';
 
-export const LAYOUT_TAG = 'SA-TERR-LAYOUT-002';
+export const LAYOUT_TAG = 'SA-TERR-LAYOUT-003';
 
 interface PatternCell {
   index: number;
   startMm: number;
   endMm: number;
+}
+
+interface RegionSpec {
+  id: string;
+  label: string;
+  direction: LayingDirection;
+  pattern: DeckLayingPattern;
+  start: LayingStart;
+  startEdgeIndex?: number;
+  zone?: LayingZone;
+  excludedZones: LayingZone[];
 }
 
 function starterLengthForPattern(pattern: DeckLayingPattern, rowIndex: number, materialLengthMm: number): number {
@@ -28,97 +49,176 @@ function starterLengthForPattern(pattern: DeckLayingPattern, rowIndex: number, m
   return materialLengthMm;
 }
 
-function buildPatternCells(runLengthMm: number, materialLengthMm: number, starterLengthMm: number): PatternCell[] {
+function buildPatternCells(minU: number, maxU: number, materialLengthMm: number, starterLengthMm: number): PatternCell[] {
   const cells: PatternCell[] = [];
-  let cursor = 0;
+  let cursor = minU;
   let index = 0;
-
-  while (cursor < runLengthMm - 0.001) {
+  while (cursor < maxU - 0.001) {
     const targetLengthMm = index === 0 ? starterLengthMm : materialLengthMm;
-    const endMm = Math.min(runLengthMm, cursor + Math.max(1, targetLengthMm));
+    const endMm = Math.min(maxU, cursor + Math.max(1, targetLengthMm));
     cells.push({ index, startMm: cursor, endMm });
     cursor = endMm;
     index += 1;
   }
-
   return cells;
 }
 
+function regions(input: ProjectInput): RegionSpec[] {
+  const zones = input.layingZones ?? [];
+  const primary: RegionSpec = {
+    id: 'main',
+    label: 'Zone principale',
+    direction: effectiveProjectDirection(input),
+    pattern: input.layingPattern ?? 'straight',
+    start: input.layingStart ?? 'left',
+    startEdgeIndex: input.layingStartEdgeIndex,
+    excludedZones: zones,
+  };
+  return [
+    primary,
+    ...zones.map((zone) => ({
+      id: zone.id,
+      label: zone.label,
+      direction: zone.direction,
+      pattern: zone.pattern,
+      start: zone.start,
+      startEdgeIndex: zone.startEdgeIndex,
+      zone,
+      excludedZones: [],
+    })),
+  ];
+}
+
 /**
- * Calepinage terrasse inspiré de CALPI :
- * le motif est défini globalement sur chaque rangée, puis intersecté avec la géométrie réelle.
- * Une rive diagonale ne décale donc plus le raccord de chaque rangée et n'engendre plus
- * un nouvel axe de lambourde pour chaque lame.
+ * Calepinage V0.20 :
+ * - axes globaux CALPI par zone ;
+ * - départ explicite par côté/rive ;
+ * - directions longitudinales, transversales et diagonales ±45° ;
+ * - zones explicites qui remplacent localement les réglages de la zone principale.
  */
 export function computeLayout(input: ProjectInput): LayoutResult {
   if (input.board.gapMm == null || !Number.isFinite(input.board.gapMm) || input.board.gapMm < 0) {
     throw new Error('SA-TERR-GAP-001: jeu entre lames non validé.');
   }
 
-  const bounds = getDeckBoundingSizeM(input);
-  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
-  const runLengthMm = (input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000;
   const pitchMm = input.board.widthMm + input.board.gapMm;
   const requiredPieces: RequiredPiece[] = [];
   const boardSegments: LayoutBoardSegment[] = [];
   const buttJoints: LayoutButtJoint[] = [];
+  const zoneResults: LayoutZoneResult[] = [];
   const stockLengthsMm = input.board.availableLengthsMm?.length
     ? input.board.availableLengthsMm
     : [input.board.lengthMm];
   const maxStockLengthMm = Math.max(...stockLengthsMm);
-  const pattern: DeckLayingPattern = input.layingPattern ?? 'straight';
-  let rowIndex = 0;
+  let globalRowIndex = 0;
 
-  for (let centerMm = input.board.widthMm / 2; centerMm <= transverseMm + 0.001; centerMm += pitchMm) {
-    const intervals = getDeckIntervalsAtMm(input, centerMm, input.orientation, input.board.widthMm / 2);
-    if (!intervals.length) continue;
+  for (const region of regions(input)) {
+    const basis = resolveLayingBasis(input, region.direction, region.start, region.zone, region.startEdgeIndex);
+    const bounds = zoneProjectedBounds(input, basis, region.zone);
+    const zoneButtAxes: number[] = [];
+    let zoneRowCount = 0;
 
-    const starterLengthMm = starterLengthForPattern(pattern, rowIndex, maxStockLengthMm);
-    const patternCells = buildPatternCells(runLengthMm, maxStockLengthMm, starterLengthMm);
-    let intervalIndex = 0;
+    for (
+      let centerMm = bounds.minV + input.board.widthMm / 2;
+      centerMm <= bounds.maxV - input.board.widthMm / 2 + 0.001;
+      centerMm += pitchMm
+    ) {
+      const intervals = intervalsForRegionAtV(
+        input,
+        basis,
+        centerMm,
+        input.board.widthMm / 2,
+        region.zone,
+        region.excludedZones,
+      );
+      if (!intervals.length) continue;
 
-    for (const [intervalStartMm, intervalEndMm] of intervals) {
-      if (intervalEndMm - intervalStartMm <= 1) continue;
+      const starterLengthMm = starterLengthForPattern(region.pattern, zoneRowCount, maxStockLengthMm);
+      const patternCells = buildPatternCells(bounds.minU, bounds.maxU, maxStockLengthMm, starterLengthMm);
+      let intervalIndex = 0;
 
-      const installed: LayoutBoardSegment[] = [];
-      for (const cell of patternCells) {
-        const startMm = Math.max(intervalStartMm, cell.startMm);
-        const endMm = Math.min(intervalEndMm, cell.endMm);
-        if (endMm - startMm <= 1) continue;
+      for (const [intervalStartMm, intervalEndMm] of intervals) {
+        if (intervalEndMm - intervalStartMm <= 1) continue;
+        const installed: LayoutBoardSegment[] = [];
 
-        const segmentIndex = installed.length;
-        const id = `R${rowIndex + 1}-I${intervalIndex + 1}-P${segmentIndex + 1}`;
-        const segment: LayoutBoardSegment = {
-          id,
-          rowIndex,
-          intervalIndex,
-          segmentIndex,
-          transverseCenterMm: centerMm,
-          startMm,
-          endMm,
-          lengthMm: endMm - startMm,
-        };
-        installed.push(segment);
-        boardSegments.push(segment);
-        requiredPieces.push({ id, rowIndex, lengthMm: segment.lengthMm });
+        for (const cell of patternCells) {
+          const startMm = Math.max(intervalStartMm, cell.startMm);
+          const endMm = Math.min(intervalEndMm, cell.endMm);
+          if (endMm - startMm <= 1) continue;
+
+          const segmentIndex = installed.length;
+          const id = `${region.id}-R${zoneRowCount + 1}-I${intervalIndex + 1}-P${segmentIndex + 1}`;
+          const a = worldPointFromUV(startMm, centerMm, basis);
+          const b = worldPointFromUV(endMm, centerMm, basis);
+          const segment: LayoutBoardSegment = {
+            id,
+            rowIndex: globalRowIndex,
+            intervalIndex,
+            segmentIndex,
+            transverseCenterMm: centerMm,
+            startMm,
+            endMm,
+            lengthMm: endMm - startMm,
+            zoneId: region.id,
+            direction: region.direction,
+            x1M: a.xM,
+            y1M: a.yM,
+            x2M: b.xM,
+            y2M: b.yM,
+            dirX: basis.dirX,
+            dirY: basis.dirY,
+            normalX: basis.normalX,
+            normalY: basis.normalY,
+          };
+          installed.push(segment);
+          boardSegments.push(segment);
+          requiredPieces.push({ id, rowIndex: globalRowIndex, lengthMm: segment.lengthMm });
+        }
+
+        for (let i = 0; i + 1 < installed.length; i += 1) {
+          const left = installed[i];
+          const right = installed[i + 1];
+          if (Math.abs(left.endMm - right.startMm) > 0.01) continue;
+          const point = worldPointFromUV(left.endMm, centerMm, basis);
+          zoneButtAxes.push(left.endMm);
+          buttJoints.push({
+            id: `BJ-${region.id}-R${zoneRowCount + 1}-I${intervalIndex + 1}-P${i + 1}`,
+            rowIndex: globalRowIndex,
+            transverseCenterMm: centerMm,
+            axisPositionMm: left.endMm,
+            zoneId: region.id,
+            xM: point.xM,
+            yM: point.yM,
+            dirX: basis.dirX,
+            dirY: basis.dirY,
+            normalX: basis.normalX,
+            normalY: basis.normalY,
+          });
+        }
+        intervalIndex += 1;
       }
 
-      for (let i = 0; i + 1 < installed.length; i += 1) {
-        const left = installed[i];
-        const right = installed[i + 1];
-        if (Math.abs(left.endMm - right.startMm) > 0.01) continue;
-        buttJoints.push({
-          id: `BJ-R${rowIndex + 1}-I${intervalIndex + 1}-P${i + 1}`,
-          rowIndex,
-          transverseCenterMm: centerMm,
-          axisPositionMm: left.endMm,
-        });
-      }
-
-      intervalIndex += 1;
+      zoneRowCount += 1;
+      globalRowIndex += 1;
     }
 
-    rowIndex += 1;
+    zoneResults.push({
+      id: region.id,
+      label: region.label,
+      direction: region.direction,
+      pattern: region.pattern,
+      start: region.start,
+      dirX: basis.dirX,
+      dirY: basis.dirY,
+      normalX: basis.normalX,
+      normalY: basis.normalY,
+      minUMm: bounds.minU,
+      maxUMm: bounds.maxU,
+      minVMm: bounds.minV,
+      maxVMm: bounds.maxV,
+      rowCount: zoneRowCount,
+      buttJointAxisPositionsMm: [...new Set(zoneButtAxes.map((value) => Math.round(value * 1000) / 1000))].sort((a, b) => a - b),
+    });
   }
 
   const hasButtJoints = buttJoints.length > 0;
@@ -129,8 +229,9 @@ export function computeLayout(input: ProjectInput): LayoutResult {
   const purchasedAreaM2 = (purchasedMm / 1000) * (input.board.widthMm / 1000);
 
   return {
-    rowCount: rowIndex,
+    rowCount: globalRowIndex,
     requiredPieces,
+    zones: zoneResults,
     boardSegments,
     buttJoints,
     totalRequiredLinearM: totalRequiredMm / 1000,

@@ -1,5 +1,7 @@
 export type ShapeType = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'circle' | 'freeform';
 export type BoardOrientation = 'length' | 'width';
+export type LayingDirection = BoardOrientation | 'diagonal-45' | 'diagonal--45';
+export type LayingStart = 'left' | 'right' | 'top' | 'bottom' | 'edge';
 export type DeckLayingPattern = 'straight' | 'half' | 'third';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
@@ -28,6 +30,17 @@ export type ObstacleShape = 'rectangle' | 'circle';
 export interface TerracePoint {
   xM: number;
   yM: number;
+}
+
+export interface LayingZone {
+  id: string;
+  label: string;
+  /** Polygone de la zone en coordonnées projet. La zone principale correspond au reste de la terrasse. */
+  points: TerracePoint[];
+  direction: LayingDirection;
+  pattern: DeckLayingPattern;
+  start: LayingStart;
+  startEdgeIndex?: number;
 }
 
 export interface ReferencePlanTransform {
@@ -202,7 +215,15 @@ export interface ProjectInput {
   includeGeotextile: boolean;
   drainage: DrainageAnswer;
   orientation: BoardOrientation;
-  /** Motif de départ des lames. Diagonale non activée tant que son moteur n'est pas validé. */
+  /** Direction réelle des lames. orientation reste conservé pour compatibilité des anciens projets. */
+  layingDirection?: LayingDirection;
+  /** Rive / côté depuis lequel le motif global démarre. */
+  layingStart?: LayingStart;
+  /** Index de rive lorsque layingStart === 'edge'. */
+  layingStartEdgeIndex?: number;
+  /** Zones explicites qui remplacent localement les réglages de la zone principale. */
+  layingZones?: LayingZone[];
+  /** Motif de départ des lames. */
   layingPattern?: DeckLayingPattern;
   board: BoardSpec;
   joist: JoistSpec;
@@ -260,6 +281,16 @@ export interface LayoutBoardSegment {
   startMm: number;
   endMm: number;
   lengthMm: number;
+  zoneId?: string;
+  direction?: LayingDirection;
+  x1M?: number;
+  y1M?: number;
+  x2M?: number;
+  y2M?: number;
+  dirX?: number;
+  dirY?: number;
+  normalX?: number;
+  normalY?: number;
 }
 
 /** Raccord entre deux morceaux de lame dans une rangée donnée. */
@@ -268,11 +299,38 @@ export interface LayoutButtJoint {
   rowIndex: number;
   transverseCenterMm: number;
   axisPositionMm: number;
+  zoneId?: string;
+  xM?: number;
+  yM?: number;
+  dirX?: number;
+  dirY?: number;
+  normalX?: number;
+  normalY?: number;
+}
+
+export interface LayoutZoneResult {
+  id: string;
+  label: string;
+  direction: LayingDirection;
+  pattern: DeckLayingPattern;
+  start: LayingStart;
+  dirX: number;
+  dirY: number;
+  normalX: number;
+  normalY: number;
+  minUMm: number;
+  maxUMm: number;
+  minVMm: number;
+  maxVMm: number;
+  rowCount: number;
+  buttJointAxisPositionsMm: number[];
 }
 
 export interface LayoutResult {
   rowCount: number;
   requiredPieces: RequiredPiece[];
+  /** Zones de pose réellement calculées, y compris la zone principale restante. */
+  zones: LayoutZoneResult[];
   /** Segments de lames réellement positionnés, rangée par rangée. */
   boardSegments: LayoutBoardSegment[];
   /** Raccords de lames réels, rangée par rangée. */
@@ -334,6 +392,7 @@ export interface PlannedJoistSegment {
   buttJointSupport: boolean;
   /** Rôle métier du segment. */
   role?: PlannedJoistRole;
+  zoneId?: string;
 }
 
 export interface SupportPlanResult {

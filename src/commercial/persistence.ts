@@ -17,7 +17,7 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 8,
+    schemaVersion: 9,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -35,6 +35,10 @@ export function saveProjectLocally(project: ProjectInput): void {
     includeGeotextile: project.includeGeotextile,
     drainage: project.drainage,
     orientation: project.orientation,
+    layingDirection: project.layingDirection,
+    layingStart: project.layingStart,
+    layingStartEdgeIndex: project.layingStartEdgeIndex,
+    layingZones: project.layingZones,
     layingPattern: project.layingPattern ?? 'straight',
     boardId: project.board.id,
   };
@@ -68,6 +72,14 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     includeGeotextile: Boolean(snapshot.includeGeotextile),
     drainage: (snapshot.drainage as ProjectInput['drainage']) ?? fallback.drainage,
     orientation: (snapshot.orientation as ProjectInput['orientation']) ?? fallback.orientation,
+    layingDirection: snapshot.layingDirection === 'length' || snapshot.layingDirection === 'width' || snapshot.layingDirection === 'diagonal-45' || snapshot.layingDirection === 'diagonal--45'
+      ? snapshot.layingDirection
+      : fallback.layingDirection,
+    layingStart: snapshot.layingStart === 'left' || snapshot.layingStart === 'right' || snapshot.layingStart === 'top' || snapshot.layingStart === 'bottom' || snapshot.layingStart === 'edge'
+      ? snapshot.layingStart
+      : fallback.layingStart,
+    layingStartEdgeIndex: Number.isInteger(snapshot.layingStartEdgeIndex) ? Number(snapshot.layingStartEdgeIndex) : fallback.layingStartEdgeIndex,
+    layingZones: Array.isArray(snapshot.layingZones) ? snapshot.layingZones as ProjectInput['layingZones'] : fallback.layingZones,
     layingPattern: snapshot.layingPattern === 'half' || snapshot.layingPattern === 'third' ? snapshot.layingPattern : 'straight',
     board,
     joist: demoJoist,

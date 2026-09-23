@@ -1,6 +1,7 @@
 import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
 import { referencePlanDiagnostics } from './referencePlan';
-import { isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
+import { isPointInsideBaseDeck, isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
+import { zonesOverlap } from '../engine/layingGeometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -94,6 +95,38 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     }
     if (g.uOpeningDepthM <= 0 || g.uOpeningDepthM >= g.widthM) {
       diagnostics.push({ tag: 'SA-TERR-GEO-U-002', severity: 'blocking', message: 'La profondeur de l’ouverture du U doit être positive et inférieure à la largeur totale.' });
+    }
+  }
+
+  const zones = input.layingZones ?? [];
+  for (const zone of zones) {
+    if (!zone.id.trim() || !zone.label.trim()) {
+      diagnostics.push({ tag: 'SA-TERR-ZONE-001', severity: 'blocking', message: 'Chaque zone de pose doit avoir un identifiant et un nom.' });
+      continue;
+    }
+    if (zone.points.length < 3 || !isSimplePolygon(zone.points)) {
+      diagnostics.push({ tag: 'SA-TERR-ZONE-002', severity: 'blocking', message: `${zone.label || 'Zone'} : le contour de zone doit être un polygone simple.` });
+      continue;
+    }
+    if (polygonArea(zone.points.map((point) => ({ x: point.xM, y: point.yM }))) < 0.02) {
+      diagnostics.push({ tag: 'SA-TERR-ZONE-003', severity: 'blocking', message: `${zone.label} : la zone est trop petite.` });
+    }
+    if (zone.points.some((point) => !isPointInsideBaseDeck(input, point.xM, point.yM))) {
+      diagnostics.push({ tag: 'SA-TERR-ZONE-004', severity: 'blocking', message: `${zone.label} : tous les sommets doivent rester dans le contour de la terrasse.` });
+    }
+    if (zone.start === 'edge' && (zone.startEdgeIndex == null || zone.startEdgeIndex < 0 || zone.startEdgeIndex >= zone.points.length)) {
+      diagnostics.push({ tag: 'SA-TERR-ZONE-005', severity: 'blocking', message: `${zone.label} : la rive de départ sélectionnée n’existe pas.` });
+    }
+  }
+  for (let i = 0; i < zones.length; i += 1) {
+    for (let j = i + 1; j < zones.length; j += 1) {
+      if (zonesOverlap(zones[i], zones[j])) {
+        diagnostics.push({
+          tag: 'SA-TERR-ZONE-006',
+          severity: 'blocking',
+          message: `${zones[i].label} et ${zones[j].label} se chevauchent. Les zones de pose doivent rester distinctes.`,
+        });
+      }
     }
   }
 

@@ -37,7 +37,20 @@ const base: ProjectInput = {
 
 describe('Parcours commercial V0.11', () => {
   it('partage et restaure réellement la configuration sans données client', () => {
-    const shared = { ...base, structureJoistChoice: 'exotic' as const };
+    const shared = {
+      ...base,
+      structureJoistChoice: 'exotic' as const,
+      layingDirection: 'diagonal-45' as const,
+      layingStart: 'right' as const,
+      layingZones: [{
+        id: 'Z1',
+        label: 'Zone 1',
+        points: [{ xM: 1, yM: 1 }, { xM: 2, yM: 1 }, { xM: 2, yM: 2 }, { xM: 1, yM: 2 }],
+        direction: 'width' as const,
+        pattern: 'half' as const,
+        start: 'top' as const,
+      }],
+    };
     const token = projectToShareToken(shared);
     const restored = projectFromShareToken(token, { ...base, projectName: 'fallback' });
     expect(restored.projectName).toBe('Terrasse été');
@@ -45,6 +58,9 @@ describe('Parcours commercial V0.11', () => {
     expect(restored.orientation).toBe('width');
     expect(restored.board.id).toBe(base.board.id);
     expect(restored.structureJoistChoice).toBe('exotic');
+    expect(restored.layingDirection).toBe('diagonal-45');
+    expect(restored.layingStart).toBe('right');
+    expect(restored.layingZones?.[0]?.direction).toBe('width');
     expect(token).not.toContain('email');
     expect(token).not.toContain('phone');
   });

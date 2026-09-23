@@ -13,13 +13,13 @@ import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 import { computeTerraceEdges, EDGE_TAG } from './edges';
 import { getProductCompatibility } from '../catalog/compatibility';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-023.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-024.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.23.0 : Sprint D — matrice complète de compatibilités et produit par zone sous garde-fou de système constructif.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.24.0 : Sprint E — dossier chantier professionnel généré à partir des sorties réelles du moteur, sans donnée critique inventée.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

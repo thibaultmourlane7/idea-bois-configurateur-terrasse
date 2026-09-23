@@ -125,6 +125,7 @@ export default function App() {
   const [productSort, setProductSort] = useState<ProductSort>('readiness');
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [siteDossierBusy, setSiteDossierBusy] = useState(false);
   const [savedAvailable, setSavedAvailable] = useState(() => hasSavedProject());
   const [visualPreset, setVisualPreset] = useState<VisualPreset>('finished');
   const [visualLayers, setVisualLayers] = useState<ConstructionLayers>({ ...FINISHED_LAYERS });
@@ -213,6 +214,20 @@ export default function App() {
     }
   };
 
+  const downloadSiteDossier = async () => {
+    if (siteDossierBusy) return;
+    setSiteDossierBusy(true);
+    try {
+      const { generateSiteDossierPdf } = await import('./pdf/siteDossierPdf');
+      await generateSiteDossierPdf(project, result, VERSION_TAG);
+    } catch (error) {
+      console.error(error);
+      alert("Le dossier chantier n'a pas pu être généré. Merci de réessayer.");
+    } finally {
+      setSiteDossierBusy(false);
+    }
+  };
+
   const next = () => setStep((current) => Math.min(5, current + 1));
   const previous = () => setStep((current) => Math.max(1, current - 1));
   const liveBudget = result.basket?.totalTtc != null
@@ -235,7 +250,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V0.23 • catalogue • compatibilités • produits par zone</div>
+          <div className="header-note">V0.24 • dossier chantier • traçabilité complète</div>
         </div>
       </header>
 
@@ -254,8 +269,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.23</strong>
-                <span>Matrice produit • compatibilités explicites • produit différent par zone dans un même système validé.</span>
+                <strong>Version V0.24</strong>
+                <span>Dossier chantier professionnel • plans • coupes • structure • rives • panier • alertes • traçabilité.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
@@ -550,8 +565,11 @@ export default function App() {
                 <div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div>
                 <div className="result-actions">
                   <button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button>
+                  <button type="button" className="ghost-button dossier-button" onClick={downloadSiteDossier} disabled={siteDossierBusy}>
+                    {siteDossierBusy ? 'Création du dossier…' : 'Dossier chantier PDF'}
+                  </button>
                   <button type="button" className="pdf-button" onClick={downloadPdf} disabled={pdfBusy}>
-                    {pdfBusy ? 'Création du PDF…' : 'Télécharger le PDF'}
+                    {pdfBusy ? 'Création du PDF…' : 'PDF client'}
                   </button>
                 </div>
               </div>

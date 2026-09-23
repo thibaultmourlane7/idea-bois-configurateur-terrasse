@@ -1,4 +1,4 @@
-import type { Diagnostic, ProjectInput } from '../domain/types';
+import type { Diagnostic, LayoutResult, ProjectInput } from '../domain/types';
 import { RULE_TAGS } from '../domain/rules';
 import { NF_DTU_51_4_2018 } from '../referentials/nf-dtu-51-4-2018';
 import { getDeckBoundingSizeM } from './geometry';
@@ -10,7 +10,7 @@ export interface TechnicalSizing {
   diagnostics: Diagnostic[];
 }
 
-export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | null {
+export function computeTechnicalSizing(input: ProjectInput, layout?: LayoutResult): TechnicalSizing | null {
   const diagnostics: Diagnostic[] = [];
   const commercial = getCommercialConstructionRule(input);
 
@@ -70,10 +70,15 @@ export function computeTechnicalSizing(input: ProjectInput): TechnicalSizing | n
     return { boardMaxSupportSpacingMm: 0, joistMaxSupportSpacingMm: 0, diagnostics };
   }
 
-  const bounds = getDeckBoundingSizeM(input);
-  const alongBoardMm = (input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000;
-  const intervalCount = Math.max(1, Math.ceil(alongBoardMm / boardRule.maxSpacingMm));
-  const actualJoistSpacingMm = alongBoardMm / intervalCount;
+  const spansMm = layout?.zones?.length
+    ? layout.zones.map((zone) => Math.max(0, zone.maxUMm - zone.minUMm)).filter((value) => value > 0)
+    : (() => {
+        const bounds = getDeckBoundingSizeM(input);
+        return [(input.orientation === 'length' ? bounds.lengthM : bounds.widthM) * 1000];
+      })();
+  const actualJoistSpacingMm = spansMm.length
+    ? Math.max(...spansMm.map((span) => span / Math.max(1, Math.ceil(span / boardRule.maxSpacingMm))))
+    : boardRule.maxSpacingMm;
 
   const joistRule = NF_DTU_51_4_2018.residential.joistMaxSupportSpacing.find((rule) =>
     actualJoistSpacingMm >= rule.minJoistSpacingMm - 0.001 &&

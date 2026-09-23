@@ -89,30 +89,27 @@ function drawPlan(doc: Pdf, input: ProjectInput, result: ConfiguratorResult, x: 
 
   doc.setDrawColor(118, 88, 60);
   doc.setLineWidth(0.2);
-  const pitchMm = input.board.widthMm + (input.board.gapMm ?? 0);
-  const transverseMm = (input.orientation === 'length' ? bounds.widthM : bounds.lengthM) * 1000;
+  for (const segment of result.layout?.boardSegments ?? []) {
+    if (segment.x1M == null || segment.y1M == null || segment.x2M == null || segment.y2M == null) continue;
+    doc.line(
+      ox + segment.x1M * scale,
+      oy + segment.y1M * scale,
+      ox + segment.x2M * scale,
+      oy + segment.y2M * scale,
+    );
+  }
 
-  if (pitchMm > 0) {
-    for (let center = input.board.widthMm / 2; center <= transverseMm + 0.001; center += pitchMm) {
-      const intervals = getDeckIntervalsAtMm(input, center, input.orientation, input.board.widthMm / 2);
-      for (const [intervalStart, intervalEnd] of intervals) {
-        if (input.orientation === 'length') {
-          doc.line(
-            ox + (intervalStart / 1000) * scale,
-            oy + (center / 1000) * scale,
-            ox + (intervalEnd / 1000) * scale,
-            oy + (center / 1000) * scale,
-          );
-        } else {
-          doc.line(
-            ox + (center / 1000) * scale,
-            oy + (intervalStart / 1000) * scale,
-            ox + (center / 1000) * scale,
-            oy + (intervalEnd / 1000) * scale,
-          );
-        }
-      }
+  if (input.layingZones?.length) {
+    doc.setDrawColor(BLUE[0], BLUE[1], BLUE[2]);
+    doc.setLineDashPattern([2, 1.5], 0);
+    for (const zone of input.layingZones) {
+      const points = zone.points.map((point) => [ox + point.xM * scale, oy + point.yM * scale] as const);
+      if (points.length < 3) continue;
+      const firstZone = points[0];
+      const zoneVectors = points.slice(1).map((point, index) => [point[0] - points[index][0], point[1] - points[index][1]]);
+      doc.lines(zoneVectors, firstZone[0], firstZone[1], [1, 1], 'S', true);
     }
+    doc.setLineDashPattern([], 0);
   }
 
   for (const obstacle of input.obstacles) {
@@ -143,10 +140,15 @@ function drawPlan(doc: Pdf, input: ProjectInput, result: ConfiguratorResult, x: 
     doc.setLineWidth(0.45);
     const half = Math.max(1.2, (input.board.widthMm / 1000) * scale * 0.7);
     for (const joint of result.layout.buttJoints) {
-      const cx = ox + (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000 * scale;
-      const cy = oy + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
-      if (input.orientation === 'length') doc.line(cx, cy - half, cx, cy + half);
-      else doc.line(cx - half, cy, cx + half, cy);
+      const cx = joint.xM != null
+        ? ox + joint.xM * scale
+        : ox + (input.orientation === 'length' ? joint.axisPositionMm : joint.transverseCenterMm) / 1000 * scale;
+      const cy = joint.yM != null
+        ? oy + joint.yM * scale
+        : oy + (input.orientation === 'length' ? joint.transverseCenterMm : joint.axisPositionMm) / 1000 * scale;
+      const nx = joint.normalX ?? (input.orientation === 'length' ? 0 : 1);
+      const ny = joint.normalY ?? (input.orientation === 'length' ? 1 : 0);
+      doc.line(cx - nx * half, cy - ny * half, cx + nx * half, cy + ny * half);
     }
   }
 
@@ -188,9 +190,14 @@ function drawStructurePlan(doc: Pdf, input: ProjectInput, result: ConfiguratorRe
   if (plan && plan.status !== 'unavailable') {
     for (const joist of plan.joistSegments) {
       const perimeter = joist.role === 'perimeter';
+      const boundary = joist.role === 'zone-boundary';
       const doubled = joist.multiplicity === 2;
-      doc.setDrawColor(perimeter ? 54 : doubled ? 155 : 108, perimeter ? 95 : doubled ? 95 : 77, perimeter ? 122 : doubled ? 47 : 49);
-      doc.setLineWidth(perimeter ? 1.2 : doubled ? 1.5 : 0.8);
+      doc.setDrawColor(
+        perimeter ? 54 : boundary ? 25 : doubled ? 155 : 108,
+        perimeter ? 95 : boundary ? 118 : doubled ? 95 : 77,
+        perimeter ? 122 : boundary ? 210 : doubled ? 47 : 49,
+      );
+      doc.setLineWidth(perimeter ? 1.2 : boundary ? 1.05 : doubled ? 1.5 : 0.8);
       doc.line(
         ox + joist.x1M * scale,
         oy + joist.y1M * scale,

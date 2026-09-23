@@ -54,6 +54,27 @@ describe('PDF client V0.10', () => {
     expect(model.stockSummary).toContain('lames commerciales');
   });
 
+  it('décrit les diagonales et les zones de pose dans le dossier technique', () => {
+    const zoned: ProjectInput = {
+      ...project,
+      layingDirection: 'diagonal-45',
+      layingStart: 'right',
+      layingZones: [{
+        id: 'Z-PDF',
+        label: 'Zone PDF',
+        points: [{ xM: 1, yM: 1 }, { xM: 2.5, yM: 1 }, { xM: 2.5, yM: 2.5 }, { xM: 1, yM: 2.5 }],
+        direction: 'width',
+        pattern: 'half',
+        start: 'top',
+      }],
+    };
+    const result = runConfigurator(zoned);
+    const model = buildClientPdfModel(zoned, result, 'IB-TERR-VERSION-020.0', '23/09/2026');
+    expect(model.orientation).toBe('Diagonale +45 deg');
+    expect(model.boardLayout).toContain('2 zone(s) de pose');
+    expect(model.structureSummary).toContain('separation(s) de zone');
+  });
+
   it('signale les lignes a confirmer sans les transformer en prix', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G001')!;
     const result = runConfigurator({ ...project, board, edgeFinishMode: 'full-perimeter' });

@@ -152,6 +152,14 @@ function stockBreakdownText(line: BasketLine): string | undefined {
   return `Longueurs a commander : ${detail}. ${unmapped ? 'Les longueurs sans SKU restent non associees tant que la page produit exacte n est pas verifiee.' : 'Les SKU affiches sont verifies par longueur.'}`;
 }
 
+function directionLabel(input: ProjectInput): string {
+  const direction = input.layingDirection ?? input.orientation;
+  if (direction === 'width') return 'Dans la largeur';
+  if (direction === 'diagonal-45') return 'Diagonale +45 deg';
+  if (direction === 'diagonal--45') return 'Diagonale -45 deg';
+  return 'Dans la longueur';
+}
+
 function unique(values: Array<string | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value?.trim())))];
 }
@@ -192,12 +200,15 @@ export function buildClientPdfModel(
 
   const layout = result.layout;
   const supportPlan = result.supportPlan;
-  const jointAxes = layout ? [...new Set(layout.buttJoints.map((joint) => Math.round(joint.axisPositionMm)))] : [];
+  const jointAxisCount = layout
+    ? layout.zones.reduce((sum, zone) => sum + zone.buttJointAxisPositionsMm.length, 0)
+    : 0;
   const perimeterJoists = supportPlan?.joistSegments.filter((segment) => segment.role === 'perimeter').length ?? 0;
+  const zoneBoundaryJoists = supportPlan?.joistSegments.filter((segment) => segment.role === 'zone-boundary').length ?? 0;
   const doubleJoists = supportPlan?.joistSegments.filter((segment) => segment.multiplicity === 2).length ?? 0;
 
   const boardLayout = layout
-    ? `${layout.rowCount} rangees - ${layout.boardSegments.length} segments poses - ${layout.buttJoints.length} raccords sur ${jointAxes.length} axe(s)`
+    ? `${layout.rowCount} rangees - ${layout.boardSegments.length} segments poses - ${layout.buttJoints.length} raccords sur ${jointAxisCount} axe(s) locaux - ${layout.zones.length} zone(s) de pose`
     : 'Calepinage final a confirmer';
 
   const stockSummary = layout
@@ -213,7 +224,7 @@ export function buildClientPdfModel(
     : 'Longueurs de commande a confirmer';
 
   const structureSummary = supportPlan && supportPlan.status !== 'unavailable'
-    ? `${supportPlan.joistStockBoards.length} lambourdes commerciales - ${fmt(supportPlan.joistLinearM)} ml - entraxe ${supportPlan.joistSpacingMm ?? 0} mm - ${perimeterJoists} segment(s) de contour - ${doubleJoists} segment(s) doubles`
+    ? `${supportPlan.joistStockBoards.length} lambourdes commerciales - ${fmt(supportPlan.joistLinearM)} ml - entraxe ${supportPlan.joistSpacingMm ?? 0} mm - ${perimeterJoists} segment(s) de contour - ${zoneBoundaryJoists} separation(s) de zone - ${doubleJoists} segment(s) doubles`
     : 'Structure a confirmer pour cette gamme';
 
   const plotCount = supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0) ?? 0;
@@ -271,7 +282,7 @@ export function buildClientPdfModel(
     supportSystem: plotSummary,
     height: `${fmt(input.heightCm)} cm (reference)`,
     decking: input.board.label,
-    orientation: input.orientation === 'length' ? 'Dans la longueur' : 'Dans la largeur',
+    orientation: directionLabel(input),
     layingPattern: layingPatternLabel(input),
     finishes: finishParts.join(' - '),
     boardLayout,

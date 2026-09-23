@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-019.8';
+export const VERSION_TAG = 'IB-TERR-VERSION-020.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.19.8 : références de commande sécurisées, habillage sans jeu inventé, choix structure explicite et longueurs/SKU tracés, calepinage CALPI, plan/photo calibré, PDF technique et 3D enrichie.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.20.0 : Sprint A — départ de calepinage, diagonales ±45°, zones de pose réelles et structure recalculée par zone.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -95,7 +95,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
     });
   }
 
-  const technical = computeTechnicalSizing(input);
+  const technical = computeTechnicalSizing(input, layout);
   if (technical) diagnostics.push(...technical.diagnostics);
 
   if (!technical || diagnostics.some((d) => d.severity === 'blocking')) {

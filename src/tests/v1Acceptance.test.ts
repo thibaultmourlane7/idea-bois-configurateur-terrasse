@@ -244,7 +244,9 @@ describe('Sprint F — Recette V1.0 professionnelle', () => {
       expect(first.layout?.totalRequiredLinearM).not.toBe(second.layout?.totalRequiredLinearM);
       expect(first.layout?.stockBoards.length).not.toBe(second.layout?.stockBoards.length);
       expect(first.supportPlan?.joistLinearM).not.toBe(second.supportPlan?.joistLinearM);
-      expect(first.supportPlan?.supportPointCount).not.toBe(second.supportPlan?.supportPointCount);
+      const firstSupportCount = first.supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0);
+      const secondSupportCount = second.supportPlan?.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0);
+      expect(firstSupportCount).not.toBe(secondSupportCount);
 
       const firstFixing = first.basket?.lines.find((line) => line.family === 'fixings');
       const secondFixing = second.basket?.lines.find((line) => line.family === 'fixings');

@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-018';
+export const VERSION_TAG = 'IB-TERR-VERSION-019';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] Calepinage CALPI adapté terrasse : pose entière/1-2/1-3, raccords globaux cohérents et lambourdes sans explosion d’axes.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.19 : calepinage CALPI, structures multi-matériaux, plan/photo calibré, PDF technique et 3D enrichie.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

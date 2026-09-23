@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-019.6';
+export const VERSION_TAG = 'IB-TERR-VERSION-019.7';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.19.6 : choix explicite de lambourde Garapa/Padouk, supports d’habillage alignés, visserie et longueurs/SKU vérifiés, calepinage CALPI, plan/photo calibré, PDF technique et 3D enrichie.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.19.7 : habillage sans jeu inventé, longueurs/SKU de rive tracés, choix structure explicite et supports alignés, calepinage CALPI, plan/photo calibré, PDF technique et 3D enrichie.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

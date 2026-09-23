@@ -19,6 +19,7 @@ export interface EdgeCladdingCalculation {
   boardPurchasedLinearM?: number;
   boardPurchasedAreaM2?: number;
   boardStockBoards?: StockBoard[];
+  boardStockBreakdown?: StockLengthBreakdown[];
   boardTotalTtc?: number;
   verticalJoistSpacingMm?: number;
   verticalSupportCount?: number;
@@ -158,7 +159,20 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
     };
   }
 
-  const pitchM = (input.board.widthMm + (input.board.gapMm ?? 0)) / 1000;
+  if (input.board.gapMm == null || !Number.isFinite(input.board.gapMm) || input.board.gapMm < 0) {
+    return {
+      status: 'partial',
+      mode: 'same-decking',
+      perimeterM,
+      heightM,
+      edgeLengthsM: lengthsM,
+      reason: input.board.gapRangeMm
+        ? `Le jeu de pose est publié sous forme de plage (${input.board.gapRangeMm[0]}–${input.board.gapRangeMm[1]} mm) mais aucune valeur unique n’est validée. Le nombre de rangs d’habillage n’est pas inventé.`
+        : 'Le jeu de pose de la lame doit être validé pour calculer le nombre de rangs d’habillage.',
+    };
+  }
+
+  const pitchM = (input.board.widthMm + input.board.gapMm) / 1000;
   if (pitchM <= 0) {
     return {
       status: 'partial',
@@ -173,6 +187,20 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
   const rowCount = Math.ceil(heightM / pitchM);
   const boardPieces = requiredPiecesForRows(lengthsM, rowCount);
   const boardStockBoards = optimizeCuts(boardPieces, input.board.availableLengthsMm);
+  const boardVariantRefs = new Map(
+    (input.board.catalog?.variants ?? []).map((variant) => [variant.lengthMm, variant.productRef]),
+  );
+  const boardStockBreakdown = (() => {
+    const counts = new Map<number, number>();
+    for (const stock of boardStockBoards) counts.set(stock.stockLengthMm, (counts.get(stock.stockLengthMm) ?? 0) + 1);
+    return [...counts.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([lengthMm, quantity]) => ({
+        lengthMm,
+        quantity,
+        productRef: boardVariantRefs.get(lengthMm),
+      }));
+  })();
   const boardRequiredLinearM = boardPieces.reduce((sum, piece) => sum + piece.lengthMm, 0) / 1000;
   const boardPurchasedLinearM = boardStockBoards.reduce((sum, board) => sum + board.stockLengthMm, 0) / 1000;
   const boardPurchasedAreaM2 = boardPurchasedLinearM * (input.board.widthMm / 1000);
@@ -190,6 +218,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
       boardPurchasedLinearM,
       boardPurchasedAreaM2,
       boardStockBoards,
+      boardStockBreakdown,
       boardTotalTtc,
       edgeLengthsM: lengthsM,
       reason: 'L’habillage en lame identique est calculé, mais l’entraxe des supports verticaux reste à valider pour cette gamme.',
@@ -208,6 +237,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
       boardPurchasedLinearM,
       boardPurchasedAreaM2,
       boardStockBoards,
+      boardStockBreakdown,
       boardTotalTtc,
       verticalJoistSpacingMm: rule.joistSpacingMm,
       edgeLengthsM: lengthsM,
@@ -239,6 +269,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
       boardPurchasedLinearM,
       boardPurchasedAreaM2,
       boardStockBoards,
+      boardStockBreakdown,
       boardTotalTtc,
       verticalJoistSpacingMm: rule.joistSpacingMm,
       verticalSupportCount: vertical.count,
@@ -263,6 +294,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
     boardPurchasedLinearM,
     boardPurchasedAreaM2,
     boardStockBoards,
+    boardStockBreakdown,
     boardTotalTtc,
     verticalJoistSpacingMm: rule.joistSpacingMm,
     verticalSupportCount: vertical.count,

@@ -85,8 +85,9 @@ describe('Construction visuelle et habillage V0.14', () => {
     const result = runConfigurator(project);
     const finish = result.basket?.lines.find((line) => line.id === 'edge-finish');
     const vertical = result.basket?.lines.find((line) => line.id === 'edge-vertical-joists');
-    expect(finish?.productRef).toBe(pinStrie.catalog?.internalCodes.join(', '));
     expect(finish?.status).toBe('exact');
+    expect(finish?.stockBreakdown?.length).toBeGreaterThan(0);
+    expect(finish?.stockBreakdown?.every((item) => pinStrie.availableLengthsMm?.includes(item.lengthMm))).toBe(true);
     expect(vertical?.quantity).toBe(11);
     expect(vertical?.label).toContain('pin Classe 4');
     expect(vertical?.stockBreakdown?.every((item) => [2400, 3000].includes(item.lengthMm))).toBe(true);
@@ -119,6 +120,22 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(vertical?.label).toContain('exotique');
     expect(vertical?.stockBreakdown?.every((item) => [1850, 2450, 3950].includes(item.lengthMm))).toBe(true);
     expect(vertical?.sourceUrl).toContain('lambourdes-ossatures');
+  });
+
+  it('n’invente pas un jeu nul pour l’habillage Garapa/Padouk', () => {
+    for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
+      const board = ideaBoisBoards.find((item) => item.id === id)!;
+      const cladding = computeEdgeCladding({
+        ...base,
+        board,
+        structureJoistChoice: 'pin-class4',
+        edgeFinishMode: 'full-perimeter',
+        edgeCladdingHeightCm: 20,
+      });
+      expect(cladding.status).toBe('partial');
+      expect(cladding.rowCount).toBeUndefined();
+      expect(cladding.reason).toContain('jeu de pose');
+    }
   });
 
   it('optimise différemment les lambourdes verticales quand la hauteur change', () => {

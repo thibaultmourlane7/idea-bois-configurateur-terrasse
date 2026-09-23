@@ -210,7 +210,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">Structure V0.19.6 • choix structure explicite • longueurs/SKU vérifiés</div>
+          <div className="header-note">Structure V0.19.7 • habillage fiabilisé • choix structure explicite</div>
         </div>
       </header>
 
@@ -229,7 +229,7 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.19.6</strong>
+                <strong>Version V0.19.7</strong>
                 <span>Forme libre dessinable + cotes saisissables • réservations débordantes autorisées • plan entièrement coté.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
@@ -266,7 +266,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="catalog-count">{filteredBoards.length} gamme{filteredBoards.length > 1 ? 's' : ''} affichée{filteredBoards.length > 1 ? 's' : ''} • relevé catalogue du 04/09/2026</div>
+              <div className="catalog-count">{filteredBoards.length} gamme{filteredBoards.length > 1 ? 's' : ''} affichée{filteredBoards.length > 1 ? 's' : ''} • catalogue de base 04/09/2026, variantes revérifiées jusqu’au 23/09/2026</div>
               <div className="product-grid real-catalog-grid">
                 {filteredBoards.map((board) => {
                   const readiness = getProductReadiness(board);

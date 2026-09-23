@@ -45,8 +45,18 @@ function boardRefsByLength(input: ProjectInput): Map<number, string | undefined>
 }
 
 function joistVariantsFor(input: ProjectInput) {
-  const exotic = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20']
-    .includes(input.board.commercialRecipeId ?? '');
+  const rule = getCommercialConstructionRule(input);
+  if (rule?.joistStockLengthsMm.length) {
+    const groups = [PIN_JOIST_VARIANTS, EXOTIC_JOIST_VARIANTS];
+    const match = groups.find((group) =>
+      rule.joistStockLengthsMm.every((lengthMm) => group.some((item) => item.lengthMm === lengthMm))
+      && (!rule.joistProductRef || group.some((item) => item.productRef === rule.joistProductRef)),
+    );
+    if (match) return match;
+  }
+
+  const exotic = ['idea-cumaru-145x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '')
+    || input.structureJoistChoice === 'exotic';
   return exotic ? EXOTIC_JOIST_VARIANTS : PIN_JOIST_VARIANTS;
 }
 
@@ -405,17 +415,24 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
     const cladding = computeEdgeCladding(input);
 
     if (cladding.status === 'exact' && cladding.mode === 'same-decking') {
+      const edgeBoardRefs = (cladding.boardStockBreakdown ?? [])
+        .map((item) => item.productRef)
+        .filter((value): value is string => Boolean(value));
+      const allEdgeBoardRefsKnown = Boolean(cladding.boardStockBreakdown?.length)
+        && cladding.boardStockBreakdown?.every((item) => item.productRef);
+
       lines.push({
         id: 'edge-finish',
         family: 'accessories',
         label: `Habillage latéral — ${input.board.label}`,
-        productRef: input.board.catalog?.internalCodes.join(', '),
+        productRef: allEdgeBoardRefsKnown ? [...new Set(edgeBoardRefs)].join(', ') : undefined,
         quantity: cladding.boardStockBoards?.length,
         unit: 'lame(s)',
         totalTtc: cladding.boardTotalTtc,
         status: 'exact',
         required: true,
         note: `${cladding.rowCount} rang(s) sur ${input.edgeCladdingHeightCm.toFixed(0)} cm de hauteur • même lame que le platelage • ${cladding.boardPurchasedLinearM?.toFixed(2)} ml achetés.`,
+        stockBreakdown: cladding.boardStockBreakdown,
         sourceUrl: input.board.catalog?.sourceUrl,
       });
 
@@ -444,7 +461,6 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         id: 'edge-finish',
         family: 'accessories',
         label: `Habillage latéral — ${input.board.label}`,
-        productRef: input.board.catalog?.internalCodes.join(', '),
         quantity: cladding.boardStockBoards?.length,
         unit: 'lame(s)',
         unitPriceTtc: input.board.priceTtcPerM2,
@@ -452,6 +468,7 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         status: 'exact',
         required: true,
         note: `${cladding.rowCount} rang(s) • même lame que le platelage. ${cladding.reason ?? ''}`.trim(),
+        stockBreakdown: cladding.boardStockBreakdown,
         sourceUrl: input.board.catalog?.sourceUrl,
       });
       lines.push(pending(

@@ -153,8 +153,9 @@ describe('Configurateur terrasse V0.9', () => {
     const vertical = result.basket?.lines.find((line) => line.id === 'edge-vertical-joists');
     const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
     expect(finish?.status).toBe('exact');
-    expect(finish?.productRef).toBe(board.catalog?.internalCodes.join(', '));
     expect(finish?.totalTtc).toBeGreaterThan(0);
+    expect(finish?.stockBreakdown?.length).toBeGreaterThan(0);
+    expect(finish?.stockBreakdown?.every((item) => board.availableLengthsMm?.includes(item.lengthMm))).toBe(true);
     expect(vertical?.status).toBe('exact');
     expect(vertical?.quantity).toBeGreaterThan(0);
     expect(vertical?.label).toContain('pin Classe 4');

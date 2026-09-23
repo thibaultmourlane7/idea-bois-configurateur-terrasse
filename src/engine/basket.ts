@@ -419,19 +419,25 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
         sourceUrl: input.board.catalog?.sourceUrl,
       });
 
+      const edgeJoistRefs = (cladding.verticalJoistStockBreakdown ?? [])
+        .map((item) => item.productRef)
+        .filter((value): value is string => Boolean(value));
+      const allEdgeJoistRefsKnown = Boolean(cladding.verticalJoistStockBreakdown?.length)
+        && cladding.verticalJoistStockBreakdown?.every((item) => item.productRef);
+
       lines.push({
         id: 'edge-vertical-joists',
         family: 'joists',
-        label: `Lambourdes verticales d’habillage — morceaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm`,
-        productRef: PIN_JOIST_60X40_2400.productRef,
+        label: `Lambourdes verticales d’habillage — ${cladding.verticalJoistLabel ?? 'structure validée'}`,
+        productRef: allEdgeJoistRefsKnown ? [...new Set(edgeJoistRefs)].join(', ') : undefined,
         quantity: cladding.verticalJoistStockBoards?.length,
-        unit: 'lambourde(s) 2,40 m',
-        unitPriceTtc: PIN_JOIST_60X40_2400.unitPriceTtc,
+        unit: 'lambourde(s)',
         totalTtc: cladding.verticalJoistTotalTtc,
         status: 'exact',
         required: true,
-        note: `${cladding.verticalSupportCount} support(s) verticaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires.`,
-        sourceUrl: PIN_JOIST_60X40_2400.sourceUrl,
+        note: `${cladding.verticalSupportCount} support(s) verticaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires • mêmes matériau et longueurs commerciales validées que la structure de la terrasse.`,
+        stockBreakdown: cladding.verticalJoistStockBreakdown,
+        sourceUrl: cladding.verticalJoistSourceUrl,
       });
     } else if (cladding.mode === 'same-decking' && cladding.boardTotalTtc != null) {
       lines.push({

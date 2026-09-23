@@ -1,5 +1,9 @@
-import type { ProjectInput, RequiredPiece, StockBoard } from '../domain/types';
-import { PIN_JOIST_60X40_2400 } from '../catalog/materials';
+import type { ProjectInput, RequiredPiece, StockBoard, StockLengthBreakdown } from '../domain/types';
+import {
+  EXOTIC_JOIST_VARIANTS,
+  PIN_JOIST_VARIANTS,
+  type CommercialMaterial,
+} from '../catalog/materials';
 import { getDeckOutlinePointsM } from './geometry';
 import { optimizeCuts } from './cuts';
 import { getCommercialConstructionRule } from './constructionRules';
@@ -21,6 +25,9 @@ export interface EdgeCladdingCalculation {
   verticalJoistRequiredLinearM?: number;
   verticalJoistStockBoards?: StockBoard[];
   verticalJoistTotalTtc?: number;
+  verticalJoistLabel?: string;
+  verticalJoistStockBreakdown?: StockLengthBreakdown[];
+  verticalJoistSourceUrl?: string;
   /** Vis nécessaires pour fixer les lames de rive aux supports verticaux : 2 vis par lame et par support. */
   edgeBoardFixingCount?: number;
   edgeFixingSourceUrl?: string;
@@ -28,6 +35,45 @@ export interface EdgeCladdingCalculation {
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
+
+function joistVariantsForRule(
+  stockLengthsMm: number[],
+  productRef?: string,
+): CommercialMaterial[] | undefined {
+  const groups = [PIN_JOIST_VARIANTS, EXOTIC_JOIST_VARIANTS];
+  return groups.find((group) => {
+    const coversAllLengths = stockLengthsMm.every((lengthMm) =>
+      group.some((item) => item.lengthMm === lengthMm),
+    );
+    const matchesReference = !productRef || group.some((item) => item.productRef === productRef);
+    return coversAllLengths && matchesReference;
+  });
+}
+
+function stockBreakdown(
+  stockBoards: StockBoard[],
+  materials: CommercialMaterial[],
+): StockLengthBreakdown[] {
+  const counts = new Map<number, number>();
+  const materialsByLength = new Map(
+    materials
+      .filter((item) => item.lengthMm != null)
+      .map((item) => [item.lengthMm as number, item]),
+  );
+
+  for (const stock of stockBoards) {
+    counts.set(stock.stockLengthMm, (counts.get(stock.stockLengthMm) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([lengthMm, quantity]) => ({
+      lengthMm,
+      quantity,
+      productRef: materialsByLength.get(lengthMm)?.productRef,
+    }));
+}
+
 
 function edgeLengths(input: ProjectInput): number[] {
   if (input.shape === 'circle') return [Math.PI * input.dimensions.circleDiameterM];
@@ -150,10 +196,61 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
     };
   }
 
+  const verticalMaterials = joistVariantsForRule(rule.joistStockLengthsMm, rule.joistProductRef);
+  if (!verticalMaterials) {
+    return {
+      status: 'partial',
+      mode: 'same-decking',
+      perimeterM,
+      heightM,
+      rowCount,
+      boardRequiredLinearM,
+      boardPurchasedLinearM,
+      boardPurchasedAreaM2,
+      boardStockBoards,
+      boardTotalTtc,
+      verticalJoistSpacingMm: rule.joistSpacingMm,
+      edgeLengthsM: lengthsM,
+      reason: 'La règle de structure est connue mais les longueurs commerciales/prix de la lambourde associée ne sont pas entièrement validés pour l’habillage vertical.',
+    };
+  }
+
   const vertical = verticalSupportPieces(lengthsM, rule.joistSpacingMm, heightM);
-  const verticalJoistStockBoards = optimizeCuts(vertical.pieces, [2400]);
+  const verticalJoistStockBoards = optimizeCuts(vertical.pieces, rule.joistStockLengthsMm);
   const verticalJoistRequiredLinearM = vertical.pieces.reduce((sum, piece) => sum + piece.lengthMm, 0) / 1000;
-  const verticalJoistTotalTtc = round2(verticalJoistStockBoards.length * PIN_JOIST_60X40_2400.unitPriceTtc);
+  const materialByLength = new Map(
+    verticalMaterials
+      .filter((item) => item.lengthMm != null)
+      .map((item) => [item.lengthMm as number, item]),
+  );
+  const verticalJoistTotalRaw = verticalJoistStockBoards.reduce((sum, stock) => {
+    const material = materialByLength.get(stock.stockLengthMm);
+    return material ? sum + material.unitPriceTtc : Number.NaN;
+  }, 0);
+
+  if (!Number.isFinite(verticalJoistTotalRaw)) {
+    return {
+      status: 'partial',
+      mode: 'same-decking',
+      perimeterM,
+      heightM,
+      rowCount,
+      boardRequiredLinearM,
+      boardPurchasedLinearM,
+      boardPurchasedAreaM2,
+      boardStockBoards,
+      boardTotalTtc,
+      verticalJoistSpacingMm: rule.joistSpacingMm,
+      verticalSupportCount: vertical.count,
+      verticalJoistRequiredLinearM,
+      verticalJoistStockBoards,
+      edgeLengthsM: lengthsM,
+      reason: 'Une longueur de lambourde sélectionnée pour l’habillage vertical n’a pas encore de prix commercial validé.',
+    };
+  }
+
+  const verticalJoistTotalTtc = round2(verticalJoistTotalRaw);
+  const verticalJoistStockBreakdown = stockBreakdown(verticalJoistStockBoards, verticalMaterials);
   const edgeBoardFixingCount = rowCount * vertical.count * 2;
 
   return {
@@ -172,6 +269,9 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
     verticalJoistRequiredLinearM,
     verticalJoistStockBoards,
     verticalJoistTotalTtc,
+    verticalJoistLabel: rule.joistLabel,
+    verticalJoistStockBreakdown,
+    verticalJoistSourceUrl: rule.sourceUrl,
     edgeBoardFixingCount,
     edgeFixingSourceUrl: 'https://www.idea-bois.com/userfiles/product_File/470.pdf',
     edgeLengthsM: lengthsM,

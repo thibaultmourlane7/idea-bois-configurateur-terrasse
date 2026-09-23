@@ -157,6 +157,9 @@ describe('Configurateur terrasse V0.9', () => {
     expect(finish?.totalTtc).toBeGreaterThan(0);
     expect(vertical?.status).toBe('exact');
     expect(vertical?.quantity).toBeGreaterThan(0);
+    expect(vertical?.label).toContain('pin Classe 4');
+    expect(vertical?.unit).toBe('lambourde(s)');
+    expect(vertical?.stockBreakdown?.every((item) => [2400, 3000].includes(item.lengthMm))).toBe(true);
     expect(fixings?.quantity).toBe(6);
     expect(fixings?.note).toContain('176 vis d’habillage latéral');
   });

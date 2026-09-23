@@ -76,6 +76,9 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(cladding.verticalSupportCount).toBe(44);
     expect(cladding.verticalJoistRequiredLinearM).toBeCloseTo(22, 6);
     expect(cladding.verticalJoistStockBoards).toHaveLength(11);
+    expect(cladding.verticalJoistStockBoards?.every((item) => [2400, 3000].includes(item.stockLengthMm))).toBe(true);
+    expect(cladding.verticalJoistLabel).toContain('pin Classe 4');
+    expect(cladding.verticalJoistStockBreakdown?.every((item) => item.productRef != null)).toBe(true);
     expect(cladding.edgeBoardFixingCount).toBe(352);
     expect(cladding.edgeFixingSourceUrl).toContain('product_File/470.pdf');
 
@@ -85,12 +88,37 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(finish?.productRef).toBe(pinStrie.catalog?.internalCodes.join(', '));
     expect(finish?.status).toBe('exact');
     expect(vertical?.quantity).toBe(11);
+    expect(vertical?.label).toContain('pin Classe 4');
+    expect(vertical?.stockBreakdown?.every((item) => [2400, 3000].includes(item.lengthMm))).toBe(true);
     expect(vertical?.note).toContain('44 support');
     expect(vertical?.note).toContain('50 cm');
     const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
     expect(fixings?.note).toContain('352 vis d’habillage latéral');
     expect(fixings?.quantityMin).toBe(6);
     expect(fixings?.quantityMax).toBe(7);
+  });
+
+  it('utilise une lambourde exotique pour l’habillage d’une terrasse Cumaru', () => {
+    const cumaru = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G005')!;
+    const project: ProjectInput = {
+      ...base,
+      board: cumaru,
+      edgeFinishMode: 'full-perimeter',
+      edgeCladdingHeightCm: 20,
+    };
+
+    const cladding = computeEdgeCladding(project);
+    expect(cladding.status).toBe('exact');
+    expect(cladding.verticalJoistLabel).toContain('exotique');
+    expect(cladding.verticalJoistStockBoards?.every((item) => [1850, 2450, 3950].includes(item.stockLengthMm))).toBe(true);
+    expect(cladding.verticalJoistTotalTtc).toBeGreaterThan(0);
+
+    const result = runConfigurator(project);
+    const vertical = result.basket?.lines.find((line) => line.id === 'edge-vertical-joists');
+    expect(vertical?.status).toBe('exact');
+    expect(vertical?.label).toContain('exotique');
+    expect(vertical?.stockBreakdown?.every((item) => [1850, 2450, 3950].includes(item.lengthMm))).toBe(true);
+    expect(vertical?.sourceUrl).toContain('lambourdes-ossatures');
   });
 
   it('optimise différemment les lambourdes verticales quand la hauteur change', () => {

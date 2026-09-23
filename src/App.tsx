@@ -11,8 +11,9 @@ import { SideView } from './components/SideView';
 import { LayerControls } from './components/LayerControls';
 import { LevelingEditor } from './components/LevelingEditor';
 import { SupportHeightMap } from './components/SupportHeightMap';
+import { LayingSetupEditor } from './components/LayingSetupEditor';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
-import type { BoardOrientation, DeckLayingPattern, DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
+import type { DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 import { getCommercialJoistOptions } from './engine/constructionRules';
 import { restoreProjectFromUrl } from './commercial/share';
@@ -56,6 +57,9 @@ const initialProject: ProjectInput = {
   includeGeotextile: false,
   drainage: 'unknown',
   orientation: 'length',
+  layingDirection: 'length',
+  layingStart: 'left',
+  layingZones: [],
   layingPattern: 'straight',
   board: defaultBoard,
   joist: demoJoist,
@@ -335,38 +339,7 @@ export default function App() {
                 onRemove={(id) => setCompareIds((current) => current.filter((value) => value !== id))}
               />
 
-              <div className="orientation-block"><h3>Dans quel sens souhaitez-vous poser les lames ?</h3><div className="orientation-grid">
-                {([['length','Dans la longueur'],['width','Dans la largeur']] as const).map(([value,label]) => (
-                  <button type="button" key={value} className={`orientation-card ${project.orientation === value ? 'active' : ''}`} onClick={() => setProject({ ...project, orientation: value as BoardOrientation })}>
-                    <span className={`mini-deck ${value}`}><i /><i /><i /><i /></span><strong>{label}</strong>
-                  </button>
-                ))}
-              </div></div>
-
-              <div className="laying-pattern-block">
-                <h3>Quel calepinage souhaitez-vous pour les lames ?</h3>
-                <p>Le motif reprend la logique CALPI. Les raccords restent sur des axes cohérents pour la structure.</p>
-                <div className="laying-pattern-grid">
-                  {([
-                    ['straight', 'Pose entière / droite', 'Départ avec une lame entière à chaque rangée'],
-                    ['half', 'Pose décalée 1/2', 'Une rangée sur deux démarre à une demi-lame'],
-                    ['third', 'Pose décalée 1/3', 'Cycle strict : entière, 2/3, 1/3'],
-                  ] as const).map(([value, title, subtitle]) => (
-                    <ChoiceCard
-                      key={value}
-                      active={(project.layingPattern ?? 'straight') === value}
-                      title={title}
-                      subtitle={subtitle}
-                      onClick={() => setProject({ ...project, layingPattern: value as DeckLayingPattern })}
-                    />
-                  ))}
-                  <button type="button" className="choice-card laying-pattern-disabled" disabled>
-                    <span className="choice-check" />
-                    <strong>Pose diagonale</strong>
-                    <small>Moteur non encore validé pour la terrasse — aucune approximation activée.</small>
-                  </button>
-                </div>
-              </div>
+              <LayingSetupEditor project={project} onChange={setProject} />
             </div>
           )}
 

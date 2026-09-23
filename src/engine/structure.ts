@@ -98,7 +98,12 @@ export function computeStructure(
     };
 
     for (const axis of axes) {
-      const intervals = intervalsForRegionAtV(input, basis, -axis, 0, explicitZone, excludedZones);
+      const queryAxis = axis <= zone.minUMm + 0.0001
+        ? Math.min(zone.maxUMm, zone.minUMm + 1)
+        : axis >= zone.maxUMm - 0.0001
+          ? Math.max(zone.minUMm, zone.maxUMm - 1)
+          : axis;
+      const intervals = intervalsForRegionAtV(input, basis, -queryAxis, 0, explicitZone, excludedZones);
       const lengthMm = intervals.reduce((sum, [start, end]) => sum + (end - start), 0);
       if (lengthMm <= 1) continue;
       const supportCount = intervals.reduce((sum, [start, end]) => {

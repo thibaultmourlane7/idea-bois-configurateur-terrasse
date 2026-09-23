@@ -131,7 +131,12 @@ function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
     };
 
     for (const axis of axes) {
-      const fixedTransverseMm = -axis.axisPositionMm;
+      const queryAxisMm = axis.axisPositionMm <= zoneLayout.minUMm + 0.0001
+        ? Math.min(zoneLayout.maxUMm, zoneLayout.minUMm + 1)
+        : axis.axisPositionMm >= zoneLayout.maxUMm - 0.0001
+          ? Math.max(zoneLayout.minUMm, zoneLayout.maxUMm - 1)
+          : axis.axisPositionMm;
+      const fixedTransverseMm = -queryAxisMm;
       const intervals = intervalsForRegionAtV(
         input,
         joistBasis,
@@ -144,8 +149,14 @@ function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
       for (const [startMm, endMm] of intervals) {
         const lengthMm = endMm - startMm;
         if (lengthMm <= 1) continue;
-        const a = worldPointFromUV(startMm, fixedTransverseMm, joistBasis);
-        const b = worldPointFromUV(endMm, fixedTransverseMm, joistBasis);
+        const a = {
+          xM: (axis.axisPositionMm * zoneLayout.dirX + startMm * zoneLayout.normalX) / 1000,
+          yM: (axis.axisPositionMm * zoneLayout.dirY + startMm * zoneLayout.normalY) / 1000,
+        };
+        const b = {
+          xM: (axis.axisPositionMm * zoneLayout.dirX + endMm * zoneLayout.normalX) / 1000,
+          yM: (axis.axisPositionMm * zoneLayout.dirY + endMm * zoneLayout.normalY) / 1000,
+        };
         segments.push({
           id: `CJ${id++}`,
           axisPositionMm: axis.axisPositionMm,

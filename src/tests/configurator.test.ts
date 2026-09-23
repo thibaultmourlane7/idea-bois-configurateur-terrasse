@@ -85,6 +85,18 @@ describe('Configurateur terrasse V0.9', () => {
     expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-GAP-001')).toBe(false);
   });
 
+  it('n’affiche pas un ancien code interne comme SKU quand une longueur n’a pas de référence vérifiée', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
+    const result = runConfigurator({
+      ...base,
+      board,
+      dimensions: { ...base.dimensions, lengthM: 5.1, widthM: 0.5 },
+    });
+    const decking = result.basket?.lines.find((line) => line.id === 'decking');
+    expect(decking?.stockBreakdown?.some((item) => item.lengthMm === 5100 && !item.productRef)).toBe(true);
+    expect(decking?.productRef).toBeUndefined();
+  });
+
   it('utilise la règle commerciale validée du Pin du Nord sans blocage normatif générique', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
     const result = runConfigurator({ ...base, board });

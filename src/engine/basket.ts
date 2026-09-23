@@ -63,11 +63,15 @@ function joistVariantsFor(input: ProjectInput) {
 
 function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, pricing: PricingResult): BasketLine {
   if (layout && pricing.boardPurchaseTtc != null) {
+    const breakdown = stockLengthBreakdown(layout.stockBoards, boardRefsByLength(input));
+    const allRefsKnown = Boolean(breakdown.length) && breakdown.every((item) => item.productRef);
     return {
       id: 'decking',
       family: 'decking',
       label: input.board.label,
-      productRef: input.board.catalog?.internalCodes.join(', '),
+      productRef: allRefsKnown
+        ? [...new Set(breakdown.map((item) => item.productRef).filter((value): value is string => Boolean(value)))].join(', ')
+        : undefined,
       quantity: layout.stockBoards.length,
       unit: 'lame(s)',
       unitPriceTtc: input.board.priceTtcPerM2,
@@ -75,7 +79,7 @@ function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: Layo
       status: 'exact',
       required: true,
       note: `${layout.purchasedLinearM.toFixed(2)} ml achetés • ${layout.wastePercent.toFixed(1)} % de chute`,
-      stockBreakdown: stockLengthBreakdown(layout.stockBoards, boardRefsByLength(input)),
+      stockBreakdown: breakdown,
       sourceUrl: input.board.catalog?.sourceUrl,
     };
   }
@@ -156,8 +160,10 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
           id: 'joists',
           family: 'joists',
           label: rule?.joistLabel ?? longestJoist.label,
-          productRef: hasPrecisePlan && joistBreakdown?.every((item) => item.productRef)
-            ? joistBreakdown.map((item) => item.productRef).filter(Boolean).join(', ')
+          productRef: hasPrecisePlan
+            ? joistBreakdown?.every((item) => item.productRef)
+              ? [...new Set(joistBreakdown.map((item) => item.productRef).filter((value): value is string => Boolean(value)))].join(', ')
+              : undefined
             : longestJoist.productRef,
           quantity: joistPieces,
           unit: 'pièce(s)',

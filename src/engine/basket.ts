@@ -1,4 +1,4 @@
-import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput, SupportPlanResult } from '../domain/types';
+import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput, StockBoard, StockLengthBreakdown, SupportPlanResult } from '../domain/types';
 import { computeEdgeCladding } from './edgeCladding';
 import {
   EXOTIC_JOIST_65X42_3950,
@@ -20,6 +20,17 @@ export const BASKET_TAG = 'SA-TERR-BASKET-001';
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+function stockLengthBreakdown(stockBoards: StockBoard[]): StockLengthBreakdown[] {
+  const grouped = new Map<number, number>();
+  for (const board of stockBoards) {
+    grouped.set(board.stockLengthMm, (grouped.get(board.stockLengthMm) ?? 0) + 1);
+  }
+  return [...grouped.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([lengthMm, quantity]) => ({ lengthMm, quantity }));
+}
+
+
 function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, pricing: PricingResult): BasketLine {
   if (layout && pricing.boardPurchaseTtc != null) {
     return {
@@ -34,6 +45,7 @@ function deckingLine(input: ProjectInput, geometry: GeometryResult, layout: Layo
       status: 'exact',
       required: true,
       note: `${layout.purchasedLinearM.toFixed(2)} ml achetés • ${layout.wastePercent.toFixed(1)} % de chute`,
+      stockBreakdown: stockLengthBreakdown(layout.stockBoards),
       sourceUrl: input.board.catalog?.sourceUrl,
     };
   }

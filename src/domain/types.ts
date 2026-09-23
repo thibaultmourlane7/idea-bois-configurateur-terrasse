@@ -368,6 +368,15 @@ export interface PricingResult {
 export type BasketLineStatus = 'exact' | 'range' | 'informative' | 'pending';
 export type BasketFamily = 'decking' | 'joists' | 'supports' | 'fixings' | 'protection' | 'accessories';
 
+export interface StockLengthBreakdown {
+  /** Longueur commerciale réellement sélectionnée par l'optimiseur. */
+  lengthMm: number;
+  /** Nombre de lames à acheter dans cette longueur. */
+  quantity: number;
+  /** Référence uniquement si une correspondance longueur → SKU est explicitement validée. */
+  productRef?: string;
+}
+
 export interface BasketLine {
   id: string;
   family: BasketFamily;
@@ -384,6 +393,8 @@ export interface BasketLine {
   status: BasketLineStatus;
   required: boolean;
   note?: string;
+  /** Répartition réelle par longueur commerciale. Aucune référence n'est déduite sans mapping validé. */
+  stockBreakdown?: StockLengthBreakdown[];
   sourceUrl?: string;
 }
 

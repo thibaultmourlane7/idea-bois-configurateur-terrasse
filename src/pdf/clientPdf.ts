@@ -316,10 +316,12 @@ export async function generateClientPdf(input: ProjectInput, result: Configurato
 
   for (const line of model.lines) {
     const productLines = doc.splitTextToSize(clean(line.label), 66) as string[];
+    const detailLines = line.detail ? doc.splitTextToSize(clean(line.detail), 66) as string[] : [];
     const refLines = doc.splitTextToSize(clean(line.reference), 25) as string[];
     const qtyLines = doc.splitTextToSize(clean(line.quantity), 26) as string[];
     const priceLines = doc.splitTextToSize(clean(line.price), 30) as string[];
-    const rowHeight = Math.max(14, productLines.length * 4 + 7, refLines.length * 4 + 7, qtyLines.length * 4 + 7, priceLines.length * 4 + 7);
+    const productHeight = (productLines.length + detailLines.length) * 4 + (detailLines.length ? 10 : 7);
+    const rowHeight = Math.max(14, productHeight, refLines.length * 4 + 7, qtyLines.length * 4 + 7, priceLines.length * 4 + 7);
 
     if (y + rowHeight > 268) {
       drawFooter(doc, version);
@@ -342,6 +344,13 @@ export async function generateClientPdf(input: ProjectInput, result: Configurato
     doc.setFontSize(7.3);
     doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
     doc.text(productLines, col.product, y + 4);
+    if (detailLines.length) {
+      doc.setFontSize(6.4);
+      doc.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+      doc.text(detailLines, col.product, y + 4 + productLines.length * 4 + 1);
+      doc.setFontSize(7.3);
+      doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    }
     doc.text(refLines, col.ref, y + 4);
     doc.text(qtyLines, col.qty, y + 4);
     doc.setFont('helvetica', 'bold');

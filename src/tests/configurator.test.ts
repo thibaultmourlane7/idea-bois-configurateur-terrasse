@@ -62,6 +62,16 @@ describe('Configurateur terrasse V0.9', () => {
     const supports = result.basket?.lines.filter((line) => line.family === 'supports' && line.status === 'exact') ?? [];
     const fixings = result.basket?.lines.find((line) => line.id === 'fixings');
     const protection = result.basket?.lines.find((line) => line.id === 'protection');
+    const decking = result.basket?.lines.find((line) => line.id === 'decking');
+
+    const expectedByLength = new Map<number, number>();
+    for (const stock of result.layout?.stockBoards ?? []) {
+      expectedByLength.set(stock.stockLengthMm, (expectedByLength.get(stock.stockLengthMm) ?? 0) + 1);
+    }
+    const actualByLength = new Map((decking?.stockBreakdown ?? []).map((item) => [item.lengthMm, item.quantity]));
+    expect(actualByLength).toEqual(expectedByLength);
+    expect((decking?.stockBreakdown ?? []).reduce((sum, item) => sum + item.quantity, 0)).toBe(result.layout?.stockBoards.length);
+    expect(decking?.stockBreakdown?.every((item) => item.productRef == null)).toBe(true);
 
     expect(joists?.quantity).toBe(result.supportPlan?.joistStockBoards.length);
     expect(joists?.quantity).toBeGreaterThan(28);

@@ -3,6 +3,16 @@ import type { BasketLine, ConfiguratorResult, ProjectInput } from '../domain/typ
 const number = (value: number, digits = 1) => value.toLocaleString('fr-FR', { maximumFractionDigits: digits });
 const euro = (value: number) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
 
+const lengthLabel = (lengthMm: number) => `${number(lengthMm / 1000, 2)} m`;
+
+function stockBreakdownLabel(line: BasketLine): string | null {
+  if (!line.stockBreakdown?.length) return null;
+  return line.stockBreakdown
+    .map((item) => `${item.quantity} × ${lengthLabel(item.lengthMm)}`)
+    .join(' + ');
+}
+
+
 const familyLabel: Record<BasketLine['family'], string> = {
   decking: 'Lames',
   joists: 'Lambourdes',
@@ -82,12 +92,26 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
         </div>
 
         <div className="basket-lines">
-          {(basket?.lines ?? []).map((line) => (
+          {(basket?.lines ?? []).map((line) => {
+            const breakdown = stockBreakdownLabel(line);
+            return (
             <article className={`basket-line ${line.status}`} key={line.id}>
               <div className="basket-family">{familyLabel[line.family]}</div>
               <div className="basket-product">
                 <strong>{line.label}</strong>
-                {line.productRef && <small>Réf. {line.productRef}</small>}
+                {line.productRef && (
+                  <small>
+                    {breakdown ? 'Réf. catalogue disponibles (non associées aux longueurs) : ' : 'Réf. '}
+                    {line.productRef}
+                  </small>
+                )}
+                {breakdown && (
+                  <div className="stock-breakdown">
+                    <b>Longueurs à commander</b>
+                    <span>{breakdown}</span>
+                    <small>Aucun SKU n’est associé automatiquement à une longueur sans correspondance catalogue validée.</small>
+                  </div>
+                )}
                 {line.note && <p>{line.note}</p>}
               </div>
               <div className="basket-qty">{quantityLabel(line)}</div>
@@ -99,7 +123,8 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
                 {line.status === 'exact' ? '✓' : line.status === 'range' ? '≈' : line.status === 'informative' ? 'i' : '…'}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
 
         <div className={`basket-total ${basket?.status ?? 'partial'}`}>

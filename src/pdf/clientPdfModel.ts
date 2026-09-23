@@ -7,6 +7,7 @@ export interface ClientPdfLine {
   reference: string;
   quantity: string;
   price: string;
+  detail?: string;
   status: 'calcule' | 'fourchette' | 'indicatif' | 'a-confirmer';
 }
 
@@ -142,6 +143,14 @@ function obstacleDetails(input: ProjectInput): string[] {
   });
 }
 
+function stockBreakdownText(line: BasketLine): string | undefined {
+  if (!line.stockBreakdown?.length) return undefined;
+  const detail = line.stockBreakdown
+    .map((item) => `${item.quantity} x ${fmt(item.lengthMm / 1000)} m`)
+    .join(' + ');
+  return `Longueurs a commander : ${detail}. References catalogue non associees automatiquement aux longueurs.`;
+}
+
 function unique(values: Array<string | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value?.trim())))];
 }
@@ -176,6 +185,7 @@ export function buildClientPdfModel(
     reference: line.productRef ?? '-',
     quantity: quantity(line),
     price: price(line),
+    detail: stockBreakdownText(line),
     status: lineStatus(line),
   }));
 
@@ -190,7 +200,15 @@ export function buildClientPdfModel(
     : 'Calepinage final a confirmer';
 
   const stockSummary = layout
-    ? `${layout.stockBoards.length} lames commerciales - ${fmt(layout.purchasedLinearM)} ml achetes - chute ${fmt(layout.wastePercent, 1)} %`
+    ? (() => {
+        const grouped = new Map<number, number>();
+        for (const stock of layout.stockBoards) grouped.set(stock.stockLengthMm, (grouped.get(stock.stockLengthMm) ?? 0) + 1);
+        const breakdown = [...grouped.entries()]
+          .sort((a, b) => b[0] - a[0])
+          .map(([lengthMm, qty]) => `${qty} x ${fmt(lengthMm / 1000)} m`)
+          .join(' + ');
+        return `${layout.stockBoards.length} lames commerciales - ${breakdown} - ${fmt(layout.purchasedLinearM)} ml achetes - chute ${fmt(layout.wastePercent, 1)} %`;
+      })()
     : 'Longueurs de commande a confirmer';
 
   const structureSummary = supportPlan && supportPlan.status !== 'unavailable'

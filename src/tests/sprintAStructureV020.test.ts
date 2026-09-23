@@ -66,6 +66,26 @@ describe('Sprint A V0.20 — structure liée au calepinage', () => {
     expect(plan.joistSegments.some((segment) => segment.zoneId === 'Z2' && segment.role === 'field')).toBe(true);
   });
 
+  it('compte les axes de raccord zone par zone sans fusionner deux repères locaux identiques', () => {
+    const project: ProjectInput = {
+      ...base,
+      layingDirection: 'length',
+      layingPattern: 'half',
+      layingZones: [{
+        id: 'Z-AXES',
+        label: 'Zone axes',
+        points: [{ xM: 0.5, yM: 0.5 }, { xM: 5.5, yM: 0.5 }, { xM: 5.5, yM: 1.5 }, { xM: 0.5, yM: 1.5 }],
+        direction: 'length',
+        pattern: 'half',
+        start: 'left',
+      }],
+    };
+    const layout = computeLayout(project);
+    const expected = layout.zones.reduce((sum, zone) => sum + zone.buttJointAxisPositionsMm.length, 0);
+    const plan = computeSupportPlan(project, layout);
+    expect(plan.buttJointAxisCount).toBe(expected);
+  });
+
   it('calcule la structure normative à partir des mêmes zones de calepinage', () => {
     const layout = computeLayout(base);
     const structure = computeStructure(base, 500, 700, layout);

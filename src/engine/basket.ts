@@ -174,7 +174,7 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
           status: hasPrecisePlan && !joistPricingComplete ? 'pending' : 'exact',
           required: true,
           note: hasPrecisePlan
-            ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation selon les longueurs commerciales validées de la lambourde.`
+            ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisCount ?? supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation selon les longueurs commerciales validées de la lambourde.`
             : `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
           stockBreakdown: joistBreakdown,
           sourceUrl: hasPrecisePlan ? rule?.sourceUrl : longestJoist.sourceUrl,

@@ -403,7 +403,10 @@ export interface SupportPlanResult {
   joistLinearM: number;
   doubleJoistLinearM: number;
   joistStockBoards: StockBoard[];
+  /** Positions historiques des axes, fiables directement pour un calepinage mono-zone. */
   buttJointAxisPositionsMm: number[];
+  /** Nombre total d’axes de raccord locaux, additionné zone par zone. */
+  buttJointAxisCount?: number;
   supportPoints: SupportPlanPoint[];
   plotGroups: SupportPlanGroup[];
   unsupportedPointCount: number;

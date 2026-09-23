@@ -76,7 +76,7 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
             <small>
               {result.supportPlan.minRequiredPlotHeightMm?.toFixed(0) ?? '?'}–{result.supportPlan.maxRequiredPlotHeightMm?.toFixed(0) ?? '?'} mm
               {' • '}{result.supportPlan.joistStockBoards.length} lambourdes à acheter
-              {result.supportPlan.buttJointAxisPositionsMm.length ? input.doubleJoistsAtButtJoints ? ` • ${result.supportPlan.buttJointAxisPositionsMm.length} axe(s) doublé(s)` : ` • ${result.supportPlan.buttJointAxisPositionsMm.length} jonction(s) repérée(s)` : ''}
+              {(result.supportPlan.buttJointAxisCount ?? result.supportPlan.buttJointAxisPositionsMm.length) ? input.doubleJoistsAtButtJoints ? ` • ${result.supportPlan.buttJointAxisCount ?? result.supportPlan.buttJointAxisPositionsMm.length} axe(s) doublé(s)` : ` • ${result.supportPlan.buttJointAxisCount ?? result.supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction` : ''}
             </small>
           </article>
         )}

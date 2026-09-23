@@ -374,6 +374,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
       doubleJoistLinearM: 0,
       joistStockBoards: [],
       buttJointAxisPositionsMm: [],
+      buttJointAxisCount: 0,
       supportPoints: [],
       plotGroups: [],
       unsupportedPointCount: 0,
@@ -390,6 +391,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
       doubleJoistLinearM: 0,
       joistStockBoards: [],
       buttJointAxisPositionsMm: [],
+      buttJointAxisCount: 0,
       supportPoints: [],
       plotGroups: [],
       unsupportedPointCount: 0,
@@ -407,6 +409,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
       doubleJoistLinearM: 0,
       joistStockBoards: [],
       buttJointAxisPositionsMm: [],
+      buttJointAxisCount: 0,
       supportPoints: [],
       plotGroups: [],
       unsupportedPointCount: 0,
@@ -417,6 +420,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
   }
 
   const { segments, buttJointAxisPositionsMm, pendingCurvedPerimeter } = plannedJoistSegments(input, layout);
+  const buttJointAxisCount = layout.zones.reduce((sum, zone) => sum + zone.buttJointAxisPositionsMm.length, 0);
   const pieces = joistRequiredPieces(segments);
   const joistStockBoards = optimizeCuts(pieces, rule.joistStockLengthsMm);
   const joistLinearM = segments.reduce((sum, segment) => sum + segment.lengthMm * segment.multiplicity, 0) / 1000;
@@ -451,6 +455,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     doubleJoistLinearM,
     joistStockBoards,
     buttJointAxisPositionsMm,
+    buttJointAxisCount,
     supportPoints,
     plotGroups,
     unsupportedPointCount,
@@ -459,7 +464,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     sourceLabel: rule.sourceLabel,
     sourceUrl: rule.sourceUrl,
     pendingCurvedPerimeter,
-    note: `${perimeterCount} segment(s) de lambourde périphérique droite calculé(s). ${zoneBoundaryCount ? `${zoneBoundaryCount} segment(s) de séparation entre zones ajoutés. ` : ''}${pendingCurvedPerimeter ? 'Contour courbe détecté : la solution de lambourde périphérique sur arc reste à confirmer et n’est pas comptée. ' : ''}${buttJointAxisPositionsMm.length
+    note: `${perimeterCount} segment(s) de lambourde périphérique droite calculé(s). ${zoneBoundaryCount ? `${zoneBoundaryCount} segment(s) de séparation entre zones ajoutés. ` : ''}${pendingCurvedPerimeter ? 'Contour courbe détecté : la solution de lambourde périphérique sur arc reste à confirmer et n’est pas comptée. ' : ''}${buttJointAxisCount
       ? input.doubleJoistsAtButtJoints
         ? 'Les axes de jonction de lames sont repérés et l’option double lambourdage est activée.'
         : 'Les axes de jonction de lames sont repérés. Le double lambourdage est désactivé : une seule lambourde est comptée sur chaque axe.'

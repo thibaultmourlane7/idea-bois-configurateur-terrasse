@@ -87,7 +87,7 @@ async function renderPdf(file: File, requestedPage: number): Promise<RenderedRef
   if (!context) throw new Error('Canvas PDF indisponible.');
   context.fillStyle = '#ffffff';
   context.fillRect(0, 0, widthPx, heightPx);
-  await page.render({ canvasContext: context, viewport }).promise;
+  await page.render({ canvas, canvasContext: context, viewport }).promise;
   const blob = await canvasBlob(canvas);
 
   return {

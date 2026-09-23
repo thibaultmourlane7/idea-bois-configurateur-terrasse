@@ -120,7 +120,7 @@ export function computeLayout(input: ProjectInput): LayoutResult {
 
     for (
       let centerMm = bounds.minV + input.board.widthMm / 2;
-      centerMm <= bounds.maxV - input.board.widthMm / 2 + 0.001;
+      centerMm <= bounds.maxV + 0.001;
       centerMm += pitchMm
     ) {
       const intervals = intervalsForRegionAtV(

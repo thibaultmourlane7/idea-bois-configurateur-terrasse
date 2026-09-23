@@ -126,8 +126,8 @@ function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
     const joistBasis: LayingBasis = {
       dirX: zoneLayout.normalX,
       dirY: zoneLayout.normalY,
-      normalX: -zoneLayout.dirX,
-      normalY: -zoneLayout.dirY,
+      normalX: zoneLayout.dirX,
+      normalY: zoneLayout.dirY,
     };
 
     for (const axis of axes) {
@@ -136,7 +136,7 @@ function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
         : axis.axisPositionMm >= zoneLayout.maxUMm - 0.0001
           ? Math.max(zoneLayout.minUMm, zoneLayout.maxUMm - 1)
           : axis.axisPositionMm;
-      const fixedTransverseMm = -queryAxisMm;
+      const fixedTransverseMm = queryAxisMm;
       const intervals = intervalsForRegionAtV(
         input,
         joistBasis,

@@ -93,8 +93,8 @@ export function computeStructure(
     const basis: LayingBasis = {
       dirX: zone.normalX,
       dirY: zone.normalY,
-      normalX: -zone.dirX,
-      normalY: -zone.dirY,
+      normalX: zone.dirX,
+      normalY: zone.dirY,
     };
 
     for (const axis of axes) {
@@ -103,7 +103,7 @@ export function computeStructure(
         : axis >= zone.maxUMm - 0.0001
           ? Math.max(zone.minUMm, zone.maxUMm - 1)
           : axis;
-      const intervals = intervalsForRegionAtV(input, basis, -queryAxis, 0, explicitZone, excludedZones);
+      const intervals = intervalsForRegionAtV(input, basis, queryAxis, 0, explicitZone, excludedZones);
       const lengthMm = intervals.reduce((sum, [start, end]) => sum + (end - start), 0);
       if (lengthMm <= 1) continue;
       const supportCount = intervals.reduce((sum, [start, end]) => {

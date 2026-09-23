@@ -77,16 +77,25 @@ export function resolveLayingBasis(
   startEdgeIndex?: number,
 ): LayingBasis {
   let [dirX, dirY] = baseDirection(direction);
+  let normalX = -dirY;
+  let normalY = dirX;
   const points = regionOutline(input, zone);
   const c = centroid(points);
   const s = startPoint(points, start, startEdgeIndex);
   const towardCenterX = c.x - s.x;
   const towardCenterY = c.y - s.y;
-  if (dirX * towardCenterX + dirY * towardCenterY < -EPS) {
+
+  const alongDot = dirX * towardCenterX + dirY * towardCenterY;
+  const transverseDot = normalX * towardCenterX + normalY * towardCenterY;
+  if (alongDot < -EPS) {
     dirX *= -1;
     dirY *= -1;
   }
-  return { dirX, dirY, normalX: -dirY, normalY: dirX };
+  if (transverseDot < -EPS) {
+    normalX *= -1;
+    normalY *= -1;
+  }
+  return { dirX, dirY, normalX, normalY };
 }
 
 export function effectiveProjectDirection(input: ProjectInput): LayingDirection {
@@ -342,6 +351,23 @@ function segmentIntersection(a: TerracePoint, b: TerracePoint, c: TerracePoint, 
     || (o4 === 0 && onSegment(c, d, b));
 }
 
+function pointStrictlyInZone(point: TerracePoint, zone: LayingZone): boolean {
+  for (let i = 0; i < zone.points.length; i += 1) {
+    if (onSegment(zone.points[i], zone.points[(i + 1) % zone.points.length], point)) return false;
+  }
+  return pointInZone(point, zone);
+}
+
+function properSegmentIntersection(a: TerracePoint, b: TerracePoint, c: TerracePoint, d: TerracePoint): boolean {
+  const cross = (p: TerracePoint, q: TerracePoint, r: TerracePoint) =>
+    (q.xM - p.xM) * (r.yM - p.yM) - (q.yM - p.yM) * (r.xM - p.xM);
+  const c1 = cross(a, b, c);
+  const c2 = cross(a, b, d);
+  const c3 = cross(c, d, a);
+  const c4 = cross(c, d, b);
+  return c1 * c2 < -EPS && c3 * c4 < -EPS;
+}
+
 export function zonesOverlap(a: LayingZone, b: LayingZone): boolean {
   for (let i = 0; i < a.points.length; i += 1) {
     const a1 = a.points[i];
@@ -349,10 +375,18 @@ export function zonesOverlap(a: LayingZone, b: LayingZone): boolean {
     for (let j = 0; j < b.points.length; j += 1) {
       const b1 = b.points[j];
       const b2 = b.points[(j + 1) % b.points.length];
-      if (segmentIntersection(a1, a2, b1, b2)) return true;
+      if (properSegmentIntersection(a1, a2, b1, b2)) return true;
     }
   }
-  return pointInZone(a.points[0], b) || pointInZone(b.points[0], a);
+
+  if (a.points.some((point) => pointStrictlyInZone(point, b))) return true;
+  if (b.points.some((point) => pointStrictlyInZone(point, a))) return true;
+
+  const centroidOf = (zone: LayingZone): TerracePoint => ({
+    xM: zone.points.reduce((sum, point) => sum + point.xM, 0) / zone.points.length,
+    yM: zone.points.reduce((sum, point) => sum + point.yM, 0) / zone.points.length,
+  });
+  return pointStrictlyInZone(centroidOf(a), b) || pointStrictlyInZone(centroidOf(b), a);
 }
 
 export function zoneProjectedBounds(input: ProjectInput, basis: LayingBasis, zone?: LayingZone): ProjectedBounds {

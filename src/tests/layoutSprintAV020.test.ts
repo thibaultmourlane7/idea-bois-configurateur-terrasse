@@ -100,6 +100,34 @@ describe('Sprint A V0.20 — calepinage avancé', () => {
     expect(mainInsideZone).toBe(false);
   });
 
+  it('conserve la dernière rangée coupée en rive comme le moteur historique', () => {
+    const layout = computeLayout(base);
+    expect(layout.rowCount).toBe(27);
+    expect(layout.boardSegments.some((segment) => segment.transverseCenterMm > 3900)).toBe(true);
+  });
+
+  it('le départ haut/bas inverse réellement l’ordre du cycle 1/2', () => {
+    const top = computeLayout({ ...base, layingPattern: 'half', layingStart: 'top' });
+    const bottom = computeLayout({ ...base, layingPattern: 'half', layingStart: 'bottom' });
+    const topFirst = top.boardSegments.filter((segment) => segment.zoneId === 'main').sort((a, b) => a.rowIndex - b.rowIndex)[0];
+    const bottomFirst = bottom.boardSegments.filter((segment) => segment.zoneId === 'main').sort((a, b) => a.rowIndex - b.rowIndex)[0];
+    expect(topFirst.y1M ?? 0).toBeLessThan(bottomFirst.y1M ?? 0);
+  });
+
+  it('autorise deux zones adjacentes qui partagent seulement une frontière', () => {
+    const a: LayingZone = {
+      id: 'A1', label: 'A1',
+      points: [{ xM: 1, yM: 1 }, { xM: 2, yM: 1 }, { xM: 2, yM: 2 }, { xM: 1, yM: 2 }],
+      direction: 'length', pattern: 'straight', start: 'left',
+    };
+    const b: LayingZone = {
+      id: 'B1', label: 'B1',
+      points: [{ xM: 2, yM: 1 }, { xM: 3, yM: 1 }, { xM: 3, yM: 2 }, { xM: 2, yM: 2 }],
+      direction: 'width', pattern: 'straight', start: 'top',
+    };
+    expect(validateProject({ ...base, layingZones: [a, b] }).some((item) => item.tag === 'SA-TERR-ZONE-006')).toBe(false);
+  });
+
   it('bloque deux zones qui se chevauchent', () => {
     const a: LayingZone = {
       id: 'A', label: 'A',

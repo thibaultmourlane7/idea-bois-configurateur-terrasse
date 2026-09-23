@@ -4,7 +4,7 @@ import {
   PIN_JOIST_VARIANTS,
   type CommercialMaterial,
 } from '../catalog/materials';
-import { getDeckOutlinePointsM } from './geometry';
+import { edgesForTreatment } from './edges';
 import { optimizeCuts } from './cuts';
 import { getCommercialConstructionRule } from './constructionRules';
 
@@ -77,12 +77,9 @@ function stockBreakdown(
 
 
 function edgeLengths(input: ProjectInput): number[] {
-  if (input.shape === 'circle') return [Math.PI * input.dimensions.circleDiameterM];
-  const points = getDeckOutlinePointsM(input);
-  return points.map((point, index) => {
-    const next = points[(index + 1) % points.length];
-    return Math.hypot(next.x - point.x, next.y - point.y);
-  }).filter((length) => length > 0.001);
+  return edgesForTreatment(input, 'cladding')
+    .map((edge) => edge.lengthM)
+    .filter((length) => length > 0.001);
 }
 
 function requiredPiecesForRows(lengthsM: number[], rows: number): RequiredPiece[] {
@@ -122,7 +119,7 @@ export function computeEdgeCladding(input: ProjectInput): EdgeCladdingCalculatio
   const perimeterM = lengthsM.reduce((sum, value) => sum + value, 0);
   const heightM = Math.max(0, input.edgeCladdingHeightCm) / 100;
 
-  if (input.edgeFinishMode !== 'full-perimeter' || heightM <= 0) {
+  if (!lengthsM.length || heightM <= 0) {
     return { status: 'none', mode: 'none', perimeterM, heightM, edgeLengthsM: lengthsM };
   }
 

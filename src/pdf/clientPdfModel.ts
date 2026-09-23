@@ -1,5 +1,6 @@
 import type { BasketLine, ConfiguratorResult, ProjectInput } from '../domain/types';
 import { getDeckOutlinePointsM } from '../engine/geometry';
+import { computeTerraceEdges, EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
 
 export interface ClientPdfLine {
   family: string;
@@ -185,7 +186,17 @@ export function buildClientPdfModel(
       ? `${eur(basket?.totalMinTtc ?? 0)} a ${eur(basket?.totalMaxTtc ?? 0)}`
       : eur(basket?.knownSubtotalTtc ?? 0);
 
-  const finishParts = [input.edgeFinishMode === 'full-perimeter' ? `Habillage lateral du pourtour - hauteur ${fmt(input.edgeCladdingHeightCm)} cm` : 'Sans habillage lateral'];
+  const edgeResults = computeTerraceEdges(input);
+  const treatedEdges = edgeResults.filter((edge) => edge.treatment !== 'none');
+  const finishParts = [
+    input.edgeFinishMode === 'full-perimeter'
+      ? `Habillage lateral du pourtour - hauteur ${fmt(input.edgeCladdingHeightCm)} cm`
+      : input.edgeFinishMode === 'per-edge'
+        ? treatedEdges.length
+          ? treatedEdges.map((edge) => `${edge.label}: ${EDGE_CONTEXT_LABELS[edge.context]} / ${EDGE_TREATMENT_LABELS[edge.treatment]}`).join(' ; ')
+          : 'Rives configurees sans traitement materiel'
+        : 'Sans habillage lateral',
+  ];
   if (input.supportType === 'stabilized-ground') finishParts.push(input.includeGeotextile ? 'Geotextile inclus' : 'Sans geotextile');
 
   const lines = (basket?.lines ?? []).map((line): ClientPdfLine => ({

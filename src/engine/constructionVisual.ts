@@ -1,7 +1,8 @@
 import type { BasketResult, PlannedJoistRole, ProjectInput, SupportPlanResult } from '../domain/types';
 import { getCommercialConstructionRule, type CommercialConstructionRule } from './constructionRules';
 import { computeEdgeCladding, type EdgeCladdingCalculation } from './edgeCladding';
-import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from './geometry';
+import { getDeckBoundingSizeM, getDeckIntervalsAtMm } from './geometry';
+import { edgesForTreatment } from './edges';
 
 export interface VisualLineSegment {
   id: string;
@@ -110,21 +111,18 @@ function distributePlots(segments: VisualLineSegment[], target: number): VisualP
 }
 
 function edgeSupportPoints(input: ProjectInput, spacingMm: number): VisualPoint[] {
-  if (input.edgeFinishMode !== 'full-perimeter' || input.shape === 'circle') return [];
-  const points = getDeckOutlinePointsM(input);
+  const edges = edgesForTreatment(input, 'cladding').filter((edge) => !edge.curved);
   const out: VisualPoint[] = [];
   let id = 1;
 
-  points.forEach((start, edgeIndex) => {
-    const end = points[(edgeIndex + 1) % points.length];
-    const lengthM = Math.hypot(end.x - start.x, end.y - start.y);
-    const intervals = Math.max(1, Math.ceil((lengthM * 1000) / spacingMm));
+  edges.forEach((edge) => {
+    const intervals = Math.max(1, Math.ceil((edge.lengthM * 1000) / spacingMm));
     for (let i = 0; i <= intervals; i += 1) {
       const t = i / intervals;
       out.push({
         id: `VJ${id++}`,
-        xM: start.x + (end.x - start.x) * t,
-        yM: start.y + (end.y - start.y) * t,
+        xM: edge.start.xM + (edge.end.xM - edge.start.xM) * t,
+        yM: edge.start.yM + (edge.end.yM - edge.start.yM) * t,
       });
     }
   });
@@ -165,7 +163,7 @@ export function buildConstructionVisual(input: ProjectInput, basket?: BasketResu
       : [];
 
   const cladding = computeEdgeCladding(input);
-  const verticalJoists = validatedFallbackRule && cladding.mode === 'same-decking' && input.edgeFinishMode === 'full-perimeter'
+  const verticalJoists = validatedFallbackRule && cladding.mode === 'same-decking' && cladding.status !== 'none'
     ? edgeSupportPoints(input, validatedFallbackRule.joistSpacingMm)
     : [];
 

@@ -3,6 +3,7 @@ import type { BasketResult, LayoutResult, ProjectInput, SupportPlanResult, Terra
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { computeLayout } from '../engine/layout';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
+import { computeTerraceEdges, EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
@@ -57,6 +58,9 @@ export function Plan2D({
   const materialProfile = resolveMaterialProfile(input.board);
   const grooveLines = buildGrooveLines(materialProfile);
   const variantCount = materialProfile?.variantCount ?? 4;
+  const businessEdges = computeTerraceEdges(input);
+  const claddingEdges = businessEdges.filter((edge) => edge.treatment === 'cladding');
+  const edgeCladdingRequested = claddingEdges.length > 0;
 
   const viewport = (() => {
     let minX = 0;
@@ -290,9 +294,48 @@ export function Plan2D({
           );
         })}
 
-        {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && (
+        {input.edgeFinishMode === 'per-edge' && input.shape !== 'circle' && businessEdges.map((edge) => {
+          const mx = x + ((edge.start.xM + edge.end.xM) / 2) * scale;
+          const my = y + ((edge.start.yM + edge.end.yM) / 2) * scale;
+          return (
+            <g key={`business-edge-${edge.id}`} className={`business-edge treatment-${edge.treatment}`}>
+              <line
+                x1={x + edge.start.xM * scale}
+                y1={y + edge.start.yM * scale}
+                x2={x + edge.end.xM * scale}
+                y2={y + edge.end.yM * scale}
+                className="business-edge-line"
+              />
+              <text x={mx} y={my - 8} textAnchor="middle" className="business-edge-label">
+                {edge.label} · {EDGE_CONTEXT_LABELS[edge.context]} · {EDGE_TREATMENT_LABELS[edge.treatment]}
+              </text>
+            </g>
+          );
+        })}
+
+        {input.edgeFinishMode === 'per-edge' && input.shape === 'circle' && businessEdges[0] && (
+          <text x={x + bounds.lengthM * scale / 2} y={y + bounds.widthM * scale / 2} textAnchor="middle" className="business-edge-label">
+            {businessEdges[0].label} · {EDGE_CONTEXT_LABELS[businessEdges[0].context]} · {EDGE_TREATMENT_LABELS[businessEdges[0].treatment]}
+          </text>
+        )}
+
+        {layers.edgeCladding && edgeCladdingRequested && input.shape === 'circle' && (
           <polygon points={points} fill="none" stroke={`url(#${patternIds[1 % patternIds.length]})`} strokeWidth={Math.max(7, boardWidthPx * 0.78)} strokeLinejoin="round" opacity="0.98" />
         )}
+
+        {layers.edgeCladding && input.shape !== 'circle' && claddingEdges.map((edge) => (
+          <line
+            key={`edge-cladding-${edge.id}`}
+            x1={x + edge.start.xM * scale}
+            y1={y + edge.start.yM * scale}
+            x2={x + edge.end.xM * scale}
+            y2={y + edge.end.yM * scale}
+            stroke={`url(#${patternIds[1 % patternIds.length]})`}
+            strokeWidth={Math.max(7, boardWidthPx * 0.78)}
+            strokeLinecap="square"
+            opacity="0.98"
+          />
+        ))}
 
         {layers.obstacles && input.obstacles.map((obstacle) => {
           const fill = obstacleFill(obstacle.kind);
@@ -377,8 +420,8 @@ export function Plan2D({
         {layers.joists && <span><i className="legend-joist" />Lambourdes</span>}
         {layers.joists && construction.joists.some((joist) => joist.role === 'perimeter') && <span><i className="legend-perimeter" />Lambourdes de contour</span>}
         {layers.plots && <span><i className="legend-plot" />Plots</span>}
-        {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
-        {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
+        {layers.edgeCladding && edgeCladdingRequested && <span><i className="legend-edge" />Rives</span>}
+        {layers.verticalJoists && edgeCladdingRequested && <span><i className="legend-vertical" />Supports verticaux</span>}
       </div>
 
       <div className={`texture-quality-note ${texture.status}`}>

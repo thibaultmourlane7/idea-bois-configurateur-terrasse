@@ -13,6 +13,8 @@ import { LevelingEditor } from './components/LevelingEditor';
 import { SupportHeightMap } from './components/SupportHeightMap';
 import { LayingSetupEditor } from './components/LayingSetupEditor';
 import { CutOptimizationView } from './components/CutOptimizationView';
+import { EdgeSetupEditor } from './components/EdgeSetupEditor';
+import { hasEdgeTreatment } from './engine/edges';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
 import type { DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
@@ -54,6 +56,7 @@ const initialProject: ProjectInput = {
   supportType: 'existing-concrete-slab',
   supportSystem: 'adjustable-pedestals',
   edgeFinishMode: 'none',
+  edgeConfigs: [],
   edgeCladdingHeightCm: 20,
   includeGeotextile: false,
   drainage: 'unknown',
@@ -215,7 +218,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V0.21 • calepinage • structure • optimisation des chutes</div>
+          <div className="header-note">V0.22 • calepinage • chutes • rives métier</div>
         </div>
       </header>
 
@@ -234,8 +237,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.21</strong>
-                <span>Calepinage multi-direction • structure par zone • optimisation des chutes traçable dans un écran séparé.</span>
+                <strong>Version V0.22</strong>
+                <span>Rives métier • contexte chantier • traitements rive par rive • quantités sans données inventées.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
@@ -453,21 +456,28 @@ export default function App() {
               <div className="finish-section">
                 <h3>Habillage latéral de la terrasse</h3>
                 <p className="finish-help">Permet de masquer la structure sur les côtés visibles.</p>
-                <div className="choice-grid two-choice">
+                <div className="choice-grid three-choice">
                   <ChoiceCard
                     active={project.edgeFinishMode === 'none'}
                     title="Sans habillage latéral"
-                    subtitle="La structure reste visible sur les côtés"
+                    subtitle="Aucun traitement de rive ajouté au panier"
                     onClick={() => setProject({ ...project, edgeFinishMode: 'none' as EdgeFinishMode })}
                   />
                   <ChoiceCard
                     active={project.edgeFinishMode === 'full-perimeter'}
                     title="Habiller tout le pourtour"
-                    subtitle="Le configurateur ajoute les finitions compatibles quand elles sont connues"
+                    subtitle="Conserve le fonctionnement historique sur toutes les rives"
                     onClick={() => setProject({ ...project, edgeFinishMode: 'full-perimeter' as EdgeFinishMode })}
                   />
+                  <ChoiceCard
+                    active={project.edgeFinishMode === 'per-edge'}
+                    title="Configurer rive par rive"
+                    subtitle="Mur, façade, seuil, accès et traitement propre à chaque rive"
+                    onClick={() => setProject({ ...project, edgeFinishMode: 'per-edge' as EdgeFinishMode })}
+                  />
                 </div>
-                {project.edgeFinishMode === 'full-perimeter' && (
+                {project.edgeFinishMode === 'per-edge' && <EdgeSetupEditor project={project} onChange={setProject} />}
+                {hasEdgeTreatment(project, 'cladding') && (
                   <label className="single-field edge-height-field">
                     Hauteur de l’habillage
                     <div className="input-unit compact">
@@ -514,7 +524,9 @@ export default function App() {
                 <p>
                   {project.edgeFinishMode === 'full-perimeter'
                     ? 'Habillage latéral : oui, sur tout le pourtour.'
-                    : 'Habillage latéral : non.'}
+                    : project.edgeFinishMode === 'per-edge'
+                      ? 'Rives : configuration chantier rive par rive active.'
+                      : 'Habillage latéral : non.'}
                   {project.supportType === 'stabilized-ground'
                     ? project.includeGeotextile
                       ? ' Géotextile : inclus.'

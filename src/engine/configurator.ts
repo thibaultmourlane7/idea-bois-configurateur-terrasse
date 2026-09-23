@@ -10,20 +10,23 @@ import { validateScope } from './scope';
 import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
+import { computeTerraceEdges, EDGE_TAG } from './edges';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-021.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-022.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.21.0 : Sprint B — optimisation des chutes traçable, identifiants de lames/pièces/chutes et écran dédié.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.22.0 : Sprint C — rives métier, contextes chantier et traitements rive par rive.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
   }
 
   const geometry = computeGeometry(input);
+  const edges = computeTerraceEdges(input);
+  trace.push(`[${EDGE_TAG}] ${edges.length} rive(s) métier ; ${edges.filter((edge) => edge.treatment !== 'none').length} rive(s) avec traitement demandé.`);
   trace.push(`[${GEOMETRY_TAG}] Surface brute ${geometry.grossAreaM2.toFixed(3)} m² ; exclusions ${geometry.excludedAreaM2.toFixed(3)} m² ; surface nette ${geometry.areaM2.toFixed(3)} m² ; périmètre extérieur ${geometry.perimeterM.toFixed(3)} m.`);
 
   let layout: LayoutResult | undefined;
@@ -107,6 +110,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
       pricing,
       basket,
       supportPlan,
+      edges,
       trace: [...trace, 'Panier commercial conservé ; validation technique finale encore requise avant commande.'],
     };
   }
@@ -139,6 +143,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
     pricing,
     basket,
     supportPlan,
+    edges,
     trace,
   };
 }

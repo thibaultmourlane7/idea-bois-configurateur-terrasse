@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { BasketResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
+import { hasEdgeTreatment } from '../engine/edges';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
@@ -26,7 +27,8 @@ export function SideView({
   const deckThicknessCm = input.board.thicknessMm / 10;
   const joistHeightCm = 4;
   const usefulSupportCm = Math.max(0, totalHeightCm - deckThicknessCm - joistHeightCm);
-  const claddingHeightCm = input.edgeFinishMode === 'full-perimeter' ? input.edgeCladdingHeightCm : 0;
+  const edgeCladdingRequested = hasEdgeTreatment(input, 'cladding');
+  const claddingHeightCm = edgeCladdingRequested ? input.edgeCladdingHeightCm : 0;
   const scaleY = 1.55;
   const groundY = 150;
   const deckY = groundY - totalHeightCm * scaleY;
@@ -77,7 +79,7 @@ export function SideView({
           <rect x="72" y={joistY} width="490" height={Math.max(7, joistHeightCm * scaleY)} rx="2" fill="#66482f" stroke="#4b3424" />
         )}
 
-        {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && (
+        {layers.verticalJoists && edgeCladdingRequested && (
           <g>
             {[88, 168, 248, 328, 408, 488, 552].map((x) => (
               <rect
@@ -92,7 +94,7 @@ export function SideView({
           </g>
         )}
 
-        {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && (
+        {layers.edgeCladding && edgeCladdingRequested && (
           <g>
             <rect
               x="70"
@@ -139,7 +141,7 @@ export function SideView({
           <line x1="593" y1={deckY} x2="607" y2={deckY} stroke="#1976d2" />
           <line x1="593" y1={groundY} x2="607" y2={groundY} stroke="#1976d2" />
           <text x="592" y={(deckY + groundY) / 2} textAnchor="end" fill="#1976d2" fontSize="11" fontWeight="800">{input.heightCm.toFixed(0)} cm fini</text>
-          {input.edgeFinishMode === 'full-perimeter' && (
+          {edgeCladdingRequested && (
             <text x="74" y={Math.min(194, claddingBottomY + 16)} fill="#5c7182" fontSize="10">Habillage {input.edgeCladdingHeightCm.toFixed(0)} cm • supports verticaux {construction.cladding.verticalSupportCount ?? 'à confirmer'}</text>
           )}
           {layers.plots && (

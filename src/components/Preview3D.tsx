@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { BasketResult, LayoutResult, ProjectInput, SupportPlanResult, TerraceObstacle } from '../domain/types';
 import { buildConstructionVisual } from '../engine/constructionVisual';
 import { getDeckBoundingSizeM, getDeckIntervalsAtMm, getDeckOutlinePointsM } from '../engine/geometry';
+import { computeTerraceEdges } from '../engine/edges';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
@@ -34,6 +35,9 @@ export function Preview3D({
   const texture = resolveBoardTexture(input.board);
   const materialProfile = resolveMaterialProfile(input.board);
   const grooveLines = buildGrooveLines(materialProfile);
+  const businessEdges = computeTerraceEdges(input);
+  const claddingEdges = businessEdges.filter((edge) => edge.treatment === 'cladding');
+  const edgeCladdingRequested = claddingEdges.length > 0;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -153,7 +157,7 @@ export function Preview3D({
         });
       }
 
-      if (layers.verticalJoists && input.edgeFinishMode === 'full-perimeter') {
+      if (layers.verticalJoists && edgeCladdingRequested) {
         construction.verticalJoists.forEach((support) => {
           const top = iso(support.xM, support.yM, 8);
           const bottom = { x: top.x, y: top.y + Math.min(54, 15 + input.edgeCladdingHeightCm * 0.75) };
@@ -166,8 +170,13 @@ export function Preview3D({
         });
       }
 
-      if (layers.edgeCladding && input.edgeFinishMode === 'full-perimeter') {
-        const frontEdges = outline.map((point, index) => ({ start: point, end: outline[(index + 1) % outline.length] }));
+      if (layers.edgeCladding && edgeCladdingRequested) {
+        const frontEdges = input.shape === 'circle'
+          ? outline.map((point, index) => ({ start: point, end: outline[(index + 1) % outline.length] }))
+          : claddingEdges.map((edge) => ({
+              start: { x: edge.start.xM, y: edge.start.yM },
+              end: { x: edge.end.xM, y: edge.end.yM },
+            }));
         const depth = Math.min(60, 12 + input.edgeCladdingHeightCm * 0.8);
         frontEdges.forEach(({ start, end }) => {
           const a = iso(start.x, start.y, 1);
@@ -346,8 +355,8 @@ export function Preview3D({
         {layers.joists && <span><i className="legend-joist" />Lambourdes</span>}
         {layers.joists && (supportPlan?.joistSegments.some((segment) => segment.role === 'perimeter') ?? false) && <span><i className="legend-perimeter" />Contour</span>}
         {layers.plots && <span><i className="legend-plot" />Plots</span>}
-        {layers.edgeCladding && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-edge" />Rives</span>}
-        {layers.verticalJoists && input.edgeFinishMode === 'full-perimeter' && <span><i className="legend-vertical" />Supports verticaux</span>}
+        {layers.edgeCladding && edgeCladdingRequested && <span><i className="legend-edge" />Rives</span>}
+        {layers.verticalJoists && edgeCladdingRequested && <span><i className="legend-vertical" />Supports verticaux</span>}
       </div>
       <div className={`texture-quality-note ${texture.status}`}>
         <strong>{textureStatusLabel(texture)}</strong>

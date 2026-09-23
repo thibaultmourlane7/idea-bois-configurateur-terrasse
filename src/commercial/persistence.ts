@@ -17,7 +17,7 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 9,
+    schemaVersion: 10,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -31,6 +31,7 @@ export function saveProjectLocally(project: ProjectInput): void {
     supportSystem: project.supportSystem,
     structureJoistChoice: project.structureJoistChoice,
     edgeFinishMode: project.edgeFinishMode,
+    edgeConfigs: project.edgeConfigs,
     edgeCladdingHeightCm: project.edgeCladdingHeightCm,
     includeGeotextile: project.includeGeotextile,
     drainage: project.drainage,
@@ -67,7 +68,8 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     structureJoistChoice: snapshot.structureJoistChoice === 'pin-class4' || snapshot.structureJoistChoice === 'exotic'
       ? snapshot.structureJoistChoice
       : fallback.structureJoistChoice,
-    edgeFinishMode: (snapshot.edgeFinishMode as ProjectInput['edgeFinishMode']) ?? fallback.edgeFinishMode,
+    edgeFinishMode: snapshot.edgeFinishMode === 'full-perimeter' || snapshot.edgeFinishMode === 'per-edge' ? snapshot.edgeFinishMode : 'none',
+    edgeConfigs: Array.isArray(snapshot.edgeConfigs) ? snapshot.edgeConfigs as ProjectInput['edgeConfigs'] : fallback.edgeConfigs,
     edgeCladdingHeightCm: Number(snapshot.edgeCladdingHeightCm) || fallback.edgeCladdingHeightCm,
     includeGeotextile: Boolean(snapshot.includeGeotextile),
     drainage: (snapshot.drainage as ProjectInput['drainage']) ?? fallback.drainage,

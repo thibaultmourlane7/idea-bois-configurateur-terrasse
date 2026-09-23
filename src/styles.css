@@ -914,3 +914,101 @@
   .cut-optimization-screen { min-height: 100vh; border-radius: 0; padding: 18px; }
   .cut-summary-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Sprint C V0.22 — rives métier */
+.edge-setup-editor {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #dce5ed;
+  border-radius: 16px;
+  background: #f8fbfd;
+}
+.edge-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+.edge-editor-heading h3 { margin: 4px 0 5px; }
+.edge-editor-heading p { margin: 0; color: #647386; }
+.edge-editor-heading > strong {
+  min-width: 68px;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #e8f3fb;
+  color: #155b92;
+}
+.edge-editor-list { display: grid; gap: 10px; }
+.edge-editor-row {
+  display: grid;
+  grid-template-columns: minmax(95px, .7fr) minmax(150px, 1.25fr) minmax(170px, 1.35fr) minmax(160px, 1.3fr);
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid #e0e7ee;
+  border-radius: 13px;
+  background: #fff;
+}
+.edge-editor-id strong,
+.edge-editor-id span,
+.edge-editor-id small { display: block; }
+.edge-editor-id strong { font-size: 1rem; color: #173650; }
+.edge-editor-id span { margin-top: 2px; font-weight: 700; }
+.edge-editor-id small { color: #7b8794; margin-top: 2px; }
+.edge-editor-row label > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: .76rem;
+  font-weight: 800;
+  color: #607083;
+}
+.edge-editor-row select,
+.edge-editor-row input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #cfd9e2;
+  border-radius: 9px;
+  background: #fff;
+  padding: 8px 10px;
+  color: #243746;
+}
+.edge-editor-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff8e7;
+  border: 1px solid #edd59a;
+  color: #6c592b;
+  font-size: .85rem;
+}
+.business-edge-line {
+  stroke: #4c6d88;
+  stroke-width: 5;
+  opacity: .72;
+}
+.business-edge.treatment-cladding .business-edge-line { stroke: #2774a8; }
+.business-edge.treatment-profile .business-edge-line { stroke: #7954a3; stroke-dasharray: 7 3; }
+.business-edge.treatment-edge-board .business-edge-line { stroke: #9a6734; }
+.business-edge.treatment-drainage .business-edge-line { stroke: #2c7f78; stroke-dasharray: 3 3; }
+.business-edge.treatment-none .business-edge-line { stroke: #8c9aa6; stroke-width: 2; stroke-dasharray: 4 4; opacity: .5; }
+.business-edge-label {
+  fill: #1e405b;
+  font-size: 7px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(255,255,255,.95);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+@media (max-width: 900px) {
+  .edge-editor-row { grid-template-columns: 90px 1fr 1fr; }
+  .edge-note-field { grid-column: 2 / -1; }
+}
+@media (max-width: 620px) {
+  .edge-editor-heading { flex-direction: column; }
+  .edge-editor-row { grid-template-columns: 1fr; align-items: stretch; }
+  .edge-note-field { grid-column: auto; }
+}

@@ -2,8 +2,8 @@ import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput, ShapeType, TerraceObstacle, TerracePoint, SupportLevelProfile, ReferencePlanTransform } from '../domain/types';
 import { sanitizeReferencePlanTransform } from '../domain/referencePlan';
 
-export interface ShareSnapshotV9 {
-  v: 9;
+export interface ShareSnapshotV10 {
+  v: 10;
   projectName: string;
   shape: ProjectInput['shape'];
   dimensions: ProjectInput['dimensions'];
@@ -17,6 +17,7 @@ export interface ShareSnapshotV9 {
   supportSystem: ProjectInput['supportSystem'];
   structureJoistChoice?: ProjectInput['structureJoistChoice'];
   edgeFinishMode: ProjectInput['edgeFinishMode'];
+  edgeConfigs?: ProjectInput['edgeConfigs'];
   edgeCladdingHeightCm: number;
   includeGeotextile: boolean;
   drainage: ProjectInput['drainage'];
@@ -53,8 +54,8 @@ function validShape(value: unknown): ShapeType {
 }
 
 export function projectToShareToken(project: ProjectInput): string {
-  const snapshot: ShareSnapshotV9 = {
-    v: 9,
+  const snapshot: ShareSnapshotV10 = {
+    v: 10,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,
@@ -68,6 +69,7 @@ export function projectToShareToken(project: ProjectInput): string {
     supportSystem: project.supportSystem,
     structureJoistChoice: project.structureJoistChoice,
     edgeFinishMode: project.edgeFinishMode,
+    edgeConfigs: project.edgeConfigs,
     edgeCladdingHeightCm: project.edgeCladdingHeightCm,
     includeGeotextile: project.includeGeotextile,
     drainage: project.drainage,
@@ -85,8 +87,8 @@ export function projectToShareToken(project: ProjectInput): string {
 export function projectFromShareToken(token: string, fallback: ProjectInput): ProjectInput {
   try {
     const raw = new TextDecoder().decode(base64UrlToBytes(token));
-    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV9>, 'v'> & { v?: number };
-    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7 && snapshot.v !== 8 && snapshot.v !== 9) || !snapshot.boardId || !snapshot.dimensions) return fallback;
+    const snapshot = JSON.parse(raw) as Omit<Partial<ShareSnapshotV10>, 'v'> & { v?: number };
+    if ((snapshot.v !== 1 && snapshot.v !== 2 && snapshot.v !== 3 && snapshot.v !== 4 && snapshot.v !== 5 && snapshot.v !== 6 && snapshot.v !== 7 && snapshot.v !== 8 && snapshot.v !== 9 && snapshot.v !== 10) || !snapshot.boardId || !snapshot.dimensions) return fallback;
     const board = ideaBoisBoards.find((item) => item.id === snapshot.boardId);
     if (!board) return fallback;
 
@@ -106,7 +108,8 @@ export function projectFromShareToken(token: string, fallback: ProjectInput): Pr
       structureJoistChoice: snapshot.structureJoistChoice === 'pin-class4' || snapshot.structureJoistChoice === 'exotic'
         ? snapshot.structureJoistChoice
         : fallback.structureJoistChoice,
-      edgeFinishMode: snapshot.edgeFinishMode ?? fallback.edgeFinishMode,
+      edgeFinishMode: snapshot.edgeFinishMode === 'full-perimeter' || snapshot.edgeFinishMode === 'per-edge' ? snapshot.edgeFinishMode : 'none',
+      edgeConfigs: Array.isArray(snapshot.edgeConfigs) ? snapshot.edgeConfigs : fallback.edgeConfigs,
       edgeCladdingHeightCm: Number(snapshot.edgeCladdingHeightCm) || fallback.edgeCladdingHeightCm,
       includeGeotextile: Boolean(snapshot.includeGeotextile),
       drainage: snapshot.drainage ?? fallback.drainage,

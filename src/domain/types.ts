@@ -7,7 +7,7 @@ export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
 export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
 export type StructureJoistChoice = 'pin-class4' | 'exotic';
-export type EdgeFinishMode = 'none' | 'full-perimeter';
+export type EdgeFinishMode = 'none' | 'full-perimeter' | 'per-edge';
 export type DrainageAnswer = 'yes' | 'no' | 'unknown';
 export type MaterialFamily = 'solid-wood' | 'composite';
 export type TechnicalEngine = 'nf-dtu-51-4' | 'manufacturer-rules';
@@ -30,6 +30,34 @@ export type ObstacleShape = 'rectangle' | 'circle';
 export interface TerracePoint {
   xM: number;
   yM: number;
+}
+
+export type TerraceEdgeContext = 'free' | 'wall' | 'facade' | 'threshold' | 'access' | 'finish';
+export type TerraceEdgeTreatment = 'none' | 'cladding' | 'profile' | 'edge-board' | 'drainage';
+
+export interface TerraceEdgeConfig {
+  /** Index stable de la rive dans le contour courant : AB = 0, BC = 1, etc. */
+  edgeIndex: number;
+  /** Contexte chantier déclaré par l'utilisateur. */
+  context: TerraceEdgeContext;
+  /** Traitement souhaité sur cette rive. */
+  treatment: TerraceEdgeTreatment;
+  /** Note libre de chantier ; n'alimente aucun calcul automatique. */
+  note?: string;
+}
+
+export interface TerraceEdgeResult {
+  id: string;
+  edgeIndex: number;
+  label: string;
+  start: TerracePoint;
+  end: TerracePoint;
+  lengthM: number;
+  curved: boolean;
+  context: TerraceEdgeContext;
+  treatment: TerraceEdgeTreatment;
+  configured: boolean;
+  note?: string;
 }
 
 export interface LayingZone {
@@ -211,6 +239,8 @@ export interface ProjectInput {
   /** Choix explicite quand plusieurs familles de lambourdes sont documentées pour la lame. */
   structureJoistChoice?: StructureJoistChoice;
   edgeFinishMode: EdgeFinishMode;
+  /** Configuration métier rive par rive. Les anciens projets peuvent ne pas avoir ce champ. */
+  edgeConfigs?: TerraceEdgeConfig[];
   edgeCladdingHeightCm: number;
   includeGeotextile: boolean;
   drainage: DrainageAnswer;
@@ -533,5 +563,7 @@ export interface ConfiguratorResult {
   pricing?: PricingResult;
   basket?: BasketResult;
   supportPlan?: SupportPlanResult;
+  /** Rives métier réellement dérivées du contour et de la configuration chantier. */
+  edges?: TerraceEdgeResult[];
   trace: string[];
 }

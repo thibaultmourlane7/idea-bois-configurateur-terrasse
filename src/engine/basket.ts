@@ -1,5 +1,6 @@
 import type { BasketLine, BasketResult, GeometryResult, LayoutResult, PricingResult, ProjectInput, StockBoard, StockLengthBreakdown, SupportPlanResult } from '../domain/types';
 import { computeEdgeCladding } from './edgeCladding';
+import { computeTerraceEdges } from './edges';
 import {
   EXOTIC_JOIST_VARIANTS,
   GEODECK_20M2,
@@ -353,6 +354,33 @@ function silvadecLines(input: ProjectInput, geometry: GeometryResult, layout: La
   ];
 }
 
+function unresolvedEdgeTreatmentLines(input: ProjectInput): BasketLine[] {
+  const edges = computeTerraceEdges(input);
+  const definitions = [
+    ['profile', 'Profil de finition', 'Le profil compatible, sa référence et son mode de fixation seront définis dans la matrice catalogue du Sprint D.'],
+    ['edge-board', 'Lame de rive', 'La référence, la section et la fixation de la lame de rive doivent être validées par produit.'],
+    ['drainage', 'Drainage / évacuation de rive', 'Le système de drainage et ses accessoires dépendent du support et de la configuration réelle ; aucune référence n’est inventée.'],
+  ] as const;
+
+  const lines: BasketLine[] = [];
+  for (const [treatment, label, note] of definitions) {
+    const selected = edges.filter((edge) => edge.treatment === treatment);
+    if (!selected.length) continue;
+    const totalM = round2(selected.reduce((sum, edge) => sum + edge.lengthM, 0));
+    lines.push({
+      id: `edge-treatment-${treatment}`,
+      family: 'accessories',
+      label,
+      quantity: totalM,
+      unit: 'ml',
+      status: 'pending',
+      required: true,
+      note: `${selected.map((edge) => edge.label).join(', ')} • ${totalM.toFixed(2)} ml géométriquement identifiés. ${note}`,
+    });
+  }
+  return lines;
+}
+
 function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLine[] {
   const lines: BasketLine[] = [];
 
@@ -374,143 +402,121 @@ function accessoryLines(input: ProjectInput, geometry: GeometryResult): BasketLi
     });
   }
 
-  if (input.edgeFinishMode !== 'full-perimeter') return lines;
+  const claddingEdges = computeTerraceEdges(input).filter((edge) => edge.treatment === 'cladding');
+  const claddingPerimeterM = claddingEdges.reduce((sum, edge) => sum + edge.lengthM, 0);
 
-  if (input.board.id === 'IDEA-TERR-G037' || input.board.id === 'IDEA-TERR-G038') {
-    const grey = input.board.id === 'IDEA-TERR-G037';
-    const skirt = grey ? SILVADEC_SKIRT_GREY : SILVADEC_SKIRT_IPE;
-    const screws = grey ? SILVADEC_FINISH_SCREWS_GREY : SILVADEC_FINISH_SCREWS_BROWN;
-    const perimeter = geometry.perimeterM;
-    const skirtLength = skirt.lengthM ?? 2;
-    const skirtQty = Math.ceil(perimeter / skirtLength);
-    const screwSpacing = screws.spacingM ?? 0.4;
-    const screwCount = Math.ceil(perimeter / screwSpacing);
-    const screwPack = screws.packQuantity ?? 50;
-    const screwPacks = Math.ceil(screwCount / screwPack);
-
-    lines.push({
-      id: 'edge-finish',
-      family: 'accessories',
-      label: skirt.label,
-      productRef: skirt.productRef,
-      quantity: skirtQty,
-      unit: 'pièce(s)',
-      unitPriceTtc: skirt.unitPriceTtc,
-      totalTtc: round2(skirtQty * skirt.unitPriceTtc),
-      status: 'informative',
-      required: true,
-      note: `${perimeter.toFixed(2)} ml de rives. Quantité commerciale minimale sur longueurs de ${skirtLength.toFixed(2)} m ; angles et chutes de rive à confirmer.`,
-      sourceUrl: skirt.sourceUrl,
-    });
-
-    lines.push({
-      id: 'edge-finish-screws',
-      family: 'accessories',
-      label: screws.label,
-      productRef: screws.productRef,
-      quantity: screwPacks,
-      unit: 'blister(s)',
-      unitPriceTtc: screws.unitPriceTtc,
-      totalTtc: round2(screwPacks * screws.unitPriceTtc),
-      status: 'informative',
-      required: true,
-      note: `Base fabricant : 1 vis tous les ${Math.round(screwSpacing * 100)} cm sur la jupe. Quantité à confirmer avec le calepinage des angles.`,
-      sourceUrl: screws.sourceUrl,
-    });
-  } else {
-    const cladding = computeEdgeCladding(input);
-
-    if (cladding.status === 'exact' && cladding.mode === 'same-decking') {
-      const edgeBoardRefs = (cladding.boardStockBreakdown ?? [])
-        .map((item) => item.productRef)
-        .filter((value): value is string => Boolean(value));
-      const allEdgeBoardRefsKnown = Boolean(cladding.boardStockBreakdown?.length)
-        && cladding.boardStockBreakdown?.every((item) => item.productRef);
+  if (claddingEdges.length) {
+    if (input.board.id === 'IDEA-TERR-G037' || input.board.id === 'IDEA-TERR-G038') {
+      const grey = input.board.id === 'IDEA-TERR-G037';
+      const skirt = grey ? SILVADEC_SKIRT_GREY : SILVADEC_SKIRT_IPE;
+      const screws = grey ? SILVADEC_FINISH_SCREWS_GREY : SILVADEC_FINISH_SCREWS_BROWN;
+      const skirtLength = skirt.lengthM ?? 2;
+      const skirtQty = Math.ceil(claddingPerimeterM / skirtLength);
+      const screwSpacing = screws.spacingM ?? 0.4;
+      const screwCount = Math.ceil(claddingPerimeterM / screwSpacing);
+      const screwPack = screws.packQuantity ?? 50;
+      const screwPacks = Math.ceil(screwCount / screwPack);
 
       lines.push({
         id: 'edge-finish',
         family: 'accessories',
-        label: `Habillage latéral — ${input.board.label}`,
-        productRef: allEdgeBoardRefsKnown ? [...new Set(edgeBoardRefs)].join(', ') : undefined,
-        quantity: cladding.boardStockBoards?.length,
-        unit: 'lame(s)',
-        totalTtc: cladding.boardTotalTtc,
-        status: 'exact',
+        label: skirt.label,
+        productRef: skirt.productRef,
+        quantity: skirtQty,
+        unit: 'pièce(s)',
+        unitPriceTtc: skirt.unitPriceTtc,
+        totalTtc: round2(skirtQty * skirt.unitPriceTtc),
+        status: 'informative',
         required: true,
-        note: `${cladding.rowCount} rang(s) sur ${input.edgeCladdingHeightCm.toFixed(0)} cm de hauteur • même lame que le platelage • ${cladding.boardPurchasedLinearM?.toFixed(2)} ml achetés.`,
-        stockBreakdown: cladding.boardStockBreakdown,
-        sourceUrl: input.board.catalog?.sourceUrl,
+        note: `${claddingPerimeterM.toFixed(2)} ml sur les rives ${claddingEdges.map((edge) => edge.label).join(', ')}. Quantité commerciale minimale sur longueurs de ${skirtLength.toFixed(2)} m ; angles et chutes de rive à confirmer.`,
+        sourceUrl: skirt.sourceUrl,
       });
 
-      const edgeJoistRefs = (cladding.verticalJoistStockBreakdown ?? [])
-        .map((item) => item.productRef)
-        .filter((value): value is string => Boolean(value));
-      const allEdgeJoistRefsKnown = Boolean(cladding.verticalJoistStockBreakdown?.length)
-        && cladding.verticalJoistStockBreakdown?.every((item) => item.productRef);
-
       lines.push({
-        id: 'edge-vertical-joists',
-        family: 'joists',
-        label: `Lambourdes verticales d’habillage — ${cladding.verticalJoistLabel ?? 'structure validée'}`,
-        productRef: allEdgeJoistRefsKnown ? [...new Set(edgeJoistRefs)].join(', ') : undefined,
-        quantity: cladding.verticalJoistStockBoards?.length,
-        unit: 'lambourde(s)',
-        totalTtc: cladding.verticalJoistTotalTtc,
-        status: 'exact',
-        required: true,
-        note: `${cladding.verticalSupportCount} support(s) verticaux de ${input.edgeCladdingHeightCm.toFixed(0)} cm • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires • mêmes matériau et longueurs commerciales validées que la structure de la terrasse.`,
-        stockBreakdown: cladding.verticalJoistStockBreakdown,
-        sourceUrl: cladding.verticalJoistSourceUrl,
-      });
-    } else if (cladding.mode === 'same-decking' && cladding.boardTotalTtc != null) {
-      lines.push({
-        id: 'edge-finish',
+        id: 'edge-finish-screws',
         family: 'accessories',
-        label: `Habillage latéral — ${input.board.label}`,
-        quantity: cladding.boardStockBoards?.length,
-        unit: 'lame(s)',
-        unitPriceTtc: input.board.priceTtcPerM2,
-        totalTtc: cladding.boardTotalTtc,
-        status: 'exact',
+        label: screws.label,
+        productRef: screws.productRef,
+        quantity: screwPacks,
+        unit: 'blister(s)',
+        unitPriceTtc: screws.unitPriceTtc,
+        totalTtc: round2(screwPacks * screws.unitPriceTtc),
+        status: 'informative',
         required: true,
-        note: `${cladding.rowCount} rang(s) • même lame que le platelage. ${cladding.reason ?? ''}`.trim(),
-        stockBreakdown: cladding.boardStockBreakdown,
-        sourceUrl: input.board.catalog?.sourceUrl,
+        note: `Base fabricant : 1 vis tous les ${Math.round(screwSpacing * 100)} cm sur la jupe. Quantité à confirmer avec le calepinage des angles.`,
+        sourceUrl: screws.sourceUrl,
       });
-      lines.push(pending(
-        'edge-vertical-joists',
-        'joists',
-        'Lambourdes verticales d’habillage',
-        cladding.reason ?? 'L’entraxe des supports verticaux doit être validé pour cette gamme.',
-      ));
-      lines.push(pending(
-        'edge-finish-screws',
-        'fixings',
-        'Visserie de l’habillage latéral',
-        'La règle IDEA Bois est de 2 vis par lame de rive et par support vertical ; la quantité attend la validation des supports verticaux.',
-      ));
     } else {
-      lines.push(pending(
-        'edge-finish',
-        'accessories',
-        'Habillage latéral avec la même lame',
-        cladding.reason ?? `${geometry.perimeterM.toFixed(2)} ml de rives à habiller. Le calcul doit être validé pour cette géométrie.`,
-      ));
-      lines.push(pending(
-        'edge-vertical-joists',
-        'joists',
-        'Lambourdes verticales d’habillage',
-        cladding.reason ?? 'La structure verticale doit être validée.',
-      ));
-      lines.push(pending(
-        'edge-finish-screws',
-        'fixings',
-        'Visserie de l’habillage latéral',
-        'La quantité ne peut pas être calculée tant que l’habillage et ses supports verticaux ne sont pas validés.',
-      ));
+      const cladding = computeEdgeCladding(input);
+
+      if (cladding.status === 'exact' && cladding.mode === 'same-decking') {
+        const edgeBoardRefs = (cladding.boardStockBreakdown ?? [])
+          .map((item) => item.productRef)
+          .filter((value): value is string => Boolean(value));
+        const allEdgeBoardRefsKnown = Boolean(cladding.boardStockBreakdown?.length)
+          && cladding.boardStockBreakdown?.every((item) => item.productRef);
+
+        lines.push({
+          id: 'edge-finish',
+          family: 'accessories',
+          label: `Habillage latéral — ${input.board.label}`,
+          productRef: allEdgeBoardRefsKnown ? [...new Set(edgeBoardRefs)].join(', ') : undefined,
+          quantity: cladding.boardStockBoards?.length,
+          unit: 'lame(s)',
+          totalTtc: cladding.boardTotalTtc,
+          status: 'exact',
+          required: true,
+          note: `${cladding.rowCount} rang(s) sur ${input.edgeCladdingHeightCm.toFixed(0)} cm de hauteur • rives ${claddingEdges.map((edge) => edge.label).join(', ')} • ${cladding.boardPurchasedLinearM?.toFixed(2)} ml achetés.`,
+          stockBreakdown: cladding.boardStockBreakdown,
+          sourceUrl: input.board.catalog?.sourceUrl,
+        });
+
+        const edgeJoistRefs = (cladding.verticalJoistStockBreakdown ?? [])
+          .map((item) => item.productRef)
+          .filter((value): value is string => Boolean(value));
+        const allEdgeJoistRefsKnown = Boolean(cladding.verticalJoistStockBreakdown?.length)
+          && cladding.verticalJoistStockBreakdown?.every((item) => item.productRef);
+
+        lines.push({
+          id: 'edge-vertical-joists',
+          family: 'joists',
+          label: `Lambourdes verticales d’habillage — ${cladding.verticalJoistLabel ?? 'structure validée'}`,
+          productRef: allEdgeJoistRefsKnown ? [...new Set(edgeJoistRefs)].join(', ') : undefined,
+          quantity: cladding.verticalJoistStockBoards?.length,
+          unit: 'lambourde(s)',
+          totalTtc: cladding.verticalJoistTotalTtc,
+          status: 'exact',
+          required: true,
+          note: `${cladding.verticalSupportCount} support(s) verticaux • entraxe maxi ${Math.round((cladding.verticalJoistSpacingMm ?? 0) / 10)} cm • ${cladding.verticalJoistRequiredLinearM?.toFixed(2)} ml nécessaires.`,
+          stockBreakdown: cladding.verticalJoistStockBreakdown,
+          sourceUrl: cladding.verticalJoistSourceUrl,
+        });
+      } else if (cladding.mode === 'same-decking' && cladding.boardTotalTtc != null) {
+        lines.push({
+          id: 'edge-finish',
+          family: 'accessories',
+          label: `Habillage latéral — ${input.board.label}`,
+          quantity: cladding.boardStockBoards?.length,
+          unit: 'lame(s)',
+          unitPriceTtc: input.board.priceTtcPerM2,
+          totalTtc: cladding.boardTotalTtc,
+          status: 'exact',
+          required: true,
+          note: `${cladding.rowCount} rang(s) • rives ${claddingEdges.map((edge) => edge.label).join(', ')}. ${cladding.reason ?? ''}`.trim(),
+          stockBreakdown: cladding.boardStockBreakdown,
+          sourceUrl: input.board.catalog?.sourceUrl,
+        });
+        lines.push(pending('edge-vertical-joists', 'joists', 'Lambourdes verticales d’habillage', cladding.reason ?? 'L’entraxe des supports verticaux doit être validé pour cette gamme.'));
+        lines.push(pending('edge-finish-screws', 'fixings', 'Visserie de l’habillage latéral', 'La règle IDEA Bois est de 2 vis par lame de rive et par support vertical ; la quantité attend la validation des supports verticaux.'));
+      } else {
+        lines.push(pending('edge-finish', 'accessories', 'Habillage latéral avec la même lame', cladding.reason ?? `${claddingPerimeterM.toFixed(2)} ml de rives à habiller. Le calcul doit être validé pour cette géométrie.`));
+        lines.push(pending('edge-vertical-joists', 'joists', 'Lambourdes verticales d’habillage', cladding.reason ?? 'La structure verticale doit être validée.'));
+        lines.push(pending('edge-finish-screws', 'fixings', 'Visserie de l’habillage latéral', 'La quantité ne peut pas être calculée tant que l’habillage et ses supports verticaux ne sont pas validés.'));
+      }
     }
   }
 
+  lines.push(...unresolvedEdgeTreatmentLines(input));
   return lines;
 }
 

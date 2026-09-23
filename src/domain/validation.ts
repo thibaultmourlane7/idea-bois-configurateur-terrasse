@@ -1,6 +1,7 @@
 import type { Diagnostic, ProjectInput, TerraceObstacle } from './types';
 import { referencePlanDiagnostics } from './referencePlan';
-import { isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
+import { getDeckOutlinePointsM, isSimplePolygon, obstacleIntersectsBaseDeck, obstaclesOverlap, polygonArea } from '../engine/geometry';
+import { hasEdgeTreatment } from '../engine/edges';
 import { zoneFitsBaseDeck, zonesOverlap } from '../engine/layingGeometry';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
@@ -152,7 +153,31 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     }
   }
 
-  if (input.edgeFinishMode === 'full-perimeter') {
+  const edgeCount = input.shape === 'circle' ? 1 : getDeckOutlinePointsM(input).length;
+  const edgeConfigs = input.edgeConfigs ?? [];
+  const seenEdgeIndexes = new Set<number>();
+  for (const config of edgeConfigs) {
+    if (!Number.isInteger(config.edgeIndex) || config.edgeIndex < 0 || config.edgeIndex >= edgeCount) {
+      diagnostics.push({
+        tag: 'SA-TERR-EDGE-001',
+        severity: 'warning',
+        message: 'Une ancienne configuration de rive ne correspond plus au contour actuel et sera ignorée.',
+        field: 'edgeConfigs',
+      });
+      continue;
+    }
+    if (seenEdgeIndexes.has(config.edgeIndex)) {
+      diagnostics.push({
+        tag: 'SA-TERR-EDGE-002',
+        severity: 'warning',
+        message: `La rive ${config.edgeIndex + 1} possède plusieurs configurations ; seule la première sera utilisée.`,
+        field: 'edgeConfigs',
+      });
+    }
+    seenEdgeIndexes.add(config.edgeIndex);
+  }
+
+  if (hasEdgeTreatment(input, 'cladding')) {
     if (!Number.isFinite(input.edgeCladdingHeightCm) || input.edgeCladdingHeightCm <= 0) {
       diagnostics.push({
         tag: 'SA-TERR-EDGE-HEIGHT-001',

@@ -154,6 +154,18 @@ describe('Configurateur terrasse V0.9', () => {
     expect(boards.every((board) => [3000, 4200, 5400].includes(board.stockLengthMm))).toBe(true);
   });
 
+  it('garde le panier Garapa/Padouk partiel tant que le calepinage n’est pas validé', () => {
+    for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
+      const board = ideaBoisBoards.find((item) => item.id === id)!;
+      const result = runConfigurator({ ...base, board });
+      expect(result.layout).toBeUndefined();
+      expect(result.supportPlan?.status).toBe('unavailable');
+      expect(result.basket?.status).toBe('partial');
+      expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('pending');
+      expect(result.basket?.lines.find((line) => line.id === 'supports')?.status).toBe('pending');
+    }
+  });
+
   it('bloque un produit composite démo sans règles fabricant', () => {
     const result = runConfigurator({ ...base, board: demoBoards[1] });
     expect(result.valid).toBe(false);

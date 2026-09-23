@@ -55,14 +55,15 @@ describe('Extension structure matériaux V0.16.3', () => {
     expect(computeSupportPlan(project, computeLayout(project)).status).toBe('exact');
   });
 
-  it('calcule la structure Garapa et Padouk sans inventer leur jeu final', () => {
+  it('ne déclare pas Garapa et Padouk exacts tant que leur calepinage n’est pas disponible', () => {
     for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
       const project = { ...base, board: board(id) };
       const rule = getCommercialConstructionRule(project)!;
       const plan = computeSupportPlan(project);
       expect(rule.status).toBe('validated');
-      expect(plan.status).toBe('exact');
-      expect(plan.joistSegments.length).toBeGreaterThan(0);
+      expect(plan.status).toBe('unavailable');
+      expect(plan.joistSegments).toHaveLength(0);
+      expect(plan.note).toContain('Calepinage');
     }
     expect(board('IDEA-TERR-G008').gapRangeMm).toEqual([8, 10]);
     expect(board('IDEA-TERR-G008').gapMm).toBeUndefined();

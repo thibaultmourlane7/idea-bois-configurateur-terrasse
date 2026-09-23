@@ -11,13 +11,13 @@ import { computeTechnicalSizing } from './technical';
 import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-019';
+export const VERSION_TAG = 'IB-TERR-VERSION-019.1';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V0.19 : calepinage CALPI, structures multi-matériaux, plan/photo calibré, PDF technique et 3D enrichie.`];
+  const trace: string[] = [`[${VERSION_TAG}] V0.19.1 : garde-fou d’exactitude structurelle, calepinage CALPI, plan/photo calibré, PDF technique et 3D enrichie.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
@@ -54,14 +54,22 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   if (supportPlan.status === 'exact') {
     trace.push(`[${SUPPORT_PLAN_TAG}] ${supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} appuis implantés • hauteurs ${supportPlan.minRequiredPlotHeightMm?.toFixed(0) ?? '?'} à ${supportPlan.maxRequiredPlotHeightMm?.toFixed(0) ?? '?'} mm • ${supportPlan.joistStockBoards.length} lambourdes commerciales.`);
   } else if (supportPlan.status === 'partial') {
+    const partialReasons = [
+      supportPlan.pendingCurvedPerimeter
+        ? 'Une portion de lambourdage périphérique courbe reste à confirmer.'
+        : undefined,
+      supportPlan.unsupportedPointCount > 0
+        ? `${supportPlan.unsupportedPointCount} appui(s) restent sans plot commercial validé dans le référentiel actuel.`
+        : undefined,
+    ].filter((value): value is string => Boolean(value));
     diagnostics.push({
       tag: SUPPORT_PLAN_TAG,
       severity: 'warning',
-      message: 'Certaines hauteurs de plots restent hors des gammes tarifées connues.',
-      technicalMessage: `${supportPlan.unsupportedPointCount} appui(s) sans plot compatible dans le référentiel actuel.`,
+      message: 'Le plan structurel reste partiel et ne doit pas être considéré comme exact.',
+      technicalMessage: partialReasons.join(' ') || supportPlan.note || 'Une validation structurelle complémentaire est nécessaire.',
       source: supportPlan.sourceUrl,
     });
-    trace.push(`[${SUPPORT_PLAN_TAG}] Plan structurel partiel : ${supportPlan.unsupportedPointCount} appui(s) restent à résoudre.`);
+    trace.push(`[${SUPPORT_PLAN_TAG}] Plan structurel partiel : ${partialReasons.join(' ') || supportPlan.note || 'validation complémentaire requise'}`);
   } else if (supportPlan.note) {
     trace.push(`[${SUPPORT_PLAN_TAG}] ${supportPlan.note}`);
   }

@@ -3,7 +3,7 @@ import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import { projectFromShareToken, projectToShareToken } from '../commercial/share';
 import type { ProjectInput } from '../domain/types';
 import { computeLayout } from '../engine/layout';
-import { computeSupportPlan } from '../engine/supportPlan';
+import { computeSupportPlan, SUPPORT_PLAN_TAG } from '../engine/supportPlan';
 import { runConfigurator } from '../engine/configurator';
 
 const pin = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
@@ -197,6 +197,40 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     expect(restored.supportLevelProfile).toEqual(project.supportLevelProfile);
     expect(restored.doubleJoistsAtButtJoints).toBe(true);
     expect(restored.layingPattern).toBe('half');
+  });
+
+  it('marque un contour circulaire comme partiel et empêche un panier faussement complet', () => {
+    const project: ProjectInput = {
+      ...base,
+      shape: 'circle',
+      dimensions: { ...base.dimensions, circleDiameterM: 5 },
+    };
+    const result = runConfigurator(project);
+    expect(result.supportPlan?.status).toBe('partial');
+    expect(result.supportPlan?.pendingCurvedPerimeter).toBe(true);
+    expect(result.basket?.status).toBe('partial');
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('pending');
+    expect(result.basket?.lines.find((line) => line.id === 'supports')?.status).toBe('pending');
+  });
+
+  it('marque une réservation circulaire comme partielle tant que sa lambourde périphérique courbe n’est pas validée', () => {
+    const project: ProjectInput = {
+      ...base,
+      obstacles: [{
+        id: 'TREE-CIRCLE',
+        kind: 'tree',
+        label: 'Arbre',
+        shape: 'circle',
+        xM: 2,
+        yM: 1,
+        diameterM: 1,
+      }],
+    };
+    const result = runConfigurator(project);
+    expect(result.supportPlan?.status).toBe('partial');
+    expect(result.supportPlan?.pendingCurvedPerimeter).toBe(true);
+    expect(result.basket?.status).toBe('partial');
+    expect(result.diagnostics.some((item) => item.tag === SUPPORT_PLAN_TAG && item.severity === 'warning')).toBe(true);
   });
 
   it('active le plan précis Cumaru quand sa structure compatible est documentée', () => {

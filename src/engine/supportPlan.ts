@@ -375,6 +375,23 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
     };
   }
 
+  if (!layout) {
+    return {
+      status: 'unavailable',
+      joistSegments: [],
+      joistLinearM: 0,
+      doubleJoistLinearM: 0,
+      joistStockBoards: [],
+      buttJointAxisPositionsMm: [],
+      supportPoints: [],
+      plotGroups: [],
+      unsupportedPointCount: 0,
+      sourceLabel: rule.sourceLabel,
+      sourceUrl: rule.sourceUrl,
+      note: 'Calepinage des lames indisponible : les axes de raccord ne peuvent pas être validés. Le plan structurel précis reste à confirmer.',
+    };
+  }
+
   const { segments, buttJointAxisPositionsMm, pendingCurvedPerimeter } = plannedJoistSegments(input, layout);
   const pieces = joistRequiredPieces(segments);
   const joistStockBoards = optimizeCuts(pieces, rule.joistStockLengthsMm);
@@ -401,7 +418,7 @@ export function computeSupportPlan(input: ProjectInput, layout?: LayoutResult): 
   const perimeterCount = segments.filter((segment) => segment.role === 'perimeter').length;
 
   return {
-    status: unsupportedPointCount > 0 ? 'partial' : 'exact',
+    status: unsupportedPointCount > 0 || pendingCurvedPerimeter ? 'partial' : 'exact',
     joistSpacingMm: rule.joistSpacingMm,
     plotSpacingMm: rule.plotSpacingMm,
     joistSegments: segments,

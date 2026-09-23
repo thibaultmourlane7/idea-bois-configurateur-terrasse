@@ -69,10 +69,18 @@ function choosePlot(residualHeightMm: number) {
   })[0];
 }
 
-function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supportPlan?: SupportPlanResult): BasketLine[] {
+function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
   const rule = getCommercialConstructionRule(input);
+  const unresolvedStructureReason = input.supportSystem === 'adjustable-pedestals'
+    ? !layout
+      ? 'Calepinage des lames indisponible : les raccords et leurs appuis ne peuvent pas être validés.'
+      : supportPlan?.pendingCurvedPerimeter
+        ? 'Une portion de lambourdage périphérique courbe reste à valider avant de figer les quantités.'
+        : undefined
+    : undefined;
   const hasPrecisePlan = input.supportSystem === 'adjustable-pedestals'
+    && !unresolvedStructureReason
     && supportPlan
     && supportPlan.status !== 'unavailable'
     && supportPlan.joistStockBoards.length > 0;
@@ -83,38 +91,43 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supp
   const joistPieces = hasPrecisePlan ? supportPlan.joistStockBoards.length : Math.ceil(joistLinearM / fallbackStockLengthM);
   const bandRolls = Math.ceil(joistLinearM / 20);
 
-  const lines: BasketLine[] = [
-    {
-      id: 'joists',
-      family: 'joists',
-      label: joistMaterial.label,
-      productRef: joistMaterial.productRef,
-      quantity: joistPieces,
-      unit: 'pièce(s)',
-      unitPriceTtc: joistMaterial.unitPriceTtc,
-      totalTtc: round2(joistPieces * joistMaterial.unitPriceTtc),
-      status: 'exact',
-      required: true,
-      note: hasPrecisePlan
-        ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation selon les longueurs commerciales validées de la lambourde.`
-        : `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
-      sourceUrl: joistMaterial.sourceUrl,
-    },
-    {
-      id: 'protection',
-      family: 'protection',
-      label: UBBINK_BAND_20M.label,
-      productRef: UBBINK_BAND_20M.productRef,
-      quantity: bandRolls,
-      unit: 'rouleau(x)',
-      unitPriceTtc: UBBINK_BAND_20M.unitPriceTtc,
-      totalTtc: round2(bandRolls * UBBINK_BAND_20M.unitPriceTtc),
-      status: 'exact',
-      required: true,
-      note: '1 rouleau couvre 20 ml de lambourdes.',
-      sourceUrl: UBBINK_BAND_20M.sourceUrl,
-    },
-  ];
+  const lines: BasketLine[] = unresolvedStructureReason
+    ? [
+        pending('joists', 'joists', joistMaterial.label, unresolvedStructureReason),
+        pending('protection', 'protection', UBBINK_BAND_20M.label, 'La longueur de protection dépend du lambourdage final validé.'),
+      ]
+    : [
+        {
+          id: 'joists',
+          family: 'joists',
+          label: joistMaterial.label,
+          productRef: joistMaterial.productRef,
+          quantity: joistPieces,
+          unit: 'pièce(s)',
+          unitPriceTtc: joistMaterial.unitPriceTtc,
+          totalTtc: round2(joistPieces * joistMaterial.unitPriceTtc),
+          status: 'exact',
+          required: true,
+          note: hasPrecisePlan
+            ? `${joistLinearM.toFixed(1)} ml calculés sur le plan réel • ${supportPlan.buttJointAxisPositionsMm.length} axe(s) de jonction détecté(s) • double lambourdage ${input.doubleJoistsAtButtJoints ? 'activé' : 'désactivé'} • optimisation selon les longueurs commerciales validées de la lambourde.`
+            : `${joistLinearM.toFixed(1)} ml • règle commerciale IDEA Bois : 2,5 ml/m²`,
+          sourceUrl: joistMaterial.sourceUrl,
+        },
+        {
+          id: 'protection',
+          family: 'protection',
+          label: UBBINK_BAND_20M.label,
+          productRef: UBBINK_BAND_20M.productRef,
+          quantity: bandRolls,
+          unit: 'rouleau(x)',
+          unitPriceTtc: UBBINK_BAND_20M.unitPriceTtc,
+          totalTtc: round2(bandRolls * UBBINK_BAND_20M.unitPriceTtc),
+          status: 'exact',
+          required: true,
+          note: '1 rouleau couvre 20 ml de lambourdes.',
+          sourceUrl: UBBINK_BAND_20M.sourceUrl,
+        },
+      ];
 
   if (input.board.thicknessMm >= 20 && input.board.thicknessMm <= 27 && input.board.technical.technicalEngine !== 'manufacturer-rules') {
     const hardwoodRecipe = ['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '');
@@ -147,7 +160,9 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supp
   }
 
   if (input.supportSystem === 'adjustable-pedestals') {
-    if (hasPrecisePlan) {
+    if (unresolvedStructureReason) {
+      lines.push(pending('supports', 'supports', 'Plots / appuis', unresolvedStructureReason));
+    } else if (hasPrecisePlan) {
       for (const group of supportPlan.plotGroups) {
         lines.push({
           id: `supports-${group.materialId}`,
@@ -223,11 +238,15 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, supp
   return lines;
 }
 
-function silvadecLines(input: ProjectInput, geometry: GeometryResult, supportPlan?: SupportPlanResult): BasketLine[] {
+function silvadecLines(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
   const clips = Math.ceil(area * 18);
   const packs = Math.ceil(clips / 30);
-  const preciseJoists = supportPlan && supportPlan.status !== 'unavailable' && supportPlan.joistStockBoards.length > 0;
+  const preciseJoists = Boolean(layout)
+    && !supportPlan?.pendingCurvedPerimeter
+    && supportPlan
+    && supportPlan.status !== 'unavailable'
+    && supportPlan.joistStockBoards.length > 0;
   return [
     {
       id: 'joists',
@@ -410,9 +429,9 @@ export function computeBasket(
   const lines: BasketLine[] = [deckingLine(input, geometry, layout, pricing)];
 
   if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
-    lines.push(...silvadecLines(input, geometry, supportPlan));
+    lines.push(...silvadecLines(input, geometry, layout, supportPlan));
   } else if (['idea-pin-nord-145x27','idea-resineux-class4','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '')) {
-    lines.push(...woodCommercialLines(input, geometry, supportPlan));
+    lines.push(...woodCommercialLines(input, geometry, layout, supportPlan));
   } else {
     lines.push(
       pending('joists', 'joists', 'Lambourdes / structure', 'Compatibilité produit à valider.'),

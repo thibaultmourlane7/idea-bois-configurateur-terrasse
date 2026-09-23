@@ -79,3 +79,23 @@ La V1 professionnelle signifie :
 - aucune main-d’œuvre ni durée n’est calculée ;
 - les six plans et les deux listes chantier sont présents ;
 - les tests historiques et la matrice V1 passent ensemble.
+
+
+## Résultat de recette
+
+Recette exécutée sur `main` le 23/09/2026.
+
+- 21 fichiers de tests ;
+- 171 tests ;
+- matrice V1 : 27 scénarios ;
+- tests historiques + scénarios V1 : succès ;
+- TypeScript : succès ;
+- build production : succès.
+
+### Limites explicitement conservées
+- Garapa : jeu de pose exact non validé dans le référentiel actuel → calcul final bloqué, aucune valeur inventée.
+- Padouk : jeu de pose exact non validé dans le référentiel actuel → calcul final bloqué, aucune valeur inventée.
+- Les règles de réemploi des chutes restent au statut fabricant/atelier à confirmer lorsqu’elles ne sont pas documentées.
+- Les lignes catalogue/structure/finitions partielles restent signalées comme telles.
+
+Ces limites sont considérées conformes à la V1 parce que le moteur refuse de produire un résultat certain lorsqu’une donnée critique manque.

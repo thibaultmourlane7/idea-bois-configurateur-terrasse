@@ -250,7 +250,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V0.24 • dossier chantier • traçabilité complète</div>
+          <div className="header-note">V1.0 • recette professionnelle validée</div>
         </div>
       </header>
 
@@ -269,8 +269,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V0.24</strong>
-                <span>Dossier chantier professionnel • plans • coupes • structure • rives • panier • alertes • traçabilité.</span>
+                <strong>Version V1.0 professionnelle</strong>
+                <span>Recette V1 validée • calepinage • structure • chutes • rives • compatibilités • dossier chantier.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (

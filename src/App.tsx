@@ -565,8 +565,8 @@ export default function App() {
                 <div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div>
                 <div className="result-actions">
                   <button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button>
-                  <button type="button" className="ghost-button dossier-button" onClick={downloadSiteDossier} disabled={siteDossierBusy}>
-                    {siteDossierBusy ? 'Création du dossier…' : 'Dossier chantier PDF'}
+                  <button type="button" className="ghost-button dossier-button" onClick={downloadSiteDossier} disabled={siteDossierBusy || !result.geometry}>
+                    {siteDossierBusy ? 'Création du dossier…' : result.geometry ? 'Dossier chantier PDF' : 'Dossier indisponible'}
                   </button>
                   <button type="button" className="pdf-button" onClick={downloadPdf} disabled={pdfBusy}>
                     {pdfBusy ? 'Création du PDF…' : 'PDF client'}

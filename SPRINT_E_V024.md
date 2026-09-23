@@ -116,9 +116,9 @@ Le dossier reprend :
 ## États du dossier
 - **Prêt pour contrôle chantier** : aucun blocage et aucun point significatif en attente ;
 - **Avec points à confirmer** : le projet est calculable mais certains éléments restent partiels ;
-- **Bloqué — corrections requises** : au moins une règle métier bloque le projet.
+- **Bloqué — corrections requises** : état réservé aux blocages détectés après obtention d’une géométrie exploitable.
 
-Un dossier bloqué peut être généré uniquement lorsque la géométrie elle-même existe, afin de documenter les corrections nécessaires.
+Si un blocage empêche le calcul de la géométrie réelle, le dossier chantier n’est pas généré. Le configurateur refuse plutôt que de produire un document technique incomplet ou trompeur.
 
 ## Interface
 Dans le récapitulatif final :

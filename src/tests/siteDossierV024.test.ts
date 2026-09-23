@@ -104,7 +104,7 @@ describe('Sprint E V0.24 — dossier chantier professionnel', () => {
     expect(dossier.status).toBe('with-warnings');
   });
 
-  it('passe en statut bloqué si une incompatibilité de zone est détectée sur une géométrie valide', () => {
+  it('refuse de fabriquer un dossier technique quand un blocage empêche la géométrie réelle', () => {
     const invalid: ProjectInput = {
       ...base,
       layingZones: [{
@@ -113,9 +113,8 @@ describe('Sprint E V0.24 — dossier chantier professionnel', () => {
       }],
     };
     const result = runConfigurator(invalid);
-    const dossier = buildSiteDossierModel(invalid, result, 'IB-TERR-VERSION-024.0');
-    expect(result.geometry).toBeDefined();
-    expect(dossier.status).toBe('blocked');
-    expect(dossier.issues.some((issue) => issue.severity === 'blocking')).toBe(true);
+    expect(result.geometry).toBeUndefined();
+    expect(() => buildSiteDossierModel(invalid, result, 'IB-TERR-VERSION-024.0'))
+      .toThrow('SA-TERR-DOSSIER-001');
   });
 });

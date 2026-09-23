@@ -1090,3 +1090,58 @@
   .compatibility-heading { flex-direction: column; }
   .compatibility-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Sprint G V1.1 — 3D professionnelle */
+.professional-3d {
+  background: linear-gradient(180deg,#ffffff 0%,#f8fbfd 100%);
+}
+.professional-3d canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 13px;
+  border: 1px solid #e0e7ec;
+  background: #f7fafc;
+}
+.preview3d-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0 2px 10px;
+}
+.preview3d-camera {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #62788b;
+  font-size: 11px;
+  font-weight: 800;
+}
+.preview3d-camera button {
+  width: 31px;
+  height: 31px;
+  border: 1px solid #d4e0e8;
+  border-radius: 9px;
+  background: #fff;
+  color: #245e8c;
+  font-weight: 900;
+  box-shadow: 0 2px 6px rgba(35,65,90,.06);
+}
+.preview3d-camera button:hover {
+  border-color: #9fc7e5;
+  background: #f5fbff;
+}
+.professional-3d .construction-legend {
+  margin-top: 8px;
+  border: 0;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+@media(max-width:700px){
+  .preview3d-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

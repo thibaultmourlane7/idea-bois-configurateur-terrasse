@@ -230,7 +230,7 @@ export function buildClientPdfModel(
           .sort((a, b) => b[0] - a[0])
           .map(([lengthMm, qty]) => `${qty} x ${fmt(lengthMm / 1000)} m`)
           .join(' + ');
-        return `${summary.boardLabel}: ${summary.stockBoards.length} lames - ${breakdown} - ${fmt(summary.purchasedLinearM)} ml - chute ${fmt(summary.wastePercent, 1)} % - zones ${summary.zoneIds.join(', ')}`;
+        return `${summary.boardLabel}: ${summary.stockBoards.length} lames commerciales - ${breakdown} - ${fmt(summary.purchasedLinearM)} ml - chute ${fmt(summary.wastePercent, 1)} % - zones ${summary.zoneIds.join(', ')}`;
       }).join(' | ')
     : 'Longueurs de commande a confirmer';
 

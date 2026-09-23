@@ -1700,3 +1700,127 @@
   .guardrail-target-grid,.guardrail-field-grid,.guardrail-result-grid,.guardrail-card-heading{grid-template-columns:1fr}
   .guardrail-note-field{grid-column:auto}
 }
+
+
+/* Sprint K V1.5 — import avancé et validation humaine */
+.reference-pdf-page {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 8px;
+  border:1px solid #d4e0e8;
+  border-radius:9px;
+  background:#fff;
+  color:#536f82;
+  font-size:9px;
+  font-weight:850;
+}
+.reference-pdf-page input {
+  width:54px;
+  border:0;
+  background:#f7fafc;
+  border-radius:6px;
+  padding:5px 6px;
+  color:#254c67;
+  font-weight:850;
+}
+.reference-detection-panel {
+  margin:10px 0 12px;
+  padding:13px;
+  border:1px solid #d3e0e8;
+  border-radius:13px;
+  background:linear-gradient(180deg,#fafdff,#f4f9fc);
+}
+.reference-detection-heading {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.reference-detection-heading strong,
+.reference-detection-heading small {
+  display:block;
+}
+.reference-detection-heading small {
+  margin-top:4px;
+  color:#718492;
+  font-size:9px;
+  line-height:1.4;
+}
+.reference-detection-heading button {
+  border:1px solid #e1caca;
+  border-radius:8px;
+  padding:6px 8px;
+  background:#fff;
+  color:#9a4a4a;
+  font-size:9px;
+  font-weight:800;
+}
+.reference-detection-stats {
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:10px;
+}
+.reference-detection-stats span {
+  padding:5px 7px;
+  border-radius:999px;
+  background:#eaf3f8;
+  color:#446d84;
+  font-size:8px;
+  font-weight:850;
+}
+.reference-detection-dimensions {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.reference-detection-dimensions>div {
+  padding:9px 10px;
+  border:1px solid #e1e8ed;
+  border-radius:9px;
+  background:#fff;
+}
+.reference-detection-dimensions span,
+.reference-detection-dimensions strong { display:block; }
+.reference-detection-dimensions span {
+  color:#7b8994;
+  font-size:8px;
+  font-weight:750;
+}
+.reference-detection-dimensions strong {
+  margin-top:3px;
+  color:#264c66;
+  font-size:11px;
+}
+.reference-human-validate {
+  margin-top:10px;
+  border:1px solid #7db693;
+  border-radius:9px;
+  padding:9px 11px;
+  background:#eaf7ee;
+  color:#216b3f;
+  font-size:10px;
+  font-weight:900;
+}
+.reference-human-validate:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
+.reference-detection-panel>p {
+  margin:8px 0 0;
+  color:#85621d;
+  font-size:9px;
+}
+.reference-detected-overlay polygon {
+  fill:rgba(31,140,196,.14);
+  stroke:#1787bd;
+  stroke-width:2;
+  stroke-dasharray:7 4;
+  vector-effect:non-scaling-stroke;
+}
+@media(max-width:650px){
+  .reference-detection-heading{flex-direction:column}
+  .reference-detection-dimensions{grid-template-columns:1fr}
+}

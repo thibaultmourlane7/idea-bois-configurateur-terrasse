@@ -254,7 +254,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.4 • garde-corps • côtés • poteaux • sections</div>
+          <div className="header-note">V1.5 • import JPG/PNG/PDF • détection assistée</div>
         </div>
       </header>
 
@@ -273,8 +273,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V1.4 — Garde-corps</strong>
-                <span>Côtés terrasse ou escalier • poteaux et sections calculés depuis les saisies • références explicites • aucune règle fabricant inventée.</span>
+                <strong>Version V1.5 — Import avancé</strong>
+                <span>JPG/PNG + PDF • détection assistée de lignes, contours et cotes • calibration et validation humaine obligatoires avant calcul.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (

@@ -92,6 +92,14 @@ export interface ReferencePlanTransform {
   calibrationDistanceMm?: number;
   imageWidthPx?: number;
   imageHeightPx?: number;
+  /** Sprint K : type du fichier de référence réellement importé. */
+  sourceKind?: 'image' | 'pdf';
+  sourceName?: string;
+  /** Pour un PDF, page actuellement utilisée comme fond. */
+  sourcePageNumber?: number;
+  sourcePageCount?: number;
+  /** Horodatage uniquement après clic humain explicite sur « Valider et utiliser ». */
+  humanValidatedAt?: string;
 }
 
 export type SupportLevelMode = 'flat' | 'four-corners';

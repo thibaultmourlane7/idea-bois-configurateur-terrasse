@@ -111,6 +111,13 @@ export function sanitizeReferencePlanTransform(value: unknown): ReferencePlanTra
   const calibrationDistanceMm = raw.calibrationDistanceMm == null ? undefined : Number(raw.calibrationDistanceMm);
   const imageWidthPx = raw.imageWidthPx == null ? undefined : Number(raw.imageWidthPx);
   const imageHeightPx = raw.imageHeightPx == null ? undefined : Number(raw.imageHeightPx);
+  const sourceKind = raw.sourceKind === 'pdf' || raw.sourceKind === 'image' ? raw.sourceKind : undefined;
+  const sourceName = typeof raw.sourceName === 'string' && raw.sourceName.trim() ? raw.sourceName : undefined;
+  const sourcePageNumber = raw.sourcePageNumber == null ? undefined : Number(raw.sourcePageNumber);
+  const sourcePageCount = raw.sourcePageCount == null ? undefined : Number(raw.sourcePageCount);
+  const humanValidatedAt = typeof raw.humanValidatedAt === 'string' && raw.humanValidatedAt.trim()
+    ? raw.humanValidatedAt
+    : undefined;
   return {
     scaleMmPerPixel,
     offsetXM,
@@ -122,6 +129,11 @@ export function sanitizeReferencePlanTransform(value: unknown): ReferencePlanTra
     calibrationDistanceMm: Number.isFinite(calibrationDistanceMm) && (calibrationDistanceMm ?? 0) > 0 ? calibrationDistanceMm : undefined,
     imageWidthPx: Number.isFinite(imageWidthPx) && (imageWidthPx ?? 0) > 0 ? imageWidthPx : undefined,
     imageHeightPx: Number.isFinite(imageHeightPx) && (imageHeightPx ?? 0) > 0 ? imageHeightPx : undefined,
+    sourceKind,
+    sourceName,
+    sourcePageNumber: Number.isInteger(sourcePageNumber) && (sourcePageNumber ?? 0) > 0 ? sourcePageNumber : undefined,
+    sourcePageCount: Number.isInteger(sourcePageCount) && (sourcePageCount ?? 0) > 0 ? sourcePageCount : undefined,
+    humanValidatedAt,
   };
 }
 

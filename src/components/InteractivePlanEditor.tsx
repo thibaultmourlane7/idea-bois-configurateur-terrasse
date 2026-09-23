@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectInput, ReferencePlanTransform, TerraceObstacle, TerracePoint } from '../domain/types';
 import { calibrateReferencePlan, fitReferencePlan, referencePlanDiagnostics, zoomReferencePlan } from '../domain/referencePlan';
+import {
+  applyDetectedContourAfterHumanValidation,
+  detectReferenceGeometry,
+  detectionToModelContour,
+  type RasterPixelSource,
+  type ReferenceDetectionResult,
+} from '../domain/referenceDetection';
+import { renderReferenceFile, type ReferenceFileKind } from '../browser/referenceImport';
 import { getDeckBoundingSizeM, getDeckOutlinePointsM, isSimplePolygon } from '../engine/geometry';
 import {
   addVertexOnLongestEdge,
@@ -65,6 +73,13 @@ export function InteractivePlanEditor({
   const [selectedObstacleId, setSelectedObstacleId] = useState<string | null>(null);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [referenceKind, setReferenceKind] = useState<ReferenceFileKind | null>(null);
+  const [referenceRaster, setReferenceRaster] = useState<RasterPixelSource | null>(null);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfPageCount, setPdfPageCount] = useState(1);
+  const [referenceLoading, setReferenceLoading] = useState(false);
+  const [detection, setDetection] = useState<ReferenceDetectionResult | null>(null);
   const [calibrationPoints, setCalibrationPoints] = useState<TerracePoint[]>([]);
   const [calibrationDistanceM, setCalibrationDistanceM] = useState('');
   const [drawPoints, setDrawPoints] = useState<TerracePoint[]>([]);
@@ -339,40 +354,112 @@ export function InteractivePlanEditor({
     setEditorMessage(null);
   };
 
-  const setReference = (file?: File) => {
-    if (!file) {
-      if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
-      setReferenceImageUrl(null);
-      setCalibrationPoints([]);
-      setCalibrationDistanceM('');
-      onBeginEdit();
-      onChange({ ...project, referencePlan: undefined });
-      setTool('select');
-      return;
-    }
-
+  const clearReference = () => {
     if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      const widthPx = Math.max(1, image.naturalWidth);
-      const heightPx = Math.max(1, image.naturalHeight);
-      const canReuse = referencePlan?.imageWidthPx === widthPx && referencePlan?.imageHeightPx === heightPx;
-      const next = canReuse && referencePlan
-        ? { ...referencePlan, imageWidthPx: widthPx, imageHeightPx: heightPx }
-        : fitReferencePlan({ widthPx, heightPx }, bounds.lengthM, bounds.widthM);
+    setReferenceImageUrl(null);
+    setReferenceFile(null);
+    setReferenceKind(null);
+    setReferenceRaster(null);
+    setPdfPage(1);
+    setPdfPageCount(1);
+    setDetection(null);
+    setCalibrationPoints([]);
+    setCalibrationDistanceM('');
+    onBeginEdit();
+    onChange({ ...project, referencePlan: undefined });
+    setTool('select');
+    setEditorMessage(null);
+  };
+
+  const loadReference = async (file: File, pageNumber = 1) => {
+    setReferenceLoading(true);
+    setEditorMessage(null);
+    try {
+      const rendered = await renderReferenceFile(file, pageNumber);
+      if (referenceImageUrl) URL.revokeObjectURL(referenceImageUrl);
+      const canReuse = referencePlan?.imageWidthPx === rendered.widthPx
+        && referencePlan?.imageHeightPx === rendered.heightPx
+        && referencePlan?.sourceName === rendered.sourceName
+        && referencePlan?.sourceKind === rendered.kind
+        && (rendered.kind !== 'pdf' || referencePlan?.sourcePageNumber === rendered.pageNumber);
+      const fitted = canReuse && referencePlan
+        ? { ...referencePlan }
+        : fitReferencePlan({ widthPx: rendered.widthPx, heightPx: rendered.heightPx }, bounds.lengthM, bounds.widthM);
+      const next: ReferencePlanTransform = {
+        ...fitted,
+        imageWidthPx: rendered.widthPx,
+        imageHeightPx: rendered.heightPx,
+        sourceKind: rendered.kind,
+        sourceName: rendered.sourceName,
+        sourcePageNumber: rendered.kind === 'pdf' ? rendered.pageNumber : undefined,
+        sourcePageCount: rendered.kind === 'pdf' ? rendered.pageCount : undefined,
+        humanValidatedAt: canReuse ? referencePlan?.humanValidatedAt : undefined,
+      };
       onBeginEdit();
       onChange({ ...project, referencePlan: next });
-      setReferenceImageUrl(url);
+      setReferenceFile(file);
+      setReferenceKind(rendered.kind);
+      setReferenceImageUrl(rendered.url);
+      setReferenceRaster(rendered.raster);
+      setPdfPage(rendered.pageNumber);
+      setPdfPageCount(rendered.pageCount);
+      setDetection(null);
       setCalibrationPoints([]);
       setCalibrationDistanceM('');
       setTool('select');
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      setEditorMessage('Ce fichier image ne peut pas être chargé.');
-    };
-    image.src = url;
+      setEditorMessage(rendered.kind === 'pdf'
+        ? `PDF chargé — page ${rendered.pageNumber}/${rendered.pageCount}. Calibrez avant toute validation de contour.`
+        : 'Image chargée. Calibrez avant toute validation de contour.');
+    } catch (error) {
+      setEditorMessage(error instanceof Error ? error.message : 'Import du plan impossible.');
+    } finally {
+      setReferenceLoading(false);
+    }
+  };
+
+  const setReference = (file?: File) => {
+    if (!file) {
+      clearReference();
+      return;
+    }
+    void loadReference(file, 1);
+  };
+
+  const changePdfPage = (rawPage: number) => {
+    if (!referenceFile || referenceKind !== 'pdf') return;
+    const nextPage = Math.min(pdfPageCount, Math.max(1, Math.round(rawPage || 1)));
+    void loadReference(referenceFile, nextPage);
+  };
+
+  const analyzeReference = () => {
+    if (!referenceRaster) return;
+    const next = detectReferenceGeometry(referenceRaster);
+    setDetection(next);
+    if (!next.contour) {
+      setEditorMessage('Aucun contour orthogonal suffisamment net détecté. Utilisez le dessin manuel ou ajustez le fond.');
+      return;
+    }
+    setEditorMessage(referencePlan?.calibrated
+      ? 'Proposition détectée. Vérifiez les cotes puis cliquez explicitement sur « Valider et utiliser » si elle est correcte.'
+      : 'Proposition détectée, mais la calibration métrique est obligatoire avant de pouvoir l’utiliser.');
+  };
+
+  const validateDetectedContour = () => {
+    if (!detection) return;
+    const proposal = detectionToModelContour(detection, referencePlan);
+    if (!proposal || !referencePlan?.calibrated) {
+      setEditorMessage('Calibrez d’abord le plan avec deux points et une distance réelle.');
+      return;
+    }
+    if (!isSimplePolygon(proposal.points)) {
+      setEditorMessage('La proposition détectée n’est pas un contour géométrique valide. Utilisez le dessin manuel.');
+      return;
+    }
+    onBeginEdit();
+    onChange(applyDetectedContourAfterHumanValidation(project, proposal, true, new Date().toISOString()));
+    setDetection(null);
+    setTool('select');
+    setEditorMessage('Contour validé humainement et appliqué au projet. Les calculs ont maintenant le droit de l’utiliser.');
   };
 
   const beginCalibration = () => {
@@ -444,14 +531,30 @@ export function InteractivePlanEditor({
 
       <div className="editor-reference-row reference-v017">
         <label className="reference-upload">
-          Importer plan / photo
-          <input type="file" accept="image/*" onChange={(event) => setReference(event.target.files?.[0])} />
+          Importer JPG / PNG / PDF
+          <input type="file" accept="image/*,application/pdf,.pdf" onChange={(event) => setReference(event.target.files?.[0])} />
         </label>
         {referenceImageUrl && referencePlan && (
           <>
             <span className={`reference-status ${referencePlan.calibrated ? 'calibrated' : 'uncalibrated'}`}>
               {referencePlan.calibrated ? '✓ Fond calibré' : '⚠ Calibration requise'}
             </span>
+            {referenceKind === 'pdf' && (
+              <label className="reference-pdf-page">Page PDF
+                <input
+                  type="number"
+                  min="1"
+                  max={pdfPageCount}
+                  value={pdfPage}
+                  disabled={referenceLoading}
+                  onChange={(event) => changePdfPage(+event.target.value)}
+                />
+                <span>/ {pdfPageCount}</span>
+              </label>
+            )}
+            <button type="button" disabled={referenceLoading || !referenceRaster} onClick={analyzeReference}>
+              {referenceLoading ? 'Import…' : 'Détecter contours / cotes'}
+            </button>
             <button type="button" className={tool === 'calibrate' ? 'active' : ''} onClick={beginCalibration}>Calibrer 2 points</button>
             <button type="button" disabled={referencePlan.locked} onClick={() => startReferenceZoom(0.9)}>Zoom fond −</button>
             <button type="button" disabled={referencePlan.locked} onClick={() => startReferenceZoom(1.1)}>Zoom fond +</button>
@@ -478,13 +581,13 @@ export function InteractivePlanEditor({
             <button type="button" onClick={() => updateReferencePlan({ ...referencePlan, locked: !referencePlan.locked })}>
               {referencePlan.locked ? '🔒 Fond verrouillé' : '🔓 Verrouiller le fond'}
             </button>
-            <button type="button" onClick={() => setReference()}>Retirer le fond</button>
+            <button type="button" onClick={clearReference}>Retirer le fond</button>
           </>
         )}
         {!referenceImageUrl && referencePlan && (
           <span className="reference-status saved">Calibration enregistrée — réimportez le même fichier pour retrouver le fond.</span>
         )}
-        <small>Le fond est une référence visuelle. La calibration utilise deux points + une distance connue ; aucune cote n’est déduite automatiquement.</small>
+        <small>JPG/PNG et PDF sont des références visuelles. La détection propose seulement des lignes, un contour et des cotes géométriques ; rien n’alimente le moteur sans calibration puis validation humaine explicite.</small>
       </div>
 
       {referenceImageUrl && referencePlan && tool === 'calibrate' && (
@@ -504,6 +607,46 @@ export function InteractivePlanEditor({
 
       {referenceDiagnostics.length > 0 && referencePlan && (
         <div className={`reference-diagnostic ${referenceDiagnostics[0].severity}`}>{referenceDiagnostics[0].message}</div>
+      )}
+
+      {detection && (
+        <div className="reference-detection-panel">
+          <div className="reference-detection-heading">
+            <div>
+              <strong>Détection assistée — proposition uniquement</strong>
+              <small>{detection.note}</small>
+            </div>
+            <button type="button" onClick={() => setDetection(null)}>Rejeter</button>
+          </div>
+          <div className="reference-detection-stats">
+            <span>{detection.verticalLines.length} ligne(s) verticale(s)</span>
+            <span>{detection.horizontalLines.length} ligne(s) horizontale(s)</span>
+            <span>Confiance contour : {detection.contour ? `${Math.round(detection.contour.confidence * 100)} %` : 'aucun contour'}</span>
+          </div>
+          {detection.contour && (
+            <>
+              <div className="reference-detection-dimensions">
+                <div>
+                  <span>Largeur détectée</span>
+                  <strong>{referencePlan?.calibrated ? `${(detection.contour.widthPx * referencePlan.scaleMmPerPixel / 1000).toFixed(2)} m` : `${Math.round(detection.contour.widthPx)} px`}</strong>
+                </div>
+                <div>
+                  <span>Hauteur détectée</span>
+                  <strong>{referencePlan?.calibrated ? `${(detection.contour.heightPx * referencePlan.scaleMmPerPixel / 1000).toFixed(2)} m` : `${Math.round(detection.contour.heightPx)} px`}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="reference-human-validate"
+                disabled={!referencePlan?.calibrated}
+                onClick={validateDetectedContour}
+              >
+                ✓ J’ai vérifié — Valider et utiliser ce contour
+              </button>
+              {!referencePlan?.calibrated && <p>Calibration obligatoire avant validation : la détection seule ne peut pas modifier le projet.</p>}
+            </>
+          )}
+        </div>
       )}
 
       {project.shape === 'freeform' && (
@@ -553,6 +696,20 @@ export function InteractivePlanEditor({
                 opacity={referencePlan.opacity}
                 pointerEvents={tool === 'reference' && !referencePlan.locked ? 'auto' : 'none'}
                 onPointerDown={startReferenceMove}
+              />
+            </g>
+          )}
+
+          {detection?.contour && referencePlan && (
+            <g
+              className="reference-detected-overlay"
+              transform={`translate(${referencePlan.offsetXM * baseScale} ${referencePlan.offsetYM * baseScale}) rotate(${referencePlan.rotationDeg})`}
+              pointerEvents="none"
+            >
+              <polygon
+                points={detection.contour.pointsPx.map((point) =>
+                  `${point.xPx * referencePlan.scaleMmPerPixel / 1000 * baseScale},${point.yPx * referencePlan.scaleMmPerPixel / 1000 * baseScale}`
+                ).join(' ')}
               />
             </g>
           )}

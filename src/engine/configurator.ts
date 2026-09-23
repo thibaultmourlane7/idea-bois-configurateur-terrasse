@@ -16,18 +16,27 @@ import { computeTerrainModel, TERRAIN_TAG } from './terrain';
 import { computeStairs, STAIR_TAG } from './stairs';
 import { computeGuardrails, GUARDRAIL_TAG } from './guardrails';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.4.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.5.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.4.0 : Sprint J — garde-corps sur rives terrasse et côtés d’escalier, avec poteaux, sections et références explicites.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.5.0 : Sprint K — import JPG/PNG/PDF, détection assistée de contours/cotes et validation humaine obligatoire avant usage métier.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
   }
 
+  if (input.referencePlan) {
+    trace.push(
+      `[SA-TERR-IMPORT-150] Source ${input.referencePlan.sourceKind ?? 'image'}`
+      + `${input.referencePlan.sourceName ? ` « ${input.referencePlan.sourceName} »` : ''}`
+      + `${input.referencePlan.sourceKind === 'pdf' && input.referencePlan.sourcePageNumber ? ` page ${input.referencePlan.sourcePageNumber}/${input.referencePlan.sourcePageCount ?? '?'}` : ''}`
+      + ` ; calibration ${input.referencePlan.calibrated ? 'validée' : 'non validée'}`
+      + ` ; contour assisté ${input.referencePlan.humanValidatedAt ? 'validé humainement' : 'non validé'}.`
+    );
+  }
   const geometry = computeGeometry(input);
   const terrain = computeTerrainModel(input);
   trace.push(`[${TERRAIN_TAG}] ${terrain.platforms.length} plateforme(s) ; ${terrain.relations.length} relation(s) ; ${terrain.transitionCount} transition(s) de niveau détectée(s).`);

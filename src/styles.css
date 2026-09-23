@@ -1145,3 +1145,143 @@
     flex-direction: column;
   }
 }
+
+
+/* Sprint H V1.2 — terrain avancé / multi-niveaux */
+.terrain-platform-editor {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #d9e5ee;
+  border-radius: 16px;
+  background: linear-gradient(180deg,#fbfdff,#f7fafc);
+}
+.terrain-platform-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+.terrain-platform-heading h3 { margin: 4px 0 5px; }
+.terrain-platform-heading p { margin: 0; color: #65788a; line-height: 1.45; }
+.terrain-platform-heading > strong {
+  flex: 0 0 auto;
+  min-width: 82px;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #eaf4fb;
+  color: #155f94;
+}
+.terrain-empty {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border: 1px dashed #cbdce8;
+  border-radius: 11px;
+  color: #6c8090;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.terrain-platform-list { display: grid; gap: 11px; margin-top: 14px; }
+.terrain-platform-card {
+  padding: 14px;
+  border: 1px solid #dfe8ee;
+  border-radius: 13px;
+  background: #fff;
+}
+.terrain-platform-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.terrain-platform-card-heading strong,
+.terrain-platform-card-heading small { display: block; }
+.terrain-platform-card-heading small { margin-top: 3px; color: #7b8a96; font-size: 10px; }
+.terrain-platform-card-heading > span {
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #eef6fc;
+  color: #286b9b;
+  font-size: 10px;
+  font-weight: 900;
+}
+.terrain-level-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+}
+.terrain-level-grid label {
+  font-size: 10px;
+  font-weight: 850;
+  color: #607687;
+}
+.terrain-level-grid label > small {
+  display: block;
+  margin-top: 5px;
+  color: #83919c;
+  font-size: 9px;
+  font-weight: 500;
+}
+.terrain-reset-slope {
+  margin-top: 10px;
+  border: 1px solid #ccdce7;
+  background: #fff;
+  color: #406881;
+  border-radius: 9px;
+  padding: 7px 9px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.terrain-relations {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e2eaf0;
+}
+.terrain-relations h4 { margin: 0 0 9px; color: #294d68; }
+.terrain-relation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e9ef;
+  margin-top: 7px;
+}
+.terrain-relation strong,
+.terrain-relation small { display: block; }
+.terrain-relation small { color: #7b8a96; margin-top: 2px; font-size: 9px; }
+.terrain-relation > span { font-size: 10px; font-weight: 850; color: #42657d; }
+.terrain-relation.transition {
+  background: #fff9eb;
+  border-color: #ecd6a0;
+}
+.terrain-relation.transition > span { color: #8a621c; }
+.terrain-transition-note {
+  margin: 10px 0 0;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: #fff4db;
+  color: #72571e;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.terrain-3d-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef7ff;
+  color: #27678f;
+  font-size: 9px;
+  font-weight: 850;
+}
+@media(max-width:700px){
+  .terrain-platform-heading,
+  .terrain-relation { flex-direction: column; align-items: stretch; }
+  .terrain-level-grid { grid-template-columns: 1fr; }
+}

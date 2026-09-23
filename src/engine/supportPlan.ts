@@ -10,8 +10,9 @@ import type {
 import { PLOT_OPTIONS, type PlotMaterial } from '../catalog/materials';
 import { optimizeCuts } from './cuts';
 import { getCommercialConstructionRule } from './constructionRules';
-import { getDeckBoundingSizeM, getEffectiveBoundarySegmentsM } from './geometry';
+import { getEffectiveBoundarySegmentsM } from './geometry';
 import { intervalsForRegionAtV, worldPointFromUV, type LayingBasis } from './layingGeometry';
+import { supportSurfaceDeltaMm, targetFinishedDeltaMm } from './terrain';
 
 export const SUPPORT_PLAN_TAG = 'SA-TERR-SUPPORT-PLAN-016';
 export const SUPPORT_PLAN_SOURCE_URL = 'https://www.idea-bois.com/art-plot-lambourde-terrasse-r-glable-40-60-mm-jouplast-2182.htm';
@@ -38,29 +39,6 @@ function choosePlot(heightMm: number): PlotMaterial | undefined {
         || a.unitPriceTtc - b.unitPriceTtc;
     });
   return candidates[0];
-}
-
-function supportSurfaceDeltaMm(input: ProjectInput, xM: number, yM: number): number {
-  const profile = input.supportLevelProfile;
-  if (!profile || profile.mode === 'flat') return 0;
-
-  const bounds = getDeckBoundingSizeM(input);
-  const tx = Math.min(1, Math.max(0, xM / Math.max(0.001, bounds.lengthM)));
-  const ty = Math.min(1, Math.max(0, yM / Math.max(0.001, bounds.widthM)));
-
-  const q00 = 0;
-  const q10 = profile.topRightDeltaMm - profile.topLeftDeltaMm;
-  const q11 = profile.bottomRightDeltaMm - profile.topLeftDeltaMm;
-  const q01 = profile.bottomLeftDeltaMm - profile.topLeftDeltaMm;
-  const top = q00 * (1 - tx) + q10 * tx;
-  const bottom = q01 * (1 - tx) + q11 * tx;
-  return top * (1 - ty) + bottom * ty;
-}
-
-function targetFinishedDeltaMm(input: ProjectInput, xM: number, yM: number): number {
-  const profile = input.supportLevelProfile;
-  if (!profile) return 0;
-  return xM * profile.targetSlopeXPercent * 10 + yM * profile.targetSlopeYPercent * 10;
 }
 
 function axisPositionsWithMandatoryJoints(
@@ -309,8 +287,8 @@ function pointsForSegment(
     const t = i / intervalCount;
     const xM = segment.x1M + (segment.x2M - segment.x1M) * t;
     const yM = segment.y1M + (segment.y2M - segment.y1M) * t;
-    const surfaceDeltaMm = supportSurfaceDeltaMm(input, xM, yM);
-    const finishedDeltaMm = targetFinishedDeltaMm(input, xM, yM);
+    const surfaceDeltaMm = supportSurfaceDeltaMm(input, xM, yM, segment.zoneId);
+    const finishedDeltaMm = targetFinishedDeltaMm(input, xM, yM, segment.zoneId);
     const requiredPlotHeightMm = input.heightCm * 10
       + finishedDeltaMm
       - surfaceDeltaMm
@@ -331,6 +309,7 @@ function pointsForSegment(
       productRef: plot?.productRef,
       unitPriceTtc: plot?.unitPriceTtc,
       status: plot ? 'exact' : 'unsupported',
+      zoneId: segment.zoneId,
     });
   }
 

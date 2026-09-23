@@ -7,6 +7,7 @@ import type {
 import { findBoard } from '../catalog/compatibility';
 import { computeTerraceEdges } from './edges';
 import { getDeckBoundingSizeM, getDeckOutlinePointsM } from './geometry';
+import { computeTerrainModel, targetFinishedDeltaMm, type TerrainModel } from './terrain';
 
 export const SCENE_3D_TAG = 'SA-TERR-3D-110';
 
@@ -35,6 +36,7 @@ export interface Scene3DBoard {
 export interface Scene3DJoist {
   id: string;
   role: string;
+  zoneId?: string;
   multiplicity: number;
   widthM: number;
   heightM: number;
@@ -44,6 +46,7 @@ export interface Scene3DJoist {
 
 export interface Scene3DSupport {
   id: string;
+  zoneId?: string;
   xM: number;
   yM: number;
   bottomZM: number;
@@ -91,33 +94,12 @@ export interface Scene3DModel {
   supports: Scene3DSupport[];
   edges: Scene3DEdge[];
   obstacles: Scene3DObstacle[];
+  terrain: TerrainModel;
   diagnostics: string[];
 }
 
-function finishedSurfaceDeltaM(input: ProjectInput, xM: number, yM: number): number {
-  const profile = input.supportLevelProfile;
-  if (!profile) return 0;
-  return (xM * profile.targetSlopeXPercent * 10 + yM * profile.targetSlopeYPercent * 10) / 1000;
-}
-
-function finishedTopZM(input: ProjectInput, xM: number, yM: number): number {
-  return input.heightCm / 100 + finishedSurfaceDeltaM(input, xM, yM);
-}
-
-function supportSurfaceZM(input: ProjectInput, xM: number, yM: number): number {
-  const profile = input.supportLevelProfile;
-  if (!profile || profile.mode === 'flat') return 0;
-
-  const bounds = getDeckBoundingSizeM(input);
-  const tx = Math.min(1, Math.max(0, xM / Math.max(.001, bounds.lengthM)));
-  const ty = Math.min(1, Math.max(0, yM / Math.max(.001, bounds.widthM)));
-  const q00 = 0;
-  const q10 = profile.topRightDeltaMm - profile.topLeftDeltaMm;
-  const q11 = profile.bottomRightDeltaMm - profile.topLeftDeltaMm;
-  const q01 = profile.bottomLeftDeltaMm - profile.topLeftDeltaMm;
-  const top = q00 * (1 - tx) + q10 * tx;
-  const bottom = q01 * (1 - tx) + q11 * tx;
-  return (top * (1 - ty) + bottom * ty) / 1000;
+function finishedTopZM(input: ProjectInput, xM: number, yM: number, zoneId?: string): number {
+  return input.heightCm / 100 + targetFinishedDeltaMm(input, xM, yM, zoneId) / 1000;
 }
 
 function boardObject(input: ProjectInput, layout: LayoutResult, index: number): Scene3DBoard | undefined {
@@ -142,8 +124,8 @@ function boardObject(input: ProjectInput, layout: LayoutResult, index: number): 
   const sRight = { xM: segment.x1M - normalX * halfWidthM, yM: segment.y1M - normalY * halfWidthM };
   const eRight = { xM: segment.x2M - normalX * halfWidthM, yM: segment.y2M - normalY * halfWidthM };
   const eLeft = { xM: segment.x2M + normalX * halfWidthM, yM: segment.y2M + normalY * halfWidthM };
-  const startZ = finishedTopZM(input, segment.x1M, segment.y1M);
-  const endZ = finishedTopZM(input, segment.x2M, segment.y2M);
+  const startZ = finishedTopZM(input, segment.x1M, segment.y1M, segment.zoneId);
+  const endZ = finishedTopZM(input, segment.x2M, segment.y2M, segment.zoneId);
 
   const top: Scene3DBoard['top'] = [
     { ...sLeft, zM: startZ },
@@ -177,11 +159,12 @@ function joistObjects(input: ProjectInput, supportPlan?: SupportPlanResult): Sce
   const boardThicknessM = input.board.thicknessMm / 1000;
 
   return supportPlan.joistSegments.map((segment) => {
-    const z1 = finishedTopZM(input, segment.x1M, segment.y1M) - boardThicknessM - heightM / 2;
-    const z2 = finishedTopZM(input, segment.x2M, segment.y2M) - boardThicknessM - heightM / 2;
+    const z1 = finishedTopZM(input, segment.x1M, segment.y1M, segment.zoneId) - boardThicknessM - heightM / 2;
+    const z2 = finishedTopZM(input, segment.x2M, segment.y2M, segment.zoneId) - boardThicknessM - heightM / 2;
     return {
       id: segment.id,
       role: segment.role ?? 'field',
+      zoneId: segment.zoneId,
       multiplicity: segment.multiplicity,
       widthM,
       heightM,
@@ -197,12 +180,13 @@ function supportObjects(input: ProjectInput, supportPlan?: SupportPlanResult): S
   const joistHeightM = input.joist.heightMm / 1000;
 
   return supportPlan.supportPoints.map((point) => {
-    const topZM = finishedTopZM(input, point.xM, point.yM) - boardThicknessM - joistHeightM;
+    const topZM = input.heightCm / 100 + point.targetFinishedDeltaMm / 1000 - boardThicknessM - joistHeightM;
     return {
       id: point.id,
+      zoneId: point.zoneId,
       xM: point.xM,
       yM: point.yM,
-      bottomZM: supportSurfaceZM(input, point.xM, point.yM),
+      bottomZM: point.surfaceDeltaMm / 1000,
       topZM,
       radiusM: .045,
       status: point.status,
@@ -260,10 +244,11 @@ export function buildProfessional3DScene(
   const supports = supportObjects(input, supportPlan);
   const edges = edgeObjects(input);
   const obstacles = obstacleObjects(input);
+  const terrain = computeTerrainModel(input);
   const deckOutline = getDeckOutlinePointsM(input).map((point) => ({
     xM: point.x,
     yM: point.y,
-    zM: finishedTopZM(input, point.x, point.y),
+    zM: finishedTopZM(input, point.x, point.y, 'main'),
   }));
 
   const zValues = [
@@ -285,6 +270,7 @@ export function buildProfessional3DScene(
   if (supportPlan?.pendingCurvedPerimeter) {
     diagnostics.push('Contour courbe : la lambourde périphérique courbe reste à confirmer et n’est pas inventée en 3D.');
   }
+  diagnostics.push(...terrain.diagnostics);
 
   return {
     tag: SCENE_3D_TAG,
@@ -300,6 +286,7 @@ export function buildProfessional3DScene(
     supports,
     edges,
     obstacles,
+    terrain,
     diagnostics,
   };
 }

@@ -213,6 +213,32 @@ function drawSupportsPlan(doc: Pdf, input: ProjectInput, result: ConfiguratorRes
   drawObstacles(doc, input, t.scale, t.ox, t.oy);
 }
 
+function drawTerrainPlan(doc: Pdf, input: ProjectInput, x: number, y: number, width: number, height: number) {
+  const t = drawOutline(doc, input, x, y, width, height, false);
+  drawObstacles(doc, input, t.scale, t.ox, t.oy);
+
+  text(doc, 'Plateforme principale : +0 mm', x + 5, y + 9, 6.2, true, NAVY);
+
+  for (const zone of input.layingZones ?? []) {
+    if (zone.points.length < 3) continue;
+    const level = zone.finishedLevelOffsetMm ?? 0;
+    const points = zone.points.map((point) => [t.ox + point.xM * t.scale, t.oy + point.yM * t.scale] as const);
+    const first = points[0];
+    const vectors = points.slice(1).map((point, index) => [point[0] - points[index][0], point[1] - points[index][1]]);
+    const positive = level > 0.5;
+    const negative = level < -0.5;
+    doc.setFillColor(positive ? 226 : negative ? 235 : 239, positive ? 242 : negative ? 235 : 246, positive ? 255 : negative ? 248 : 252);
+    doc.setDrawColor(positive ? BLUE[0] : negative ? PURPLE[0] : MUTED[0], positive ? BLUE[1] : negative ? PURPLE[1] : MUTED[1], positive ? BLUE[2] : negative ? PURPLE[2] : MUTED[2]);
+    doc.setLineWidth(.8);
+    doc.lines(vectors, first[0], first[1], [1, 1], 'FD', true);
+
+    const cx = points.reduce((sum, point) => sum + point[0], 0) / points.length;
+    const cy = points.reduce((sum, point) => sum + point[1], 0) / points.length;
+    text(doc, zone.label, cx - 10, cy - 1.5, 6.2, true, NAVY);
+    text(doc, `${level >= 0 ? '+' : ''}${Math.round(level)} mm fini`, cx - 10, cy + 4, 5.5, false, MUTED);
+  }
+}
+
 function edgeColor(treatment: TerraceEdgeTreatment): readonly number[] {
   if (treatment === 'cladding') return BLUE;
   if (treatment === 'profile') return PURPLE;
@@ -331,6 +357,38 @@ export async function generateSiteDossierPdf(input: ProjectInput, result: Config
   for (const group of model.structure.plotGroups) {
     y = ensure(doc, y + 2, 14, 'Plan des plots / appuis', version);
     y = row(doc, y, group.label, `Hauteur ${group.minHeightMm}-${group.maxHeightMm} mm${group.productRef ? ` - ref. ${group.productRef}` : ' - reference a confirmer'}`, `${group.quantity} u.`);
+  }
+
+  y = addPage(doc, 'Niveaux et plateformes', version);
+  drawTerrainPlan(doc, input, 14, y, 182, 138);
+  y += 147;
+  for (const platform of model.terrain.platforms) {
+    y = ensure(doc, y, 17, 'Niveaux et plateformes', version);
+    y = row(
+      doc,
+      y,
+      platform.label,
+      `${platform.isMain ? 'Référence principale' : 'Plateforme locale'} - niveau fini ${platform.finishedLevelOffsetMm >= 0 ? '+' : ''}${platform.finishedLevelOffsetMm.toFixed(0)} mm - support ${platform.supportLevelOffsetMm >= 0 ? '+' : ''}${platform.supportLevelOffsetMm.toFixed(0)} mm - pente X ${platform.targetSlopeXPercent.toFixed(2)} % / Y ${platform.targetSlopeYPercent.toFixed(2)} %`,
+    );
+  }
+  if (model.terrain.relations.length) {
+    y = ensure(doc, y + 3, 15, 'Niveaux et plateformes', version);
+    text(doc, 'Relations entre plateformes', 14, y, 9, true, NAVY);
+    y += 6;
+    for (const relation of model.terrain.relations) {
+      y = ensure(doc, y, 17, 'Niveaux et plateformes', version);
+      y = row(
+        doc,
+        y,
+        `${relation.aLabel} / ${relation.bLabel}`,
+        `Frontière ${relation.sharedBoundaryLengthM.toFixed(2)} m - écart fini ${relation.finishedDeltaMinMm.toFixed(0)} à ${relation.finishedDeltaMaxMm.toFixed(0)} mm - écart support ${relation.supportDeltaMinMm.toFixed(0)} à ${relation.supportDeltaMaxMm.toFixed(0)} mm`,
+        relation.transitionRequired ? 'Transition à traiter' : 'Même niveau',
+      );
+    }
+  }
+  if (model.terrain.transitionCount > 0) {
+    y = ensure(doc, y, 18, 'Niveaux et plateformes', version);
+    y = wrapped(doc, 'Les écarts entre plateformes sont calculés. Aucune marche, rampe ou pièce de transition n’est ajoutée automatiquement dans le Sprint H.', 14, y, 182, 7, AMBER) + 4;
   }
 
   y = addPage(doc, 'Plan des finitions', version);

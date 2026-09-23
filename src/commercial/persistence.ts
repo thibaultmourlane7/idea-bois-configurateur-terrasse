@@ -17,7 +17,7 @@ function validShape(value: unknown): ShapeType {
 
 export function saveProjectLocally(project: ProjectInput): void {
   const snapshot = {
-    schemaVersion: 10,
+    schemaVersion: 11,
     projectName: project.projectName,
     shape: project.shape,
     dimensions: project.dimensions,

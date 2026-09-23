@@ -12,20 +12,23 @@ import { computeStructure } from './structure';
 import { computeSupportPlan, SUPPORT_PLAN_TAG } from './supportPlan';
 import { computeTerraceEdges, EDGE_TAG } from './edges';
 import { getProductCompatibility } from '../catalog/compatibility';
+import { computeTerrainModel, TERRAIN_TAG } from './terrain';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.1.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.2.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.1.0 : Sprint G — 3D professionnelle issue des vrais segments de calepinage ; moteur métier V1 conservé.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.2.0 : Sprint H — terrain avancé, plateformes multi-niveaux et relations de niveau sans transition physique inventée.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };
   }
 
   const geometry = computeGeometry(input);
+  const terrain = computeTerrainModel(input);
+  trace.push(`[${TERRAIN_TAG}] ${terrain.platforms.length} plateforme(s) ; ${terrain.relations.length} relation(s) ; ${terrain.transitionCount} transition(s) de niveau détectée(s).`);
   const compatibility = getProductCompatibility(input.board);
   diagnostics.push({
     tag: 'SA-TERR-COMPAT-023',

@@ -71,6 +71,14 @@ export interface LayingZone {
   startEdgeIndex?: number;
   /** Sprint D : produit de lame propre à la zone. Absent = produit principal du projet. */
   boardId?: string;
+  /** Sprint H : décalage du niveau fini de cette plateforme par rapport au niveau fini principal. */
+  finishedLevelOffsetMm?: number;
+  /** Sprint H : décalage du support sous cette plateforme par rapport au support principal. */
+  supportLevelOffsetMm?: number;
+  /** Sprint H : pente locale du niveau fini. Absente = pente globale du projet. */
+  targetSlopeXPercent?: number;
+  /** Sprint H : pente locale du niveau fini. Absente = pente globale du projet. */
+  targetSlopeYPercent?: number;
 }
 
 export interface ReferencePlanTransform {
@@ -457,6 +465,8 @@ export interface SupportPlanPoint {
   productRef?: string;
   unitPriceTtc?: number;
   status: 'exact' | 'unsupported';
+  /** Zone / plateforme ayant piloté le niveau de cet appui. */
+  zoneId?: string;
 }
 
 export interface SupportPlanGroup {

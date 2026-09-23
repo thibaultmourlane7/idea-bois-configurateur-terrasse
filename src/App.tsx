@@ -250,7 +250,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.1 • 3D professionnelle fidèle au moteur</div>
+          <div className="header-note">V1.2 • terrain avancé • plateformes multi-niveaux</div>
         </div>
       </header>
 
@@ -269,8 +269,8 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V1.1 — 3D professionnelle</strong>
-                <span>Chaque lame 3D reprend un segment réel du calepinage • structure et niveaux réels • rendu client amélioré.</span>
+                <strong>Version V1.2 — Terrain avancé</strong>
+                <span>Plateformes multi-niveaux • support et pente par zone • relations entre niveaux • plots et 3D recalculés.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (

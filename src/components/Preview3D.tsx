@@ -386,6 +386,7 @@ export function Preview3D({
         {layers.joists && <span><i className="legend-joist" />{scene.joists.length} lambourdes</span>}
         {layers.plots && <span><i className="legend-plot" />{scene.supports.length} points d’appui</span>}
         {layers.edgeCladding && scene.edges.some((edge) => edge.treatment !== 'none') && <span><i className="legend-edge" />Rives configurées</span>}
+        {scene.terrain.platforms.length > 1 && <span className="terrain-3d-badge">{scene.terrain.platforms.length} plateformes • {scene.terrain.transitionCount} transition(s)</span>}
       </div>
 
       <div className={`texture-quality-note ${texture.status}`}>

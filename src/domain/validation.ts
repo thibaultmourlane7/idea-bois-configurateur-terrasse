@@ -4,6 +4,7 @@ import { getDeckOutlinePointsM, isSimplePolygon, obstacleIntersectsBaseDeck, obs
 import { hasEdgeTreatment } from '../engine/edges';
 import { zoneFitsBaseDeck, zonesOverlap } from '../engine/layingGeometry';
 import { canUseBoardInZone, findBoard } from '../catalog/compatibility';
+import { computeTerrainModel } from '../engine/terrain';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -142,6 +143,23 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
     if (zone.start === 'edge' && (zone.startEdgeIndex == null || zone.startEdgeIndex < 0 || zone.startEdgeIndex >= zone.points.length)) {
       diagnostics.push({ tag: 'SA-TERR-ZONE-005', severity: 'blocking', message: `${zone.label} : la rive de départ sélectionnée n’existe pas.` });
     }
+
+    const levelValues: Array<[string, number | undefined]> = [
+      ['finishedLevelOffsetMm', zone.finishedLevelOffsetMm],
+      ['supportLevelOffsetMm', zone.supportLevelOffsetMm],
+      ['targetSlopeXPercent', zone.targetSlopeXPercent],
+      ['targetSlopeYPercent', zone.targetSlopeYPercent],
+    ];
+    for (const [field, value] of levelValues) {
+      if (value != null && !Number.isFinite(value)) {
+        diagnostics.push({
+          tag: 'SA-TERR-TERRAIN-001',
+          severity: 'blocking',
+          message: `${zone.label} : les niveaux et pentes de plateforme doivent être des nombres valides.`,
+          field: `layingZones.${zone.id}.${field}`,
+        });
+      }
+    }
   }
   for (let i = 0; i < zones.length; i += 1) {
     for (let j = i + 1; j < zones.length; j += 1) {
@@ -174,6 +192,19 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
           field,
         });
       }
+    }
+  }
+
+  if (!diagnostics.some((item) => item.severity === 'blocking')) {
+    const terrain = computeTerrainModel(input);
+    for (const relation of terrain.relations.filter((item) => item.transitionRequired)) {
+      diagnostics.push({
+        tag: 'SA-TERR-TERRAIN-TRANSITION-120',
+        severity: 'warning',
+        message: `${relation.aLabel} / ${relation.bLabel} : différence de niveau fini ${relation.finishedDeltaMinMm.toFixed(0)} à ${relation.finishedDeltaMaxMm.toFixed(0)} mm sur ${relation.sharedBoundaryLengthM.toFixed(2)} m de frontière.`,
+        technicalMessage: 'Sprint H calcule les niveaux et relations entre plateformes. Aucune marche, rampe ou pièce de transition n’est ajoutée automatiquement ; ces éléments relèvent du Sprint I ou d’une règle fabricant validée.',
+        field: 'layingZones',
+      });
     }
   }
 

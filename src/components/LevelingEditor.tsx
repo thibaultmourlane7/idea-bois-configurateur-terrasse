@@ -1,5 +1,6 @@
-import type { ProjectInput, SupportLevelProfile } from '../domain/types';
+import type { LayingZone, ProjectInput, SupportLevelProfile } from '../domain/types';
 import { computeLayout } from '../engine/layout';
+import { computeTerrainModel } from '../engine/terrain';
 
 export function LevelingEditor({
   project,
@@ -19,6 +20,7 @@ export function LevelingEditor({
   };
   const canResolveLayout = project.board.gapMm != null && Number.isFinite(project.board.gapMm) && project.board.gapMm >= 0;
   const hasButtJoints = canResolveLayout ? computeLayout(project).hasButtJoints : false;
+  const terrain = computeTerrainModel(project);
 
   const patch = (patchValue: Partial<SupportLevelProfile>) => {
     onChange({
@@ -27,6 +29,15 @@ export function LevelingEditor({
         ...profile,
         ...patchValue,
       },
+    });
+  };
+
+  const patchZone = (zoneId: string, patchValue: Partial<LayingZone>) => {
+    onChange({
+      ...project,
+      layingZones: (project.layingZones ?? []).map((zone) =>
+        zone.id === zoneId ? { ...zone, ...patchValue } : zone
+      ),
     });
   };
 
@@ -118,6 +129,126 @@ export function LevelingEditor({
           </label>
         </div>
       </div>
+
+      <section className="terrain-platform-editor">
+        <div className="terrain-platform-heading">
+          <div>
+            <span className="cut-kicker">SPRINT H — TERRAIN AVANCÉ</span>
+            <h3>Plateformes et niveaux multiples</h3>
+            <p>Chaque plateforme reprend une zone réelle du calepinage. Un décalage de niveau recalcule les hauteurs de plots et la 3D, sans créer automatiquement de marche ou de raccord.</p>
+          </div>
+          <strong>{terrain.platforms.length} niveau{terrain.platforms.length > 1 ? 'x' : ''}</strong>
+        </div>
+
+        {(project.layingZones ?? []).length === 0 ? (
+          <div className="terrain-empty">
+            Créez d’abord une zone de pose à l’étape « Lames ». Elle pourra ensuite devenir une plateforme à un autre niveau sans faire traverser les lames entre deux hauteurs.
+          </div>
+        ) : (
+          <div className="terrain-platform-list">
+            {(project.layingZones ?? []).map((zone) => {
+              const customSlope = zone.targetSlopeXPercent != null || zone.targetSlopeYPercent != null;
+              return (
+                <article className="terrain-platform-card" key={zone.id}>
+                  <div className="terrain-platform-card-heading">
+                    <div>
+                      <strong>{zone.label}</strong>
+                      <small>{zone.id} • frontière structurelle déjà séparée par le moteur</small>
+                    </div>
+                    <span>{(zone.finishedLevelOffsetMm ?? 0) >= 0 ? '+' : ''}{zone.finishedLevelOffsetMm ?? 0} mm fini</span>
+                  </div>
+
+                  <div className="terrain-level-grid">
+                    <label>Niveau fini relatif
+                      <div className="input-unit compact">
+                        <input
+                          type="number"
+                          step="1"
+                          value={zone.finishedLevelOffsetMm ?? 0}
+                          onChange={(event) => patchZone(zone.id, { finishedLevelOffsetMm: +event.target.value })}
+                        />
+                        <span>mm</span>
+                      </div>
+                      <small>Écart par rapport à la plateforme principale.</small>
+                    </label>
+
+                    <label>Niveau support relatif
+                      <div className="input-unit compact">
+                        <input
+                          type="number"
+                          step="1"
+                          value={zone.supportLevelOffsetMm ?? 0}
+                          onChange={(event) => patchZone(zone.id, { supportLevelOffsetMm: +event.target.value })}
+                        />
+                        <span>mm</span>
+                      </div>
+                      <small>Décalage mesuré du support sous cette plateforme.</small>
+                    </label>
+
+                    <label>Pente locale X
+                      <div className="input-unit compact">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={zone.targetSlopeXPercent ?? profile.targetSlopeXPercent}
+                          onChange={(event) => patchZone(zone.id, { targetSlopeXPercent: +event.target.value })}
+                        />
+                        <span>%</span>
+                      </div>
+                    </label>
+
+                    <label>Pente locale Y
+                      <div className="input-unit compact">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={zone.targetSlopeYPercent ?? profile.targetSlopeYPercent}
+                          onChange={(event) => patchZone(zone.id, { targetSlopeYPercent: +event.target.value })}
+                        />
+                        <span>%</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {customSlope && (
+                    <button
+                      type="button"
+                      className="terrain-reset-slope"
+                      onClick={() => patchZone(zone.id, { targetSlopeXPercent: undefined, targetSlopeYPercent: undefined })}
+                    >
+                      Reprendre la pente globale
+                    </button>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {terrain.relations.length > 0 && (
+          <div className="terrain-relations">
+            <h4>Relations entre plateformes</h4>
+            {terrain.relations.map((relation) => (
+              <div className={relation.transitionRequired ? 'terrain-relation transition' : 'terrain-relation'} key={relation.id}>
+                <div>
+                  <strong>{relation.aLabel} ↔ {relation.bLabel}</strong>
+                  <small>Frontière commune : {relation.sharedBoundaryLengthM.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m</small>
+                </div>
+                <span>
+                  {relation.transitionRequired
+                    ? `Écart fini ${relation.finishedDeltaMinMm.toFixed(0)} à ${relation.finishedDeltaMaxMm.toFixed(0)} mm`
+                    : 'Même niveau fini'}
+                </span>
+              </div>
+            ))}
+            {terrain.transitionCount > 0 && (
+              <p className="terrain-transition-note">
+                {terrain.transitionCount} transition{terrain.transitionCount > 1 ? 's' : ''} de niveau détectée{terrain.transitionCount > 1 ? 's' : ''}. Aucune marche, rampe ou fixation de transition n’est ajoutée automatiquement dans le Sprint H.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

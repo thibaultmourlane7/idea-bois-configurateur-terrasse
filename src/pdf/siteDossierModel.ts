@@ -2,6 +2,7 @@ import type { BasketLine, ConfiguratorResult, Diagnostic, ProjectInput } from '.
 import { buildClientPdfModel } from './clientPdfModel';
 import { getProductCompatibility, findBoard } from '../catalog/compatibility';
 import { EDGE_CONTEXT_LABELS, EDGE_TREATMENT_LABELS } from '../engine/edges';
+import { computeTerrainModel } from '../engine/terrain';
 
 export type SiteDossierStatus = 'ready' | 'with-warnings' | 'blocked';
 
@@ -108,6 +109,30 @@ export interface SiteDossierCompatibility {
   rows: Array<{ family: string; state: 'validated' | 'partial' | 'missing'; detail: string }>;
 }
 
+export interface SiteDossierTerrain {
+  platforms: Array<{
+    id: string;
+    label: string;
+    isMain: boolean;
+    finishedLevelOffsetMm: number;
+    supportLevelOffsetMm: number;
+    targetSlopeXPercent: number;
+    targetSlopeYPercent: number;
+  }>;
+  relations: Array<{
+    id: string;
+    aLabel: string;
+    bLabel: string;
+    sharedBoundaryLengthM: number;
+    finishedDeltaMinMm: number;
+    finishedDeltaMaxMm: number;
+    supportDeltaMinMm: number;
+    supportDeltaMaxMm: number;
+    transitionRequired: boolean;
+  }>;
+  transitionCount: number;
+}
+
 export interface SiteDossierModel {
   projectName: string;
   generatedAt: string;
@@ -117,6 +142,7 @@ export interface SiteDossierModel {
   zones: SiteDossierZone[];
   products: SiteDossierProduct[];
   structure: SiteDossierStructure;
+  terrain: SiteDossierTerrain;
   edges: SiteDossierEdge[];
   /** Liste d'achat = produits à fournir. */
   purchaseList: SiteDossierPurchaseLine[];
@@ -206,6 +232,7 @@ export function buildSiteDossierModel(
   if (!result.geometry) throw new Error('SA-TERR-DOSSIER-001: géométrie indisponible.');
 
   const clientSummary = buildClientPdfModel(input, result, version, generatedAt);
+  const terrainModel = computeTerrainModel(input);
   const layout = result.layout;
   const supportPlan = result.supportPlan;
   const blocking = result.diagnostics.filter((item) => item.severity === 'blocking');
@@ -379,6 +406,29 @@ export function buildSiteDossierModel(
     zones,
     products,
     structure,
+    terrain: {
+      platforms: terrainModel.platforms.map((platform) => ({
+        id: platform.id,
+        label: platform.label,
+        isMain: platform.isMain,
+        finishedLevelOffsetMm: platform.finishedLevelOffsetMm,
+        supportLevelOffsetMm: platform.supportLevelOffsetMm,
+        targetSlopeXPercent: platform.targetSlopeXPercent,
+        targetSlopeYPercent: platform.targetSlopeYPercent,
+      })),
+      relations: terrainModel.relations.map((relation) => ({
+        id: relation.id,
+        aLabel: relation.aLabel,
+        bLabel: relation.bLabel,
+        sharedBoundaryLengthM: relation.sharedBoundaryLengthM,
+        finishedDeltaMinMm: relation.finishedDeltaMinMm,
+        finishedDeltaMaxMm: relation.finishedDeltaMaxMm,
+        supportDeltaMinMm: relation.supportDeltaMinMm,
+        supportDeltaMaxMm: relation.supportDeltaMaxMm,
+        transitionRequired: relation.transitionRequired,
+      })),
+      transitionCount: terrainModel.transitionCount,
+    },
     edges,
     purchaseList,
     cutList,

@@ -254,7 +254,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.6 • 3D immersive • vue réaliste + main</div>
+          <div className="header-note">V1.6.1 • 3D immersive • correction Safari</div>
         </div>
       </header>
 
@@ -273,7 +273,7 @@ export default function App() {
           {step === 1 && (
             <div className="step-content">
               <div className="stabilisation-banner">
-                <strong>Version V1.6 — 3D immersive</strong>
+                <strong>Version V1.6.1 — 3D immersive</strong>
                 <span>Vue réaliste par défaut • bouton Main pour tourner, zoomer et déplacer la caméra • vue technique conservée sans changer les calculs.</span>
               </div>
               <GeometryEditor project={project} onChange={setProject} />

@@ -1,10 +1,43 @@
-import { useMemo, useState } from 'react';
+import { Component, lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import type { BasketResult, LayoutResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { buildProfessional3DScene } from '../engine/scene3d';
 import { FINISHED_LAYERS, type ConstructionLayers } from '../visual/layers';
 import { resolveBoardTexture, textureStatusLabel } from '../visual/resolveBoardTexture';
-import { RealisticPreview3D } from './RealisticPreview3D';
+
 import { TechnicalPreview3D } from './TechnicalPreview3D';
+
+const RealisticPreview3D = lazy(() =>
+  import('./RealisticPreview3D').then((module) => ({ default: module.RealisticPreview3D })),
+);
+
+class Immersive3DErrorBoundary extends Component<
+  { children: ReactNode; onFallback: () => void },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('3D immersive indisponible :', error);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="immersive3d-load-error">
+          <strong>La vue 3D réaliste n’a pas pu démarrer sur cet appareil.</strong>
+          <span>Le configurateur reste disponible : utilisez la vue technique.</span>
+          <button type="button" onClick={this.props.onFallback}>Passer en vue technique</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 
 export function Preview3D({
   input,
@@ -76,15 +109,24 @@ export function Preview3D({
             <small>Vue client réaliste par défaut • la main agit uniquement sur la caméra</small>
           </div>
 
-          <RealisticPreview3D
-            input={input}
-            supportPlan={supportPlan}
-            layout={layout}
-            layers={layers}
-            exploded={exploded}
-            handActive={handActive}
-            resetKey={resetKey}
-          />
+          <Immersive3DErrorBoundary onFallback={() => setMode('technical')}>
+            <Suspense fallback={
+              <div className="immersive3d-loading">
+                <strong>Chargement de la 3D réaliste…</strong>
+                <span>Le reste du configurateur est déjà disponible.</span>
+              </div>
+            }>
+              <RealisticPreview3D
+                input={input}
+                supportPlan={supportPlan}
+                layout={layout}
+                layers={layers}
+                exploded={exploded}
+                handActive={handActive}
+                resetKey={resetKey}
+              />
+            </Suspense>
+          </Immersive3DErrorBoundary>
 
           <div className="construction-legend">
             {layers.decking && <span><i className="legend-decking" />{scene.boards.length} lames / segments réels</span>}

@@ -10,6 +10,7 @@ import { getDeckOutlinePointsM } from './geometry';
 import { computeTerrainModel, targetFinishedDeltaMm, type TerrainModel } from './terrain';
 import { computeStairs, type StairResult } from './stairs';
 import { computeGuardrails, type GuardrailResult } from './guardrails';
+import { resolveBoardRenderColors } from '../visual/resolveBoardTexture';
 
 export const SCENE_3D_TAG = 'SA-TERR-3D-110';
 
@@ -144,6 +145,8 @@ function boardObject(input: ProjectInput, layout: LayoutResult, index: number): 
   ];
   const bottom: Scene3DBoard['bottom'] = top.map((point) => ({ ...point, zM: point.zM - thicknessM })) as Scene3DBoard['bottom'];
 
+  const renderColors = resolveBoardRenderColors(board);
+
   return {
     id: `BOARD3D-${segment.id}`,
     sourceSegmentId: segment.id,
@@ -155,9 +158,9 @@ function boardObject(input: ProjectInput, layout: LayoutResult, index: number): 
     lengthM,
     top,
     bottom,
-    baseColor: board.visual?.baseColor ?? '#d8c3a4',
-    grainColor: board.visual?.grainColor ?? '#8f775d',
-    accentColor: board.visual?.accentColor ?? '#efe6d8',
+    baseColor: renderColors.baseColor,
+    grainColor: renderColors.grainColor,
+    accentColor: renderColors.accentColor,
   };
 }
 

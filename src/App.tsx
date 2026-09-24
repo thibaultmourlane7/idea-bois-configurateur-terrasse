@@ -122,7 +122,7 @@ function boardFilter(board: ProjectInput['board']): ProductFilter {
 export default function App() {
   const [project, setProject] = useState<ProjectInput>(() => restoreProjectFromUrl(initialProject, window.location.href));
   const [step, setStep] = useState(1);
-  const [preview, setPreview] = useState<'2d' | '3d' | 'side'>('2d');
+  const [preview, setPreview] = useState<'2d' | '3d' | 'side'>('3d');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [readinessFilter, setReadinessFilter] = useState<ProductReadinessFilter>('all');
@@ -133,6 +133,7 @@ export default function App() {
   const [savedAvailable, setSavedAvailable] = useState(() => hasSavedProject());
   const [visualPreset, setVisualPreset] = useState<VisualPreset>('finished');
   const [visualLayers, setVisualLayers] = useState<ConstructionLayers>({ ...FINISHED_LAYERS });
+  const [presentationMode, setPresentationMode] = useState(true);
   const result = useMemo(() => runConfigurator(project), [project]);
   const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board]);
   const progressiveLayers = useMemo(() => layersForStep(step), [step]);
@@ -232,8 +233,22 @@ export default function App() {
     }
   };
 
-  const next = () => setStep((current) => Math.min(5, current + 1));
+  const next = () => {
+    if (step === 4 && presentationMode) setPreview('3d');
+    setStep((current) => Math.min(5, current + 1));
+  };
   const previous = () => setStep((current) => Math.max(1, current - 1));
+  const togglePresentationMode = () => {
+    setPresentationMode((current) => {
+      const nextMode = !current;
+      if (nextMode) {
+        setVisualPreset('finished');
+        setVisualLayers({ ...FINISHED_LAYERS });
+        setPreview('3d');
+      }
+      return nextMode;
+    });
+  };
   const liveBudget = result.basket?.totalTtc != null
     ? euro(result.basket.totalTtc)
     : result.basket?.totalMinTtc != null && result.basket?.totalMaxTtc != null
@@ -243,7 +258,7 @@ export default function App() {
         : 'À compléter';
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${presentationMode ? 'presentation-mode' : 'technical-mode'}`}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">IB</div>
@@ -253,8 +268,16 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-actions">
+          <button
+            type="button"
+            className={`presentation-toggle ${presentationMode ? 'presentation-active' : ''}`}
+            onClick={togglePresentationMode}
+            title={presentationMode ? 'Afficher les contrôles techniques' : 'Revenir à la présentation Idea Bois'}
+          >
+            {presentationMode ? '⚙ Mode technique' : '✨ Présentation Idea Bois'}
+          </button>
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          <div className="header-note">V1.6.1 • 3D immersive • correction Safari</div>
+          {!presentationMode && <div className="header-note">V1.7 • présentation Idea Bois</div>}
         </div>
       </header>
 
@@ -272,10 +295,12 @@ export default function App() {
         <section className="wizard-card">
           {step === 1 && (
             <div className="step-content">
-              <div className="stabilisation-banner">
-                <strong>Version V1.6.1 — 3D immersive</strong>
-                <span>Vue réaliste par défaut • bouton Main pour tourner, zoomer et déplacer la caméra • vue technique conservée sans changer les calculs.</span>
-              </div>
+              {!presentationMode && (
+                <div className="stabilisation-banner">
+                  <strong>Version V1.7 — Présentation Idea Bois</strong>
+                  <span>Mode présentation client + rendu bois 3D renforcé. Le moteur métier reste inchangé.</span>
+                </div>
+              )}
               <GeometryEditor project={project} onChange={setProject} />
               {geometryDiagnostics.length > 0 && (
                 <div className="geometry-diagnostics">
@@ -296,21 +321,23 @@ export default function App() {
                     <button type="button" key={value} className={productFilter === value ? 'active' : ''} onClick={() => setProductFilter(value)}>{label}</button>
                   ))}
                 </div>
-                <div className="catalog-secondary">
-                  <div className="catalog-filters readiness-filters">
-                    {([['all','Tous niveaux'],['complete','Panier calculable'],['calculable','Calcul avancé'],['partial','Calcul partiel'],['price-only','Prix seul']] as const).map(([value,label]) => (
-                      <button type="button" key={value} className={readinessFilter === value ? 'active' : ''} onClick={() => setReadinessFilter(value as ProductReadinessFilter)}>{label}</button>
-                    ))}
+                {!presentationMode && (
+                  <div className="catalog-secondary">
+                    <div className="catalog-filters readiness-filters">
+                      {([['all','Tous niveaux'],['complete','Panier calculable'],['calculable','Calcul avancé'],['partial','Calcul partiel'],['price-only','Prix seul']] as const).map(([value,label]) => (
+                        <button type="button" key={value} className={readinessFilter === value ? 'active' : ''} onClick={() => setReadinessFilter(value as ProductReadinessFilter)}>{label}</button>
+                      ))}
+                    </div>
+                    <select className="catalog-sort" value={productSort} onChange={(e) => setProductSort(e.target.value as ProductSort)}>
+                      <option value="readiness">Les plus complets d'abord</option>
+                      <option value="price-asc">Prix croissant</option>
+                      <option value="price-desc">Prix décroissant</option>
+                    </select>
                   </div>
-                  <select className="catalog-sort" value={productSort} onChange={(e) => setProductSort(e.target.value as ProductSort)}>
-                    <option value="readiness">Les plus complets d'abord</option>
-                    <option value="price-asc">Prix croissant</option>
-                    <option value="price-desc">Prix décroissant</option>
-                  </select>
-                </div>
+                )}
               </div>
 
-              <div className="catalog-count">{filteredBoards.length} gamme{filteredBoards.length > 1 ? 's' : ''} affichée{filteredBoards.length > 1 ? 's' : ''} • catalogue de base 04/09/2026, variantes revérifiées jusqu’au 23/09/2026</div>
+              {!presentationMode && <div className="catalog-count">{filteredBoards.length} gamme{filteredBoards.length > 1 ? 's' : ''} affichée{filteredBoards.length > 1 ? 's' : ''} • catalogue de base 04/09/2026, variantes revérifiées jusqu’au 23/09/2026</div>}
               <div className="product-grid real-catalog-grid">
                 {filteredBoards.map((board) => {
                   const readiness = getProductReadiness(board);
@@ -338,16 +365,18 @@ export default function App() {
                           )}
                         </div>
                         <div className="product-copy">
-                          <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
+                          {!presentationMode && <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>}
                           <strong>{board.label}</strong>
                           <span>{board.subtitle}</span>
-                          <small className={`visual-status texture-${texture.status}`}>
-                            {textureStatusLabel(texture)}{texture.status === 'close' ? ' • rendu de projection' : ''}
-                          </small>
+                          {!presentationMode && (
+                            <small className={`visual-status texture-${texture.status}`}>
+                              {textureStatusLabel(texture)}{texture.status === 'close' ? ' • rendu de projection' : ''}
+                            </small>
+                          )}
                           {board.gapRangeMm && <small className="gap-info">Jeu publié : {board.gapRangeMm[0]}–{board.gapRangeMm[1]} mm</small>}
                           <div className="product-meta">
                             <b>{board.priceTtcPerM2 != null ? `${euro(board.priceTtcPerM2)} / m²` : 'Prix à confirmer'}</b>
-                            <em>{board.catalog?.availabilitySnapshot ?? 'Disponibilité à confirmer'}</em>
+                            {!presentationMode && <em>{board.catalog?.availabilitySnapshot ?? 'Disponibilité à confirmer'}</em>}
                           </div>
                         </div>
                         <i>{project.board.id === board.id ? '✓' : ''}</i>
@@ -368,7 +397,7 @@ export default function App() {
               />
 
               <LayingSetupEditor project={project} onChange={setProject} />
-              <ProductCompatibilityPanel board={project.board} />
+              {!presentationMode && <ProductCompatibilityPanel board={project.board} />}
             </div>
           )}
 
@@ -458,7 +487,7 @@ export default function App() {
               <label className="single-field">Hauteur finie au point de référence<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support au-dessus de la lame au coin haut-gauche de référence.</small></label>
               <LevelingEditor project={project} onChange={setProject} />
               <StairEditor project={project} onChange={setProject} />
-              {project.supportSystem === 'adjustable-pedestals' && (
+              {!presentationMode && project.supportSystem === 'adjustable-pedestals' && (
                 <SupportHeightMap project={project} plan={result.supportPlan} />
               )}
               {project.supportType !== 'stabilized-ground' && (
@@ -571,17 +600,19 @@ export default function App() {
                 <div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div>
                 <div className="result-actions">
                   <button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button>
-                  <button type="button" className="ghost-button dossier-button" onClick={downloadSiteDossier} disabled={siteDossierBusy || !result.geometry}>
-                    {siteDossierBusy ? 'Création du dossier…' : result.geometry ? 'Dossier chantier PDF' : 'Dossier indisponible'}
-                  </button>
+                  {!presentationMode && (
+                    <button type="button" className="ghost-button dossier-button" onClick={downloadSiteDossier} disabled={siteDossierBusy || !result.geometry}>
+                      {siteDossierBusy ? 'Création du dossier…' : result.geometry ? 'Dossier chantier PDF' : 'Dossier indisponible'}
+                    </button>
+                  )}
                   <button type="button" className="pdf-button" onClick={downloadPdf} disabled={pdfBusy}>
                     {pdfBusy ? 'Création du PDF…' : 'PDF client'}
                   </button>
                 </div>
               </div>
               <Results input={project} result={result} />
-              <CutOptimizationView layout={result.layout} />
-              <CommercialActions project={project} result={result} version={VERSION_TAG} />
+              {!presentationMode && <CutOptimizationView layout={result.layout} />}
+              {!presentationMode && <CommercialActions project={project} result={result} version={VERSION_TAG} />}
               <div className="preview-toolbar">
                 <div className="segmented small-segmented">
                   <button type="button" className={preview === '2d' ? 'active' : ''} onClick={() => setPreview('2d')}>Vue 2D</button>
@@ -590,17 +621,23 @@ export default function App() {
                 </div>
                 <span>Produit : <strong>{project.board.label}</strong></span>
               </div>
-              <LayerControls
-                preset={visualPreset}
-                layers={visualLayers}
-                onPreset={(preset, layers) => { setVisualPreset(preset); setVisualLayers(layers); }}
-                onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
-              />
+              {!presentationMode && (
+                <LayerControls
+                  preset={visualPreset}
+                  layers={visualLayers}
+                  onPreset={(preset, layers) => { setVisualPreset(preset); setVisualLayers(layers); }}
+                  onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
+                />
+              )}
               {preview === '2d' && <Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
               {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layout={result.layout} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
               {preview === 'side' && <SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} />}
-              <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
-              <div className="scope-reminder">Cette démo calcule uniquement les matériaux. Aucun temps de pose, aucune heure ni aucun coût de main-d'œuvre.</div>
+              {!presentationMode && (
+                <>
+                  <details className="technical-details"><summary>Détails techniques pour vérification</summary><div className="technical-body"><Diagnostics items={result.diagnostics} /><div className="trace-list">{result.trace.map((line,index) => <code key={index}>{line}</code>)}</div></div></details>
+                  <div className="scope-reminder">Cette démo calcule uniquement les matériaux. Aucun temps de pose, aucune heure ni aucun coût de main-d'œuvre.</div>
+                </>
+              )}
             </div>
           )}
 
@@ -608,16 +645,24 @@ export default function App() {
         </section>
 
         <aside className="live-summary">
-          <span className="live-label">Construction — étape {step}/5</span>
+          <span className="live-label">{presentationMode ? 'Aperçu du projet' : 'Construction'} — étape {step}/5</span>
           <div className="progressive-stage">
-            <strong>{step === 1 ? 'Contour du projet' : step === 2 ? 'Lambourdes' : step === 3 ? 'Lambourdes + plots + hauteurs' : step === 4 ? 'Structure + rives' : 'Terrasse finie'}</strong>
-            <small>{step === 1 ? 'Les réservations et dimensions définissent la forme.' : step === 2 ? 'La lame choisie détermine l’entraxe documenté.' : step === 3 ? 'Les appuis sont implantés et leur hauteur est calculée selon les niveaux saisis.' : step === 4 ? 'L’habillage et ses supports verticaux sont ajoutés.' : 'Les lames recouvrent la structure.'}</small>
+            <strong>
+              {presentationMode
+                ? step === 1 ? 'Votre terrasse' : step === 2 ? 'Votre lame' : step === 3 ? 'Votre support' : step === 4 ? 'Vos finitions' : 'Votre projet terminé'
+                : step === 1 ? 'Contour du projet' : step === 2 ? 'Lambourdes' : step === 3 ? 'Lambourdes + plots + hauteurs' : step === 4 ? 'Structure + rives' : 'Terrasse finie'}
+            </strong>
+            <small>
+              {presentationMode
+                ? step === 1 ? 'Définissez la forme et les dimensions.' : step === 2 ? 'Choisissez le rendu et le sens de pose.' : step === 3 ? 'Précisez le support de votre terrasse.' : step === 4 ? 'Ajoutez les finitions souhaitées.' : 'Visualisez votre terrasse en 2D, 3D et en coupe.'
+                : step === 1 ? 'Les réservations et dimensions définissent la forme.' : step === 2 ? 'La lame choisie détermine l’entraxe documenté.' : step === 3 ? 'Les appuis sont implantés et leur hauteur est calculée selon les niveaux saisis.' : step === 4 ? 'L’habillage et ses supports verticaux sont ajoutés.' : 'Les lames recouvrent la structure.'}
+            </small>
           </div>
           <div className="live-preview"><Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={progressiveLayers} /></div>
           {step === 4 && <div className="live-side-preview"><SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={progressiveLayers} /></div>}
           <div className="live-stats"><div><span>Surface nette</span><strong>{result.geometry ? `${result.geometry.areaM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²` : '—'}</strong></div><div><span>Réservations</span><strong>{project.obstacles.length}</strong></div><div><span>Budget matériel</span><strong>{liveBudget}</strong></div></div>
-          <div className="speedarti-note"><span>✓</span><p>Le projet peut être partagé, repris par un conseiller et préparé pour devis/panier. Les connexions réelles restent désactivées dans la démo.</p></div>
-          <code className="version-code">{VERSION_TAG}</code>
+          {!presentationMode && <div className="speedarti-note"><span>✓</span><p>Le projet peut être partagé, repris par un conseiller et préparé pour devis/panier. Les connexions réelles restent désactivées dans la démo.</p></div>}
+          {!presentationMode && <code className="version-code">{VERSION_TAG}</code>}
         </aside>
       </main>
     </div>

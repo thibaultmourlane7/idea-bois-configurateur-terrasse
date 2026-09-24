@@ -7,6 +7,7 @@ import { buildProfessional3DScene, type Scene3DPoint } from '../engine/scene3d';
 import { computeImmersiveCameraFrame } from '../visual/immersive3d';
 import type { ConstructionLayers } from '../visual/layers';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
+import { resolveBoardRenderColors } from '../visual/resolveBoardTexture';
 
 function point3(point: Scene3DPoint, yOffset = 0): THREE.Vector3 {
   return new THREE.Vector3(point.xM, point.zM + yOffset, point.yM);
@@ -374,9 +375,8 @@ export function RealisticPreview3D({
 
       for (const stair of sceneModel.stairs) {
         const stairBoard = findBoard(stair.boardId) ?? input.board;
-        const topColor = stairBoard.visual?.baseColor ?? '#b8895d';
-        const grain = stairBoard.visual?.grainColor ?? '#725034';
-        const materials = getBoardMaterials(stairBoard.id, topColor, grain);
+        const stairColors = resolveBoardRenderColors(stairBoard);
+        const materials = getBoardMaterials(stairBoard.id, stairColors.baseColor, stairColors.grainColor);
         const thicknessM = stairBoard.thicknessMm / 1000;
         for (const tread of stair.treads) {
           const bottom = tread.top.map((point) => ({ ...point, zM: point.zM - thicknessM }));

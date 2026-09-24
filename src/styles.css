@@ -2145,3 +2145,100 @@
     margin-right:-6px;
   }
 }
+
+
+/* V1.8 — options avancées repliables */
+.advanced-option {
+  margin:14px 0;
+  border:1px solid #dbe5ec;
+  border-radius:14px;
+  background:#fbfdff;
+  overflow:hidden;
+}
+.advanced-option > summary {
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:13px 15px;
+  cursor:pointer;
+  list-style:none;
+  user-select:none;
+  background:linear-gradient(180deg,#ffffff,#f7fafc);
+}
+.advanced-option > summary::-webkit-details-marker { display:none; }
+.advanced-option > summary > span {
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.advanced-option > summary strong {
+  color:#294f69;
+  font-size:12px;
+  font-weight:900;
+}
+.advanced-option > summary small {
+  color:#7a8b98;
+  font-size:9px;
+  line-height:1.35;
+  font-weight:600;
+}
+.advanced-option > summary em {
+  flex:0 0 auto;
+  padding:5px 8px;
+  border-radius:999px;
+  background:#edf5fa;
+  color:#3f6f8d;
+  font-size:9px;
+  font-style:normal;
+  font-weight:850;
+}
+.advanced-option > summary::after {
+  content:'+';
+  flex:0 0 auto;
+  width:27px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  border:1px solid #cbdbe5;
+  border-radius:50%;
+  background:#fff;
+  color:#326987;
+  font-size:17px;
+  font-weight:700;
+}
+.advanced-option[open] > summary {
+  border-bottom:1px solid #e0e8ee;
+  background:#f5fafe;
+}
+.advanced-option[open] > summary::after { content:'−'; }
+.advanced-option-body {
+  padding:14px;
+}
+.advanced-option-body > :first-child { margin-top:0; }
+.advanced-option-body > :last-child { margin-bottom:0; }
+.advanced-option-body .leveling-editor,
+.advanced-option-body .stair-editor,
+.advanced-option-body .guardrail-editor,
+.advanced-option-body.obstacle-section,
+.advanced-option-body.laying-zones-block {
+  margin-top:0;
+}
+.presentation-mode .advanced-option {
+  box-shadow:none;
+  background:#fff;
+}
+@media(max-width:700px){
+  .advanced-option > summary {
+    align-items:flex-start;
+    gap:8px;
+    padding:12px;
+  }
+  .advanced-option > summary em { margin-left:auto; }
+  .advanced-option > summary::after {
+    width:25px;
+    height:25px;
+  }
+  .advanced-option-body { padding:11px; }
+}

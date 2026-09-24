@@ -211,7 +211,12 @@ export function LayingSetupEditor({ project, onChange }: Props) {
         )}
       </div>
 
-      <div className="question-block laying-zones-block">
+      <details className="advanced-option laying-zones-option">
+        <summary>
+          <span><strong>Zones de pose supplémentaires</strong><small>Pour changer le sens, le motif ou le produit sur une partie de la terrasse.</small></span>
+          <em>{zones.length ? `${zones.length} ajoutée${zones.length > 1 ? 's' : ''}` : 'Optionnel'}</em>
+        </summary>
+        <div className="advanced-option-body question-block laying-zones-block">
         <div className="zones-heading">
           <div>
             <h3>Zones de pose</h3>
@@ -315,6 +320,7 @@ export function LayingSetupEditor({ project, onChange }: Props) {
           })}
         </div>
       </div>
+      </details>
     </div>
   );
 }

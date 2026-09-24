@@ -368,7 +368,12 @@ export function GeometryEditor({ project, onChange }: Props) {
         onRedo={redo}
       />
 
-      <div className="obstacle-section">
+      <details className="advanced-option geometry-advanced-option">
+        <summary>
+          <span><strong>Zones à exclure</strong><small>Piscine, arbre, poteau, regard…</small></span>
+          <em>{project.obstacles.length ? `${project.obstacles.length} ajoutée${project.obstacles.length > 1 ? 's' : ''}` : 'Optionnel'}</em>
+        </summary>
+        <div className="advanced-option-body obstacle-section">
         <div className="obstacle-heading">
           <div>
             <h3>Zones à exclure</h3>
@@ -452,6 +457,7 @@ export function GeometryEditor({ project, onChange }: Props) {
           <small>Les réservations peuvent être à cheval sur le contour ou totalement à l’extérieur. Seule leur intersection avec la terrasse retire de la surface et coupe les lames/lambourdes. Les réservations ne doivent pas se chevaucher entre elles.</small>
         </div>
       </div>
+      </details>
     </div>
   );
 }

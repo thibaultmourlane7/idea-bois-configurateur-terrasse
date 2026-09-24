@@ -16,13 +16,13 @@ import { computeTerrainModel, TERRAIN_TAG } from './terrain';
 import { computeStairs, STAIR_TAG } from './stairs';
 import { computeGuardrails, GUARDRAIL_TAG } from './guardrails';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.7.0';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.8.0';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.7.0 : présentation IDEA Bois par défaut et rendu 3D coloré depuis les teintes produit déjà référencées, sans modification du moteur métier.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.8.0 : jonctions de lames visibles en 3D, matériau bois corrigé, navigation en haut à chaque étape et options avancées repliées par défaut.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

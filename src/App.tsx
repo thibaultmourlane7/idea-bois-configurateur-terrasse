@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { demoJoist, ideaBoisBoards } from './catalog/catalogue';
 import { Diagnostics } from './components/Diagnostics';
 import { Plan2D } from './components/Plan2D';
@@ -134,6 +134,14 @@ export default function App() {
   const [visualPreset, setVisualPreset] = useState<VisualPreset>('finished');
   const [visualLayers, setVisualLayers] = useState<ConstructionLayers>({ ...FINISHED_LAYERS });
   const [presentationMode, setPresentationMode] = useState(true);
+
+  useEffect(() => {
+    // À chaque changement d'étape, repartir du haut sur mobile comme sur ordinateur.
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+  }, [step]);
+
   const result = useMemo(() => runConfigurator(project), [project]);
   const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board]);
   const progressiveLayers = useMemo(() => layersForStep(step), [step]);
@@ -277,7 +285,7 @@ export default function App() {
             {presentationMode ? '⚙ Mode technique' : '✨ Présentation Idea Bois'}
           </button>
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          {!presentationMode && <div className="header-note">V1.7 • présentation Idea Bois</div>}
+          {!presentationMode && <div className="header-note">V1.8 • 3D joints + UX</div>}
         </div>
       </header>
 
@@ -297,7 +305,7 @@ export default function App() {
             <div className="step-content">
               {!presentationMode && (
                 <div className="stabilisation-banner">
-                  <strong>Version V1.7 — Présentation Idea Bois</strong>
+                  <strong>Version V1.8 — 3D et navigation</strong>
                   <span>Mode présentation client + rendu bois 3D renforcé. Le moteur métier reste inchangé.</span>
                 </div>
               )}
@@ -454,46 +462,76 @@ export default function App() {
                 </div>
               )}
 
-              <div className="question-block double-joist-visible-setting">
-                <div className="double-joist-heading">
-                  <div>
-                    <h3>Renfort aux jonctions de lames</h3>
-                    <p className="finish-help">
-                      {result.layout?.hasButtJoints
-                        ? `${result.layout.buttJoints.length} raccord${result.layout.buttJoints.length > 1 ? 's' : ''} de lames détecté${result.layout.buttJoints.length > 1 ? 's' : ''}. Le choix ci-dessous recalcule la structure, les plots et le panier.`
-                        : 'Aucun raccord de lames détecté avec le calepinage actuel. Le réglage reste disponible et s’appliquera automatiquement si un raccord apparaît.'}
-                    </p>
+              <details className="advanced-option">
+                <summary>
+                  <span><strong>Renfort aux jonctions de lames</strong><small>Choix du lambourdage sur les raccords.</small></span>
+                  <em>Optionnel</em>
+                </summary>
+                <div className="advanced-option-body">
+                  <div className="question-block double-joist-visible-setting">
+                    <div className="double-joist-heading">
+                      <div>
+                        <h3>Renfort aux jonctions de lames</h3>
+                        <p className="finish-help">
+                          {result.layout?.hasButtJoints
+                            ? `${result.layout.buttJoints.length} raccord${result.layout.buttJoints.length > 1 ? 's' : ''} de lames détecté${result.layout.buttJoints.length > 1 ? 's' : ''}. Le choix ci-dessous recalcule la structure, les plots et le panier.`
+                            : 'Aucun raccord de lames détecté avec le calepinage actuel. Le réglage reste disponible et s’appliquera automatiquement si un raccord apparaît.'}
+                        </p>
+                      </div>
+                      <span className={result.layout?.hasButtJoints ? 'joint-status detected' : 'joint-status none'}>
+                        {result.layout?.hasButtJoints ? 'Raccords détectés' : 'Aucun raccord'}
+                      </span>
+                    </div>
+                    <div className="choice-grid two-choice">
+                      <ChoiceCard
+                        active={!project.doubleJoistsAtButtJoints}
+                        title="Lambourdage simple"
+                        subtitle="Une seule lambourde sur chaque axe de jonction"
+                        onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
+                      />
+                      <ChoiceCard
+                        active={Boolean(project.doubleJoistsAtButtJoints)}
+                        title="Double lambourdage"
+                        subtitle="Ajoute une seconde lambourde sur les jonctions et recalcule les plots et le panier"
+                        onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}
+                      />
+                    </div>
                   </div>
-                  <span className={result.layout?.hasButtJoints ? 'joint-status detected' : 'joint-status none'}>
-                    {result.layout?.hasButtJoints ? 'Raccords détectés' : 'Aucun raccord'}
-                  </span>
                 </div>
-                <div className="choice-grid two-choice">
-                  <ChoiceCard
-                    active={!project.doubleJoistsAtButtJoints}
-                    title="Lambourdage simple"
-                    subtitle="Une seule lambourde sur chaque axe de jonction"
-                    onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
-                  />
-                  <ChoiceCard
-                    active={Boolean(project.doubleJoistsAtButtJoints)}
-                    title="Double lambourdage"
-                    subtitle="Ajoute une seconde lambourde sur les jonctions et recalcule les plots et le panier"
-                    onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}
-                  />
-                </div>
-              </div>
+              </details>
 
               <label className="single-field">Hauteur finie au point de référence<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support au-dessus de la lame au coin haut-gauche de référence.</small></label>
-              <LevelingEditor project={project} onChange={setProject} />
-              <StairEditor project={project} onChange={setProject} />
+              <details className="advanced-option">
+                <summary>
+                  <span><strong>Niveaux et pente du support</strong><small>À ouvrir uniquement si le support n’est pas parfaitement plan ou si plusieurs niveaux sont nécessaires.</small></span>
+                  <em>Optionnel</em>
+                </summary>
+                <div className="advanced-option-body">
+                  <LevelingEditor project={project} onChange={setProject} />
+                </div>
+              </details>
+              <details className="advanced-option">
+                <summary>
+                  <span><strong>Escaliers et accès</strong><small>Ajouter un escalier extérieur ou entre deux niveaux.</small></span>
+                  <em>{(project.stairs?.length ?? 0) ? `${project.stairs?.length} ajouté${(project.stairs?.length ?? 0) > 1 ? 's' : ''}` : 'Optionnel'}</em>
+                </summary>
+                <div className="advanced-option-body">
+                  <StairEditor project={project} onChange={setProject} />
+                </div>
+              </details>
               {!presentationMode && project.supportSystem === 'adjustable-pedestals' && (
                 <SupportHeightMap project={project} plan={result.supportPlan} />
               )}
               {project.supportType !== 'stabilized-ground' && (
-                <div className="question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
-                  {([['yes', 'Oui'], ['no', 'Non'], ['unknown', 'Je ne sais pas']] as const).map(([value, label]) => <button type="button" key={value} className={project.drainage === value ? 'active' : ''} onClick={() => setProject({ ...project, drainage: value as DrainageAnswer })}>{label}</button>)}
-                </div></div>
+                <details className="advanced-option">
+                  <summary>
+                    <span><strong>Évacuation de l’eau</strong><small>Préciser le drainage de la dalle si nécessaire.</small></span>
+                    <em>Optionnel</em>
+                  </summary>
+                  <div className="advanced-option-body question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
+                    {([['yes', 'Oui'], ['no', 'Non'], ['unknown', 'Je ne sais pas']] as const).map(([value, label]) => <button type="button" key={value} className={project.drainage === value ? 'active' : ''} onClick={() => setProject({ ...project, drainage: value as DrainageAnswer })}>{label}</button>)}
+                  </div></div>
+                </details>
               )}
             </div>
           )}
@@ -532,7 +570,15 @@ export default function App() {
                   />
                 </div>
                 {project.edgeFinishMode === 'per-edge' && <EdgeSetupEditor project={project} onChange={setProject} />}
-                <GuardrailEditor project={project} onChange={setProject} />
+                <details className="advanced-option">
+                  <summary>
+                    <span><strong>Garde-corps</strong><small>Ajouter des garde-corps uniquement si le projet en prévoit.</small></span>
+                    <em>{(project.guardrails?.length ?? 0) ? `${project.guardrails?.length} ajouté${(project.guardrails?.length ?? 0) > 1 ? 's' : ''}` : 'Optionnel'}</em>
+                  </summary>
+                  <div className="advanced-option-body">
+                    <GuardrailEditor project={project} onChange={setProject} />
+                  </div>
+                </details>
                 {hasEdgeTreatment(project, 'cladding') && (
                   <label className="single-field edge-height-field">
                     Hauteur de l’habillage

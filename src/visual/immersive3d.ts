@@ -1,4 +1,5 @@
-import type { Scene3DModel } from '../engine/scene3d';
+import type { LayoutResult } from '../domain/types';
+import type { Scene3DModel, Scene3DPoint } from '../engine/scene3d';
 
 export interface ImmersiveCameraFrame {
   targetXM: number;
@@ -51,4 +52,62 @@ export function immersiveSceneSummary(scene: Scene3DModel): ImmersiveSceneSummar
     guardrailPosts: scene.guardrails.reduce((sum, guardrail) => sum + guardrail.posts.length, 0),
     obstacles: scene.obstacles.length,
   };
+}
+
+
+export interface ImmersiveButtJointMarker {
+  id: string;
+  start: Scene3DPoint;
+  end: Scene3DPoint;
+}
+
+/**
+ * Convertit uniquement les vrais raccords calculés par le moteur en petits
+ * marqueurs transversaux destinés au rendu 3D. Aucun raccord n'est inventé.
+ */
+export function immersiveButtJointMarkers(
+  scene: Scene3DModel,
+  layout?: LayoutResult,
+): ImmersiveButtJointMarker[] {
+  if (!layout?.buttJoints?.length) return [];
+
+  const markers: ImmersiveButtJointMarker[] = [];
+  for (const joint of layout.buttJoints) {
+    if (
+      joint.xM == null || joint.yM == null ||
+      joint.normalX == null || joint.normalY == null
+    ) continue;
+
+    const boardAtJoint = scene.boards.find((board) =>
+      [...board.top].some((point) =>
+        Math.hypot(point.xM - joint.xM!, point.yM - joint.yM!) < .012
+      )
+    );
+    if (!boardAtJoint) continue;
+
+    const closeZ = [...boardAtJoint.top]
+      .filter((point) =>
+        Math.hypot(point.xM - joint.xM!, point.yM - joint.yM!) < boardAtJoint.widthM * 1.2
+      )
+      .map((point) => point.zM);
+    const zM = closeZ.length
+      ? closeZ.reduce((sum, value) => sum + value, 0) / closeZ.length
+      : boardAtJoint.top.reduce((sum, point) => sum + point.zM, 0) / boardAtJoint.top.length;
+
+    const halfWidthM = boardAtJoint.widthM * .49;
+    markers.push({
+      id: joint.id,
+      start: {
+        xM: joint.xM - joint.normalX * halfWidthM,
+        yM: joint.yM - joint.normalY * halfWidthM,
+        zM,
+      },
+      end: {
+        xM: joint.xM + joint.normalX * halfWidthM,
+        yM: joint.yM + joint.normalY * halfWidthM,
+        zM,
+      },
+    });
+  }
+  return markers;
 }

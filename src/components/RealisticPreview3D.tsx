@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { LayoutResult, ProjectInput, SupportPlanResult } from '../domain/types';
 import { findBoard } from '../catalog/compatibility';
 import { buildProfessional3DScene, type Scene3DPoint } from '../engine/scene3d';
-import { computeImmersiveCameraFrame } from '../visual/immersive3d';
+import { computeImmersiveCameraFrame, immersiveButtJointMarkers } from '../visual/immersive3d';
 import type { ConstructionLayers } from '../visual/layers';
 import { resolveMaterialProfile } from '../visual/materialProfiles';
 import { resolveBoardRenderColors } from '../visual/resolveBoardTexture';
@@ -28,7 +28,9 @@ function canvasTexture(baseColor: string, grainColor: string, boardId: string) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return undefined;
 
-  ctx.fillStyle = baseColor || '#b88758';
+  // Texture volontairement quasi neutre : la couleur du produit est portée
+  // par le matériau Three.js. Cela évite le blanchiment / double teinte.
+  ctx.fillStyle = '#f3eee6';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const grain = cssColor(grainColor, '#755234');
@@ -39,7 +41,7 @@ function canvasTexture(baseColor: string, grainColor: string, boardId: string) {
   for (let row = 0; row < 32; row += 1) {
     const seed = Math.sin((row + 1) * 12.9898 + boardId.length * 78.233) * 43758.5453;
     const offset = (seed - Math.floor(seed)) * 18;
-    ctx.strokeStyle = `rgba(${r},${g},${b},${0.045 + (row % 5) * .012})`;
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.055 + (row % 5) * .012})`;
     ctx.lineWidth = .7 + (row % 3) * .35;
     ctx.beginPath();
     for (let x = -20; x <= canvas.width + 20; x += 12) {
@@ -213,7 +215,7 @@ export function RealisticPreview3D({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = .92;
     renderer.domElement.className = 'immersive3d-canvas';
     host.replaceChildren(renderer.domElement);
 
@@ -243,10 +245,10 @@ export function RealisticPreview3D({
     controls.enabled = handActive;
     controls.update();
 
-    const hemi = new THREE.HemisphereLight(0xeaf7ff, 0x7b6b50, 1.35);
+    const hemi = new THREE.HemisphereLight(0xeaf7ff, 0x7b6b50, .78);
     world.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff3dd, 3.1);
+    const sun = new THREE.DirectionalLight(0xfff3dd, 1.65);
     sun.position.set(frame.targetXM - frame.radiusM * .75, frame.targetZM + frame.radiusM * 1.55, frame.targetYM - frame.radiusM * .6);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -260,7 +262,7 @@ export function RealisticPreview3D({
     sun.shadow.bias = -.00012;
     world.add(sun);
 
-    const fill = new THREE.DirectionalLight(0xbadfff, .55);
+    const fill = new THREE.DirectionalLight(0xbadfff, .28);
     fill.position.set(frame.targetXM + frame.radiusM, frame.targetZM + frame.radiusM * .4, frame.targetYM + frame.radiusM);
     world.add(fill);
 
@@ -295,11 +297,11 @@ export function RealisticPreview3D({
         map.repeat.set(repeatLength, 1);
       }
       const top = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
+        color: cssColor(baseColor, '#aa7d51'),
         map,
         bumpMap: map,
-        bumpScale: .0032,
-        roughness: board?.technical.materialFamily === 'composite' ? .72 : .64,
+        bumpScale: .0026,
+        roughness: board?.technical.materialFamily === 'composite' ? .76 : .68,
         metalness: 0,
       });
       const side = new THREE.MeshStandardMaterial({
@@ -387,6 +389,18 @@ export function RealisticPreview3D({
           mesh.receiveShadow = true;
           root.add(mesh);
         }
+      }
+    }
+
+    if (layers.decking) {
+      const jointMaterial = new THREE.MeshStandardMaterial({
+        color: 0x38291f,
+        roughness: .94,
+        metalness: 0,
+      });
+
+      for (const marker of immersiveButtJointMarkers(sceneModel, layout)) {
+        root.add(beam(marker.start, marker.end, .006, .0022, jointMaterial, deckOffset + .0015));
       }
     }
 

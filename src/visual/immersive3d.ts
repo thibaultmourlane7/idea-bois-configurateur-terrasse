@@ -78,21 +78,31 @@ export function immersiveButtJointMarkers(
       joint.normalX == null || joint.normalY == null
     ) continue;
 
-    const boardAtJoint = scene.boards.find((board) =>
-      [...board.top].some((point) =>
-        Math.hypot(point.xM - joint.xM!, point.yM - joint.yM!) < .012
-      )
-    );
-    if (!boardAtJoint) continue;
+    const candidates = scene.boards.map((board) => {
+      const startCenter = {
+        xM: (board.top[0].xM + board.top[1].xM) / 2,
+        yM: (board.top[0].yM + board.top[1].yM) / 2,
+        zM: (board.top[0].zM + board.top[1].zM) / 2,
+      };
+      const endCenter = {
+        xM: (board.top[2].xM + board.top[3].xM) / 2,
+        yM: (board.top[2].yM + board.top[3].yM) / 2,
+        zM: (board.top[2].zM + board.top[3].zM) / 2,
+      };
+      const startDistance = Math.hypot(startCenter.xM - joint.xM!, startCenter.yM - joint.yM!);
+      const endDistance = Math.hypot(endCenter.xM - joint.xM!, endCenter.yM - joint.yM!);
+      return startDistance <= endDistance
+        ? { board, center: startCenter, distance: startDistance }
+        : { board, center: endCenter, distance: endDistance };
+    });
 
-    const closeZ = [...boardAtJoint.top]
-      .filter((point) =>
-        Math.hypot(point.xM - joint.xM!, point.yM - joint.yM!) < boardAtJoint.widthM * 1.2
-      )
-      .map((point) => point.zM);
-    const zM = closeZ.length
-      ? closeZ.reduce((sum, value) => sum + value, 0) / closeZ.length
-      : boardAtJoint.top.reduce((sum, point) => sum + point.zM, 0) / boardAtJoint.top.length;
+    const match = candidates
+      .filter((candidate) => candidate.board.zoneId === (joint.zoneId ?? 'main'))
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (!match || match.distance > .012) continue;
+
+    const boardAtJoint = match.board;
+    const zM = match.center.zM;
 
     const halfWidthM = boardAtJoint.widthM * .49;
     markers.push({

@@ -105,23 +105,50 @@ describe('Configurateur terrasse V0.9', () => {
     expect(result.diagnostics.some((d) => d.severity === 'blocking')).toBe(false);
   });
 
-  it('affiche les familles manquantes au lieu de les masquer pour une lame sans jeu validé', () => {
+  it('calcule le calepinage DASSO mais garde sa structure à confirmer', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G001')!;
     const result = runConfigurator({ ...base, board });
-    expect(result.basket?.lines.some((line) => line.family === 'joists')).toBe(true);
+    expect(board.gapMm).toBe(5);
+    expect(result.layout).toBeDefined();
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.label).toContain('DASSO');
     expect(result.basket?.lines.some((line) => line.family === 'supports')).toBe(true);
     expect(result.basket?.lines.some((line) => line.family === 'fixings')).toBe(true);
     expect(result.basket?.status).toBe('partial');
+    expect(result.valid).toBe(false);
   });
 
-  it('applique le jeu et les clips publiés à la gamme SILVADEC Atmosphère', () => {
+  it('calcule MOSO avec la lambourde bambou recommandée sans inventer son prix', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G002')!;
+    const result = runConfigurator({ ...base, board });
+    expect(result.layout).toBeDefined();
+    expect(result.supportPlan?.joistStockBoards.every((item) => item.stockLengthMm === 2440)).toBe(true);
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.productRef).toBe('BO-SB155');
+    expect(result.basket?.lines.find((line) => line.id === 'fixings')?.productRef).toBe('CLIP-SCREW-BX08');
+    expect(result.basket?.status).toBe('partial');
+    expect(result.structure?.fixingStatus).toBe('unavailable');
+  });
+
+  it('applique le système Réversil recommandé sans réutiliser les clips génériques bois/composite', () => {
     const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G038')!;
     const result = runConfigurator({ ...base, board });
     expect(board.gapMm).toBe(5);
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.productRef).toBe('SILAMB2102');
     const clips = result.basket?.lines.find((line) => line.id === 'fixings');
-    expect(clips?.status).toBe('exact');
-    expect(clips?.quantity).toBe(Math.ceil((24 * 18) / 30));
+    expect(clips?.productRef).toBe('SICLIP2102');
+    expect(clips?.status).toBe('pending');
+    expect(clips?.quantity).toBe(Math.ceil(24 * 18));
     expect(result.basket?.status).toBe('partial');
+    expect(result.structure?.fixingStatus).toBe('unavailable');
+  });
+
+  it('conserve une alternative SILVADEC sans calculer une structure non renseignée', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G038')!;
+    const result = runConfigurator({ ...base, board, structureJoistChoice: 'other-compatible' });
+    expect(result.layout).toBeDefined();
+    expect(result.valid).toBe(false);
+    expect(result.supportPlan?.status).toBe('unavailable');
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('pending');
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.note).toContain('composite');
   });
 
   it('ajoute exactement le géotextile demandé sur sol stabilisé', () => {
@@ -186,16 +213,26 @@ describe('Configurateur terrasse V0.9', () => {
     expect(boards.every((board) => [3000, 4200, 5400].includes(board.stockLengthMm))).toBe(true);
   });
 
-  it('garde le panier Garapa/Padouk partiel tant que le calepinage n’est pas validé', () => {
+  it('calcule Garapa/Padouk à 5 mm puis attend uniquement le choix de lambourde', () => {
     for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
       const board = ideaBoisBoards.find((item) => item.id === id)!;
       const result = runConfigurator({ ...base, board });
-      expect(result.layout).toBeUndefined();
+      expect(board.gapMm).toBe(5);
+      expect(result.layout).toBeDefined();
+      expect(result.diagnostics.some((item) => item.tag === 'SA-TERR-GAP-001')).toBe(false);
       expect(result.supportPlan?.status).toBe('unavailable');
       expect(result.basket?.status).toBe('partial');
       expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('pending');
-      expect(result.basket?.lines.find((line) => line.id === 'supports')?.status).toBe('pending');
     }
+  });
+
+  it('applique 94,50 €/m² au Cumaru G003 validé pour ce projet', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G003')!;
+    const result = runConfigurator({ ...base, board });
+    expect(board.priceTtcPerM2).toBe(94.5);
+    expect(board.catalog?.variants?.[0].productRef).toBe('TCL455145021');
+    expect(result.layout).toBeDefined();
+    expect(result.pricing?.boardPurchaseTtc).toBeGreaterThan(0);
   });
 
   it('bloque un produit composite démo sans règles fabricant', () => {

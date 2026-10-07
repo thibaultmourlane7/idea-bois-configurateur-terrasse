@@ -73,8 +73,13 @@ describe('Sprint D V0.23 — catalogue métier et compatibilités', () => {
     expect(silvadec.supports.state).toBe('partial');
 
     const bamboo = getProductCompatibility(board('IDEA-TERR-G001'));
-    expect(bamboo.layout.state).toBe('missing');
+    expect(bamboo.layout.state).toBe('validated');
     expect(bamboo.structure.state).toBe('partial');
+
+    const moso = getProductCompatibility(board('IDEA-TERR-G002'));
+    expect(moso.layout.state).toBe('validated');
+    expect(moso.structure.state).toBe('validated');
+    expect(moso.fixings.state).toBe('validated');
 
     const merbau = getProductCompatibility(board('IDEA-TERR-G012'));
     expect(merbau.structure.state).toBe('missing');
@@ -90,10 +95,11 @@ describe('Sprint D V0.23 — catalogue métier et compatibilités', () => {
     expect(getProductReadiness(board('IDEA-TERR-G008')).level).toBe('partial');
     expect(getProductReadiness(board('IDEA-TERR-G015')).level).toBe('partial');
     expect(getProductReadiness(board('IDEA-TERR-G001')).level).toBe('partial');
+    expect(getProductReadiness(board('IDEA-TERR-G002')).level).toBe('calculable');
 
-    // Cumaru 4,55 m : règles techniques présentes mais prix exact absent.
-    expect(getProductReadiness(board('IDEA-TERR-G003')).level).toBe('partial');
-    expect(getProductReadiness(board('IDEA-TERR-G003')).detail).toContain('prix catalogue exact');
+    // Prix G003 validé pour le projet à 94,50 €/m² : il rejoint la recette Cumaru calculable complète.
+    expect(getProductReadiness(board('IDEA-TERR-G003')).level).toBe('complete');
+    expect(board('IDEA-TERR-G003').priceTtcPerM2).toBe(94.5);
   });
 
   it('autorise uniquement une variante du même système constructif dans une zone', () => {

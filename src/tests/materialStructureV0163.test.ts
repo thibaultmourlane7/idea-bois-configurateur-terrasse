@@ -3,7 +3,7 @@ import { demoJoist, ideaBoisBoards } from '../catalog/catalogue';
 import type { ProjectInput } from '../domain/types';
 import { computeLayout } from '../engine/layout';
 import { computeSupportPlan } from '../engine/supportPlan';
-import { getCommercialConstructionRule } from '../engine/constructionRules';
+import { getCommercialConstructionRule, getCommercialJoistOptions } from '../engine/constructionRules';
 
 const pin = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
 
@@ -56,20 +56,20 @@ describe('Extension structure matériaux V0.16.3', () => {
     expect(computeSupportPlan(project, computeLayout(project)).status).toBe('exact');
   });
 
-  it('exige un choix explicite de lambourde pour Garapa et Padouk', () => {
+  it('calcule Garapa et Padouk avec le jeu projet validé à 5 mm tout en exigeant le choix de lambourde', () => {
     for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
       const project = { ...base, board: board(id) };
       const rule = getCommercialConstructionRule(project)!;
-      const plan = computeSupportPlan(project);
+      const layout = computeLayout(project);
+      const plan = computeSupportPlan(project, layout);
+      expect(project.board.gapMm).toBe(5);
+      expect(layout.boardSegments.length).toBeGreaterThan(0);
       expect(rule.status).toBe('partial');
       expect(rule.joistChoiceRequired).toBe(true);
       expect(plan.status).toBe('unavailable');
       expect(plan.joistSegments).toHaveLength(0);
       expect(plan.note).toContain('choisir');
     }
-    expect(board('IDEA-TERR-G008').gapRangeMm).toEqual([8, 10]);
-    expect(board('IDEA-TERR-G008').gapMm).toBeUndefined();
-    expect(board('IDEA-TERR-G015').gapMm).toBeUndefined();
   });
 
   it('applique le choix Pin Classe 4 ou exotique sans substitution silencieuse', () => {
@@ -86,25 +86,76 @@ describe('Extension structure matériaux V0.16.3', () => {
     }
   });
 
-  it('calcule SILVADEC sur Réversil sans inventer le modèle de plot', () => {
+  it('propose Réversil en priorité pour SILVADEC et conserve une alternative compatible sans l’inventer', () => {
     const project = { ...base, board: board('IDEA-TERR-G037') };
+    const options = getCommercialJoistOptions(project);
+    expect(options[0].id).toBe('manufacturer-recommended');
+    expect(options[0].recommended).toBe(true);
+    expect(options[1].id).toBe('other-compatible');
+
     const rule = getCommercialConstructionRule(project)!;
     const plan = computeSupportPlan(project, computeLayout(project));
+    expect(rule.status).toBe('validated');
+    expect(rule.joistProductRef).toBe('SILAMB2102');
     expect(rule.joistSpacingMm).toBe(400);
     expect(rule.plotSpacingMm).toBe(600);
     expect(rule.plotCatalogueValidated).toBe(false);
     expect(plan.status).toBe('partial');
     expect(plan.supportPoints.length).toBeGreaterThan(0);
-    expect(plan.unsupportedPointCount).toBeGreaterThan(0);
     expect(plan.joistStockBoards.every((item) => item.stockLengthMm === 3600)).toBe(true);
+
+    const alternative = getCommercialConstructionRule({ ...project, structureJoistChoice: 'other-compatible' })!;
+    expect(alternative.status).toBe('partial');
+    expect(alternative.joistSpacingMm).toBe(0);
+    expect(alternative.sourceNote).toContain('ne doivent pas être utilisées sur plots');
   });
 
-  it('maintient le Bambou en structure à confirmer', () => {
+  it('calcule MOSO avec le système bambou recommandé et laisse une alternative à confirmer', () => {
     const project = { ...base, board: board('IDEA-TERR-G002') };
+    const options = getCommercialJoistOptions(project);
+    expect(options[0].id).toBe('manufacturer-recommended');
+    expect(options[0].label).toContain('MOSO');
+
     const rule = getCommercialConstructionRule(project)!;
-    const plan = computeSupportPlan(project);
+    const plan = computeSupportPlan(project, computeLayout(project));
+    expect(project.board.gapMm).toBe(5);
+    expect(project.board.gapRangeMm).toEqual([5, 6]);
+    expect(rule.status).toBe('validated');
+    expect(rule.joistProductRef).toBe('BO-SB155');
+    expect(rule.joistSpacingMm).toBe(462.5);
+    expect(rule.joistStockLengthsMm).toEqual([2440]);
+    expect(plan.status).toBe('partial');
+    expect(plan.joistStockBoards.every((item) => item.stockLengthMm === 2440)).toBe(true);
+
+    const alternative = getCommercialConstructionRule({ ...project, structureJoistChoice: 'other-compatible' })!;
+    expect(alternative.status).toBe('partial');
+    expect(alternative.joistChoiceRequired).toBe(true);
+  });
+
+  it('garde DASSO préconisé mais partiel tant que son plan d’appuis n’est pas documenté', () => {
+    const project = { ...base, board: board('IDEA-TERR-G001') };
+    const rule = getCommercialConstructionRule(project)!;
+    expect(project.board.gapMm).toBe(5);
+    expect(project.board.gapRangeMm).toEqual([5, 6]);
     expect(rule.status).toBe('partial');
-    expect(plan.status).toBe('unavailable');
-    expect(plan.note).toContain('entraxe');
+    expect(rule.joistProductRef).toBe('XJ30-48-UAC');
+    expect(rule.joistSpacingMm).toBe(435);
+    expect(computeSupportPlan(project, computeLayout(project)).status).toBe('unavailable');
+  });
+
+  it('rattache G026 et G029 à la recette Pin standard et garde PROLIN séparé', () => {
+    for (const id of ['IDEA-TERR-G026', 'IDEA-TERR-G029']) {
+      const project = { ...base, board: board(id) };
+      const rule = getCommercialConstructionRule(project)!;
+      expect(project.board.commercialRecipeId).toBe('idea-pin-nord-145x27');
+      expect(project.board.gapMm).toBe(5);
+      expect(rule.status).toBe('validated');
+    }
+
+    const prolin = board('IDEA-TERR-G025');
+    const prolinRule = getCommercialConstructionRule({ ...base, board: prolin })!;
+    expect(prolin.commercialRecipeId).toBe('idea-prolin-pin-nord-120x28');
+    expect(prolinRule.status).toBe('partial');
+    expect(prolinRule.sourceNote).toContain('clips invisibles');
   });
 });

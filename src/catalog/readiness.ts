@@ -14,17 +14,21 @@ export function getProductReadiness(board: BoardSpec): ProductReadinessInfo {
   const compatibility = getProductCompatibility(board);
   const core = [compatibility.layout, compatibility.structure, compatibility.fixings];
   const coreValidated = core.every((item) => item.state === 'validated');
+  const hasPrice = board.priceTtcPerM2 != null;
 
-  if (coreValidated && compatibility.supports.state === 'validated') {
-    return { level: 'complete', label: 'Panier calculable', detail: 'Calepinage, structure, fixations et appuis sont documentés dans la matrice V0.23.' };
+  if (coreValidated && compatibility.supports.state === 'validated' && hasPrice) {
+    return { level: 'complete', label: 'Panier calculable', detail: 'Calepinage, structure, fixations, appuis et prix sont documentés.' };
   }
-  if (coreValidated) {
+  if (coreValidated && hasPrice) {
     return { level: 'calculable', label: 'Calcul avancé', detail: 'Le calepinage et la structure sont calculables ; une famille commerciale reste partielle.' };
   }
-  if (board.commercialRecipeId) {
-    return { level: 'partial', label: 'Calcul partiel', detail: 'La matrice identifie précisément les compatibilités encore incomplètes.' };
+  if (coreValidated && !hasPrice) {
+    return { level: 'partial', label: 'Calcul partiel', detail: 'Le calepinage et la structure sont documentés, mais le prix catalogue exact manque encore.' };
   }
-  if (board.priceTtcPerM2 != null) {
+  if (board.commercialRecipeId) {
+    return { level: 'partial', label: 'Calcul partiel', detail: 'Certaines règles techniques ou commerciales restent à confirmer avant un calcul complet.' };
+  }
+  if (hasPrice) {
     return { level: 'price-only', label: 'Prix disponible', detail: 'Prix catalogue connu, système constructif non mappé.' };
   }
   return { level: 'price-only', label: 'À compléter', detail: 'Données insuffisantes pour un calcul commercial complet.' };

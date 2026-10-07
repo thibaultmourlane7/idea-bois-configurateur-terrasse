@@ -122,7 +122,7 @@ describe('Construction visuelle et habillage V0.14', () => {
     expect(vertical?.sourceUrl).toContain('lambourdes-ossatures');
   });
 
-  it('n’invente pas un jeu nul pour l’habillage Garapa/Padouk', () => {
+  it('utilise le jeu projet de 5 mm pour l’habillage Garapa/Padouk', () => {
     for (const id of ['IDEA-TERR-G008', 'IDEA-TERR-G015']) {
       const board = ideaBoisBoards.find((item) => item.id === id)!;
       const cladding = computeEdgeCladding({
@@ -132,9 +132,10 @@ describe('Construction visuelle et habillage V0.14', () => {
         edgeFinishMode: 'full-perimeter',
         edgeCladdingHeightCm: 20,
       });
-      expect(cladding.status).toBe('partial');
-      expect(cladding.rowCount).toBeUndefined();
-      expect(cladding.reason).toContain('jeu de pose');
+      expect(board.gapMm).toBe(5);
+      expect(cladding.status).toBe('exact');
+      expect(cladding.rowCount).toBeGreaterThan(0);
+      expect(cladding.reason).toBeUndefined();
     }
   });
 

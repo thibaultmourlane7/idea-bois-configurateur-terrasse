@@ -298,7 +298,7 @@ export default function App() {
             {presentationMode ? '⚙ Mode technique' : '✨ Présentation Idea Bois'}
           </button>
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          {!presentationMode && <div className="header-note">V1.8 • 3D joints + UX</div>}
+          {!presentationMode && <div className="header-note">V1.8.1 • Corrections Guillaume</div>}
         </div>
       </header>
 
@@ -318,8 +318,8 @@ export default function App() {
             <div className="step-content">
               {!presentationMode && (
                 <div className="stabilisation-banner">
-                  <strong>Version V1.8 — 3D et navigation</strong>
-                  <span>Mode présentation client + rendu bois 3D renforcé. Le moteur métier reste inchangé.</span>
+                  <strong>Version V1.8.1 — corrections retour Guillaume</strong>
+                  <span>Statuts produit clarifiés, support simplifié et choix de vue conservé. Le moteur métier reste inchangé.</span>
                 </div>
               )}
               <GeometryEditor project={project} onChange={setProject} />

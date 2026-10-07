@@ -71,21 +71,20 @@ describe('Catalogue et comparateur V0.12', () => {
     expect(result.basket?.lines.find((line) => line.id === 'fixings')?.productRef).toBe('5410439474320');
   });
 
-  it('conserve le Garapa en calcul partiel avec plage fabricant 8 à 10 mm', () => {
+  it('calcule le Garapa avec le jeu projet validé à 5 mm puis attend le choix de structure', () => {
     const garapa = board('IDEA-TERR-G008');
     expect(garapa.commercialRecipeId).toBe('idea-garapa-145x21');
-    expect(garapa.gapMm).toBeUndefined();
-    expect(garapa.gapRangeMm).toEqual([8, 10]);
+    expect(garapa.gapMm).toBe(5);
     expect(getProductReadiness(garapa).level).toBe('partial');
 
     const result = runConfigurator({ ...project, board: garapa });
-    expect(result.layout).toBeUndefined();
+    expect(result.layout).toBeDefined();
     expect(result.basket?.status).toBe('partial');
   });
 
-  it('garde Padouk partiel mais active le jeu documenté de l’Ipé', () => {
+  it('garde Padouk partiel sur la structure mais active son jeu 5 mm et celui de l’Ipé', () => {
     expect(board('IDEA-TERR-G015').commercialRecipeId).toBe('idea-padouk-120x21');
-    expect(board('IDEA-TERR-G015').gapMm).toBeUndefined();
+    expect(board('IDEA-TERR-G015').gapMm).toBe(5);
     expect(getProductReadiness(board('IDEA-TERR-G015')).level).toBe('partial');
 
     expect(board('IDEA-TERR-G011').commercialRecipeId).toBe('idea-ipe-140x20');

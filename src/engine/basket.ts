@@ -130,13 +130,15 @@ function choosePlot(residualHeightMm: number) {
 function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
   const rule = getCommercialConstructionRule(input);
-  const unresolvedStructureReason = input.supportSystem === 'adjustable-pedestals'
-    ? !layout
-      ? 'Calepinage des lames indisponible : les raccords et leurs appuis ne peuvent pas être validés.'
-      : supportPlan?.pendingCurvedPerimeter
-        ? 'Une portion de lambourdage périphérique courbe reste à valider avant de figer les quantités.'
-        : undefined
-    : undefined;
+  const unresolvedStructureReason = rule?.status === 'partial'
+    ? rule.sourceNote
+    : input.supportSystem === 'adjustable-pedestals'
+      ? !layout
+        ? 'Calepinage des lames indisponible : les raccords et leurs appuis ne peuvent pas être validés.'
+        : supportPlan?.pendingCurvedPerimeter
+          ? 'Une portion de lambourdage périphérique courbe reste à valider avant de figer les quantités.'
+          : undefined
+      : undefined;
   const hasPrecisePlan = input.supportSystem === 'adjustable-pedestals'
     && !unresolvedStructureReason
     && supportPlan

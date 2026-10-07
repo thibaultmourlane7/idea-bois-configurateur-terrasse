@@ -148,8 +148,8 @@ describe('Sprint G V1.1 — 3D professionnelle', () => {
     expect(scene.edges.find((item) => item.label === 'BC')?.treatment).toBe('cladding');
   });
 
-  it('n’invente aucune lame 3D lorsque le calepinage est bloqué', () => {
-    const project: ProjectInput = { ...base, board: board('IDEA-TERR-G008') };
+  it('n’invente aucune lame 3D lorsque le calepinage est réellement bloqué', () => {
+    const project: ProjectInput = { ...base, board: board('IDEA-TERR-G025') };
     const result = runConfigurator(project);
     const scene = buildProfessional3DScene(project, result.layout, result.supportPlan);
 

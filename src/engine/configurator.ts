@@ -155,6 +155,12 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   trace.push(`[${RULE_TAGS.boardSpan}] Entraxe maxi lame ${technical.boardMaxSupportSpacingMm} mm ; entraxe réel ${structure.joistActualSpacingMm.toFixed(1)} mm.`);
   trace.push(`[${RULE_TAGS.joistSpan}] Appuis lambourdes ≤ ${structure.joistSupportMaxSpacingMm} mm ; ${structure.supportPointCount} appuis calculés.`);
 
+  if (input.board.commercialRecipeId === 'idea-bamboo-137x20' || input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
+    structure.fixingCount = undefined;
+    structure.fixingStatus = 'unavailable';
+    trace.push('[SA-TERR-FIXING-MFR-001] Fixations issues du système fabricant ; aucun comptage générique de vis bois n’est appliqué.');
+  }
+
   if (layout?.hasButtJoints) {
     diagnostics.push({
       tag: RULE_TAGS.joints,

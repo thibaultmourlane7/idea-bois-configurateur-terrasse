@@ -162,14 +162,15 @@ describe('Sprint F — Recette V1.0 professionnelle', () => {
     it.each([
       ['Garapa', 'IDEA-TERR-G008'],
       ['Padouk', 'IDEA-TERR-G015'],
-    ])('%s reste bloqué explicitement tant que le jeu de pose exact manque', (_name, boardId) => {
+    ])('%s calcule le calepinage à 5 mm puis attend le choix de structure', (_name, boardId) => {
       const project = base({ board: board(boardId) });
       const result = runConfigurator(project);
+      expect(project.board.gapMm).toBe(5);
       expect(result.geometry).toBeDefined();
-      expect(result.layout).toBeUndefined();
+      expect(result.layout).toBeDefined();
       expect(result.valid).toBe(false);
-      expect(result.diagnostics.some((item) => item.tag === 'SA-TERR-GAP-001' && item.severity === 'blocking')).toBe(true);
-      expect(result.trace.some((line) => line.includes('aucune valeur inventée') || line.includes('validation'))).toBe(true);
+      expect(result.diagnostics.some((item) => item.tag === 'SA-TERR-GAP-001')).toBe(false);
+      expect(result.diagnostics.some((item) => item.message.includes('Choisissez le type de lambourde'))).toBe(true);
     });
   });
 

@@ -185,13 +185,10 @@ describe('Sprint G2 V1.6 — 3D immersive', () => {
     expect(scene.bounds.maxZM).toBeGreaterThan(1);
   });
 
-  it('supporte un produit à plusieurs longueurs commerciales sans changer le moteur de débit', () => {
-    const multiLength = ideaBoisBoards.find((item) =>
-      (item.availableLengthsMm?.length ?? 0) > 1
-      && item.gapMm != null
-      && item.commercialRecipeId
-    );
+  it('supporte un produit calculable à plusieurs longueurs commerciales sans changer le moteur de débit', () => {
+    const multiLength = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027');
     expect(multiLength).toBeDefined();
+    expect((multiLength?.availableLengthsMm?.length ?? 0)).toBeGreaterThan(1);
 
     const project: ProjectInput = { ...base, board: multiLength! };
     const { result, scene } = expectSceneStable(project);

@@ -298,7 +298,7 @@ export default function App() {
             {presentationMode ? '⚙ Mode technique' : '✨ Présentation Idea Bois'}
           </button>
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          {!presentationMode && <div className="header-note">V1.8.1 • Corrections Guillaume</div>}
+          {!presentationMode && <div className="header-note">V1.8.2 • Données fabricant</div>}
         </div>
       </header>
 
@@ -318,8 +318,8 @@ export default function App() {
             <div className="step-content">
               {!presentationMode && (
                 <div className="stabilisation-banner">
-                  <strong>Version V1.8.1 — corrections retour Guillaume</strong>
-                  <span>Statuts produit clarifiés, support simplifié et choix de vue conservé. Le moteur métier reste inchangé.</span>
+                  <strong>Version V1.8.2 — données fabricant consolidées</strong>
+                  <span>MOSO, DASSO et SILVADEC proposent désormais leur système préconisé, avec alternative compatible à confirmer si nécessaire.</span>
                 </div>
               )}
               <GeometryEditor project={project} onChange={setProject} />

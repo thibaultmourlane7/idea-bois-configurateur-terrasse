@@ -125,8 +125,12 @@ export const ideaBoisBoards: BoardSpec[] = RAW_IDEA_BOIS_BOARDS.map((row) => {
       treatment,
       availabilitySnapshot,
       sourceUrl,
-      sourceDate: VERIFIED_BOARD_VARIANTS[id]?.length ? '2026-09-23' : '2026-09-04',
-      sourceStatus: VERIFIED_BOARD_VARIANTS[id]?.length ? 'Longueurs commerciales revérifiées sur IDEA Bois ; SKU uniquement si page produit explicite.' : 'Base catégorie — à valider avant production',
+      sourceDate: id === 'IDEA-TERR-G003' ? '2026-10-07' : VERIFIED_BOARD_VARIANTS[id]?.length ? '2026-09-23' : '2026-09-04',
+      sourceStatus: id === 'IDEA-TERR-G003'
+        ? 'Référence TCL455145021 vérifiée ; prix 94,50 €/m² validé pour le projet le 07/10/2026.'
+        : VERIFIED_BOARD_VARIANTS[id]?.length
+          ? 'Longueurs commerciales revérifiées sur IDEA Bois ; SKU uniquement si page produit explicite.'
+          : 'Base catégorie — à valider avant production',
       variants: VERIFIED_BOARD_VARIANTS[id],
     },
     technical: {

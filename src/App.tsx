@@ -20,7 +20,7 @@ import { ProductCompatibilityPanel } from './components/ProductCompatibilityPane
 import { hasEdgeTreatment } from './engine/edges';
 import { canUseBoardInZone, findBoard } from './catalog/compatibility';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
-import type { DrainageAnswer, EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
+import type { EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
 import { getCommercialJoistOptions } from './engine/constructionRules';
 import { restoreProjectFromUrl } from './commercial/share';
@@ -117,6 +117,28 @@ function boardFilter(board: ProjectInput['board']): ProductFilter {
   if (family.includes('bambou')) return 'bambou';
   if (family.includes('composite')) return 'composite';
   return 'autre';
+}
+
+function usefulCatalogValue(value?: string): string | undefined {
+  if (!value) return undefined;
+  return /^non précis/i.test(value.trim()) ? undefined : value.trim();
+}
+
+function productDescriptor(board: ProjectInput['board']): string {
+  const values = [
+    usefulCatalogValue(board.catalog?.range),
+    usefulCatalogValue(board.catalog?.profile),
+    usefulCatalogValue(board.catalog?.color),
+    usefulCatalogValue(board.catalog?.treatment),
+  ].filter((value): value is string => Boolean(value));
+  return [...new Set(values)].join(' • ');
+}
+
+function productLengths(board: ProjectInput['board']): string | undefined {
+  if (!board.availableLengthsMm?.length) return undefined;
+  return board.availableLengthsMm
+    .map((lengthMm) => (lengthMm / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 2 }))
+    .join(' / ');
 }
 
 export default function App() {
@@ -242,20 +264,11 @@ export default function App() {
   };
 
   const next = () => {
-    if (step === 4 && presentationMode) setPreview('3d');
     setStep((current) => Math.min(5, current + 1));
   };
   const previous = () => setStep((current) => Math.max(1, current - 1));
   const togglePresentationMode = () => {
-    setPresentationMode((current) => {
-      const nextMode = !current;
-      if (nextMode) {
-        setVisualPreset('finished');
-        setVisualLayers({ ...FINISHED_LAYERS });
-        setPreview('3d');
-      }
-      return nextMode;
-    });
+    setPresentationMode((current) => !current);
   };
   const liveBudget = result.basket?.totalTtc != null
     ? euro(result.basket.totalTtc)
@@ -373,9 +386,14 @@ export default function App() {
                           )}
                         </div>
                         <div className="product-copy">
-                          {!presentationMode && <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>}
+                          <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
                           <strong>{board.label}</strong>
                           <span>{board.subtitle}</span>
+                          {productDescriptor(board) && <small className="product-variant-detail">{productDescriptor(board)}</small>}
+                          {productLengths(board) && <small className="product-lengths">Longueurs disponibles : {productLengths(board)} m</small>}
+                          {(readiness.level === 'partial' || readiness.level === 'price-only') && (
+                            <small className={`product-readiness-detail ${readiness.level}`}>{readiness.detail}</small>
+                          )}
                           {!presentationMode && (
                             <small className={`visual-status texture-${texture.status}`}>
                               {textureStatusLabel(texture)}{texture.status === 'close' ? ' • rendu de projection' : ''}
@@ -500,10 +518,10 @@ export default function App() {
                 </div>
               </details>
 
-              <label className="single-field">Hauteur finie au point de référence<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Du support au-dessus de la lame au coin haut-gauche de référence.</small></label>
+              <label className="single-field">Hauteur totale de la terrasse<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Distance entre le support existant et le dessus des lames finies, au point de référence.</small></label>
               <details className="advanced-option">
                 <summary>
-                  <span><strong>Niveaux et pente du support</strong><small>À ouvrir uniquement si le support n’est pas parfaitement plan ou si plusieurs niveaux sont nécessaires.</small></span>
+                  <span><strong>Niveaux et pente du support</strong><small>À utiliser seulement si la dalle présente une pente, des écarts de niveau ou plusieurs hauteurs de terrasse.</small></span>
                   <em>Optionnel</em>
                 </summary>
                 <div className="advanced-option-body">
@@ -521,17 +539,6 @@ export default function App() {
               </details>
               {!presentationMode && project.supportSystem === 'adjustable-pedestals' && (
                 <SupportHeightMap project={project} plan={result.supportPlan} />
-              )}
-              {project.supportType !== 'stabilized-ground' && (
-                <details className="advanced-option">
-                  <summary>
-                    <span><strong>Évacuation de l’eau</strong><small>Préciser le drainage de la dalle si nécessaire.</small></span>
-                    <em>Optionnel</em>
-                  </summary>
-                  <div className="advanced-option-body question-block"><h3>L'eau s'évacue-t-elle correctement sur la dalle ?</h3><div className="segmented">
-                    {([['yes', 'Oui'], ['no', 'Non'], ['unknown', 'Je ne sais pas']] as const).map(([value, label]) => <button type="button" key={value} className={project.drainage === value ? 'active' : ''} onClick={() => setProject({ ...project, drainage: value as DrainageAnswer })}>{label}</button>)}
-                  </div></div>
-                </details>
               )}
             </div>
           )}

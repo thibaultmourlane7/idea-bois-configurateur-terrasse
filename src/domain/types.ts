@@ -6,7 +6,7 @@ export type DeckLayingPattern = 'straight' | 'half' | 'third';
 export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
 export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
-export type StructureJoistChoice = 'pin-class4' | 'exotic';
+export type StructureJoistChoice = 'pin-class4' | 'exotic' | 'manufacturer-recommended' | 'other-compatible';
 export type EdgeFinishMode = 'none' | 'full-perimeter' | 'per-edge';
 export type DrainageAnswer = 'yes' | 'no' | 'unknown';
 export type MaterialFamily = 'solid-wood' | 'composite';
@@ -283,6 +283,7 @@ export interface BoardSpec {
     | 'idea-padouk-120x21'
     | 'idea-ipe-140x20'
     | 'idea-bamboo-137x20'
+    | 'idea-prolin-pin-nord-120x28'
     | 'silvadec-atmosphere-138x23';
   technical: BoardTechnicalData;
 }

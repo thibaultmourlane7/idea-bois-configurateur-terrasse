@@ -155,7 +155,9 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   trace.push(`[${RULE_TAGS.boardSpan}] Entraxe maxi lame ${technical.boardMaxSupportSpacingMm} mm ; entraxe réel ${structure.joistActualSpacingMm.toFixed(1)} mm.`);
   trace.push(`[${RULE_TAGS.joistSpan}] Appuis lambourdes ≤ ${structure.joistSupportMaxSpacingMm} mm ; ${structure.supportPointCount} appuis calculés.`);
 
-  if (input.board.commercialRecipeId === 'idea-bamboo-137x20' || input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
+  const usesManufacturerFixings = input.board.commercialRecipeId === 'idea-bamboo-137x20'
+    || input.board.commercialRecipeId === 'silvadec-atmosphere-138x23';
+  if (usesManufacturerFixings) {
     structure.fixingCount = undefined;
     structure.fixingStatus = 'unavailable';
     trace.push('[SA-TERR-FIXING-MFR-001] Fixations issues du système fabricant ; aucun comptage générique de vis bois n’est appliqué.');
@@ -169,7 +171,7 @@ export function runConfigurator(input: ProjectInput): ConfiguratorResult {
       technicalMessage: 'Les raccords sont maintenant positionnés rangée par rangée et repris dans le plan structurel. Le choix simple/double lambourdage reste sous validation humaine avant commande.',
     });
     structure.fixingCount = undefined;
-    structure.fixingStatus = 'pending-joint-layout';
+    if (!usesManufacturerFixings) structure.fixingStatus = 'pending-joint-layout';
   }
 
   pricing = computePricing(input, geometry, layout);

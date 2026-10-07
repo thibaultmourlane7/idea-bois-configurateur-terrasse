@@ -165,7 +165,7 @@ export default function App() {
   }, [step]);
 
   const result = useMemo(() => runConfigurator(project), [project]);
-  const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board]);
+  const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board, project.supportSystem]);
   const progressiveLayers = useMemo(() => layersForStep(step), [step]);
   const geometryDiagnostics = result.diagnostics.filter((item) =>
     item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001')
@@ -458,23 +458,31 @@ export default function App() {
                 <div className="question-block">
                   <h3>Quel type de lambourde souhaitez-vous ?</h3>
                   <p className="finish-help">
-                    IDEA Bois documente plusieurs solutions compatibles pour cette lame. Le configurateur ne choisit pas à votre place.
+                    {joistOptions.some((option) => option.recommended)
+                      ? 'Le système préconisé par le fabricant est proposé par défaut. Vous pouvez choisir une autre solution compatible ; si elle n’est pas assez documentée, elle restera à confirmer sans être inventée.'
+                      : 'IDEA Bois documente plusieurs solutions compatibles pour cette lame. Le configurateur ne choisit pas à votre place.'}
                   </p>
                   <div className="choice-grid two-choice">
                     {joistOptions.map((option) => (
                       <ChoiceCard
                         key={option.id}
-                        active={project.structureJoistChoice === option.id}
-                        title={option.label}
+                        active={project.structureJoistChoice === option.id || (!project.structureJoistChoice && option.recommended === true)}
+                        title={option.recommended ? `${option.label} — Recommandé fabricant` : option.label}
                         subtitle={option.subtitle}
                         onClick={() => setProject({ ...project, structureJoistChoice: option.id as StructureJoistChoice })}
                       />
                     ))}
                   </div>
-                  {!project.structureJoistChoice && (
+                  {!project.structureJoistChoice && !joistOptions.some((option) => option.recommended) && (
                     <div className="customer-check-note">
                       <span>i</span>
                       <div><strong>Choix nécessaire</strong><p>La structure et son prix resteront à confirmer tant que vous n’avez pas choisi la famille de lambourde.</p></div>
+                    </div>
+                  )}
+                  {!project.structureJoistChoice && joistOptions.some((option) => option.recommended) && (
+                    <div className="customer-check-note">
+                      <span>i</span>
+                      <div><strong>Système recommandé sélectionné par défaut</strong><p>Vous pouvez conserver cette préconisation fabricant ou choisir une autre solution compatible.</p></div>
                     </div>
                   )}
                 </div>

@@ -191,6 +191,12 @@
 .readiness-badge.calculable{background:#e9f4ff;color:#206ba5}
 .readiness-badge.partial{background:#fff3dc;color:#916417}
 .readiness-badge.price-only{background:#eef1f3;color:#6d7e8b}
+.product-variant-detail,.product-lengths,.product-readiness-detail{display:block;margin-top:5px;font-size:9px;line-height:1.4}
+.product-variant-detail{color:#536f82;font-weight:750}
+.product-lengths{color:#6f8190}
+.product-readiness-detail{padding:7px 8px;border-radius:8px;background:#f7f9fb;color:#677b8a}
+.product-readiness-detail.partial{background:#fff8e9;color:#7d621f}
+.product-readiness-detail.price-only{background:#f1f4f6;color:#667986}
 .gap-info{display:block;margin-top:6px;color:#806b3c;font-size:10px}
 .compare-toggle{margin:0 14px 14px;border:1px solid #cfe0ec;background:#f8fbfd;color:#315e7d;border-radius:9px;padding:8px 10px;font-size:10px;font-weight:850}
 .compare-toggle.active{background:#173b5f;color:#fff;border-color:#173b5f}

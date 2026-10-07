@@ -8,6 +8,7 @@ import {
 } from '../catalog/compatibility';
 import type { ProjectInput } from '../domain/types';
 import { runConfigurator } from '../engine/configurator';
+import { getProductReadiness } from '../catalog/readiness';
 
 const board = (id: string) => ideaBoisBoards.find((item) => item.id === id)!;
 const pin = board('IDEA-TERR-G027');
@@ -78,6 +79,21 @@ describe('Sprint D V0.23 — catalogue métier et compatibilités', () => {
     const merbau = getProductCompatibility(board('IDEA-TERR-G012'));
     expect(merbau.structure.state).toBe('missing');
     expect(merbau.fixings.state).toBe('missing');
+  });
+
+  it('affiche un statut client fidèle à la calculabilité réelle des principales essences', () => {
+    expect(getProductReadiness(board('IDEA-TERR-G027')).level).toBe('complete');
+    expect(getProductReadiness(board('IDEA-TERR-G005')).level).toBe('complete');
+    expect(getProductReadiness(board('IDEA-TERR-G011')).level).toBe('complete');
+    expect(getProductReadiness(board('IDEA-TERR-G037')).level).toBe('calculable');
+
+    expect(getProductReadiness(board('IDEA-TERR-G008')).level).toBe('partial');
+    expect(getProductReadiness(board('IDEA-TERR-G015')).level).toBe('partial');
+    expect(getProductReadiness(board('IDEA-TERR-G001')).level).toBe('partial');
+
+    // Cumaru 4,55 m : règles techniques présentes mais prix exact absent.
+    expect(getProductReadiness(board('IDEA-TERR-G003')).level).toBe('partial');
+    expect(getProductReadiness(board('IDEA-TERR-G003')).detail).toContain('prix catalogue exact');
   });
 
   it('autorise uniquement une variante du même système constructif dans une zone', () => {

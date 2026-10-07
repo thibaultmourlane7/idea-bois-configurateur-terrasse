@@ -48,13 +48,14 @@ describe('Construction visuelle 3D V0.19', () => {
     expect(visual.joists.some((segment) => segment.role === 'perimeter')).toBe(true);
   });
 
-  it('ne crée aucune trame fictive pour le Bambou dont la structure reste à confirmer', () => {
+  it('affiche la structure MOSO recommandée sans inventer la référence commerciale des plots', () => {
     const project: ProjectInput = { ...base, board: bamboo };
     const result = runConfigurator(project);
     const visual = buildConstructionVisual(project, result.basket, result.supportPlan);
-    expect(result.supportPlan?.status).toBe('unavailable');
-    expect(visual.joists).toHaveLength(0);
-    expect(visual.plots).toHaveLength(0);
+    expect(result.supportPlan?.status).toBe('partial');
+    expect(visual.joists.length).toBeGreaterThan(0);
+    expect(visual.plots.length).toBeGreaterThan(0);
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.productRef).toBe('BO-SB155');
   });
 
   it('conserve le double lambourdage réel dans le modèle visuel', () => {

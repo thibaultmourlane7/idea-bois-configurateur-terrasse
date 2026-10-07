@@ -42,9 +42,13 @@ function structureItem(board: BoardSpec): CompatibilityItem {
   if (recipe === 'idea-garapa-145x21' || recipe === 'idea-padouk-120x21')
     return partial('Choix de structure requis', 'Pin Classe 4 ou bois exotique : choix explicite nécessaire avant calcul définitif.');
   if (recipe === 'silvadec-atmosphere-138x23')
-    return validated('Réversil documentée', 'Lambourde aluminium Réversil et entraxe fabricant documentés.');
+    return validated('Réversil documentée', 'Réversil aluminium 63 × 40 mm et entraxe fabricant de 400 mm maximum documentés. Une autre structure compatible peut être choisie séparément.');
+  if (recipe === 'idea-bamboo-137x20' && board.id === 'IDEA-TERR-G002')
+    return validated('Structure MOSO documentée', 'Lambourde bambou MOSO Thermo-Density BO-SB155 et entraxe de 462,5 mm documentés.');
   if (recipe === 'idea-bamboo-137x20')
-    return partial('Structure à confirmer', 'Support bois documenté mais entraxe et plan d’appuis insuffisamment documentés.');
+    return partial('Structure DASSO documentée partiellement', 'La lambourde bambou DASSO XTR est identifiée ; le plan d’appuis précis reste à confirmer.');
+  if (recipe === 'idea-prolin-pin-nord-120x28')
+    return partial('Structure PROLIN spécifique', 'Pose sur lambourde bois autoclave avec clips invisibles documentée ; entraxes et références de clips restent à compléter.');
   return missing('Structure non mappée', 'Aucune recette structurelle validée n’est liée à cette référence.');
 }
 
@@ -56,8 +60,12 @@ function fixingItem(board: BoardSpec): CompatibilityItem {
     return validated('Vis inox bois', 'Vis inox A2 5 × 60 mm documentées pour le panier actuel.');
   if (['idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(recipe ?? ''))
     return validated('Vis inox bois dur', 'Vis terrasse inox A2 5 × 60 mm bois dur documentées.');
+  if (recipe === 'idea-bamboo-137x20' && board.id === 'IDEA-TERR-G002')
+    return validated('Clips MOSO', 'Fixation par clips MOSO documentée, environ 20 clips/m² pour cette lame. Le prix du conditionnement reste à référencer.');
   if (recipe === 'idea-bamboo-137x20')
-    return partial('Fixation fabricant à confirmer', 'La fixation Bambou ne doit pas être substituée par une vis générique.');
+    return partial('Clips DASSO documentés', 'La fixation par clips DASSO est documentée ; la référence commerciale IDEA Bois et son prix restent à confirmer.');
+  if (recipe === 'idea-prolin-pin-nord-120x28')
+    return partial('Clips invisibles PROLIN', 'Le principe de fixation par clips est documenté ; référence et consommation exactes restent à confirmer.');
   return missing('Fixation non mappée', 'Aucune fixation commerciale validée n’est liée à cette référence.');
 }
 
@@ -66,9 +74,13 @@ function supportItem(board: BoardSpec): CompatibilityItem {
   if (['idea-pin-nord-145x27','idea-resineux-class4','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(recipe ?? ''))
     return validated('Plots bois référencés', 'Le moteur dispose de plots bois tarifés et de règles d’espacement documentées, sous réserve des hauteurs réellement couvertes.');
   if (recipe === 'silvadec-atmosphere-138x23')
-    return partial('Plot Réversil à confirmer', 'L’espacement est documenté mais le modèle commercial de plot compatible n’est pas validé.');
+    return partial('Appuis Réversil documentés', 'Entraxe d’appuis de 600 mm maximum en résidentiel documenté ; la référence commerciale du plot reste à confirmer.');
+  if (recipe === 'idea-bamboo-137x20' && board.id === 'IDEA-TERR-G002')
+    return partial('Appuis MOSO calculables', 'Implantation fabricant documentée ; la référence commerciale des appuis reste à confirmer.');
   if (recipe === 'idea-bamboo-137x20')
-    return partial('Appuis à confirmer', 'La règle d’appuis Bambou n’est pas assez documentée pour un plan exact.');
+    return partial('Appuis DASSO à confirmer', 'La structure bambou est identifiée mais la règle précise des appuis n’est pas assez documentée pour un plan définitif.');
+  if (recipe === 'idea-prolin-pin-nord-120x28')
+    return partial('Appuis PROLIN à confirmer', 'Le support bois est connu mais la règle d’appuis n’est pas encore suffisamment documentée.');
   return missing('Appuis non mappés', 'Aucune règle d’appuis validée n’est liée à cette référence.');
 }
 

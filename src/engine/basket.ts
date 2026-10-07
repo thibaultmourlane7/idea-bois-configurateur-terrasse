@@ -321,48 +321,140 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
   return lines;
 }
 
+function bambooLines(input: ProjectInput, geometry: GeometryResult, supportPlan?: SupportPlanResult): BasketLine[] {
+  const area = geometry.areaM2;
+  const alternative = input.structureJoistChoice === 'other-compatible';
+
+  if (alternative) {
+    return [
+      pending('joists', 'joists', 'Autre lambourde compatible Bambou', 'La solution alternative est conservée, mais sa référence, sa section, son entraxe et son prix doivent être confirmés avant commande.'),
+      pending('supports', 'supports', 'Appuis de la structure alternative', 'Les appuis dépendent de la lambourde réellement choisie ; aucune règle fabricant n’est extrapolée.'),
+      pending('fixings', 'fixings', 'Fixations compatibles Bambou', 'La fixation doit être confirmée avec la structure alternative retenue.'),
+      pending('protection', 'protection', 'Protection / accessoires structure', 'À définir selon la structure alternative choisie.'),
+    ];
+  }
+
+  const moso = input.board.id === 'IDEA-TERR-G002';
+  if (moso) {
+    const clipCount = Math.ceil(area * 20);
+    const clipPacks = Math.ceil(clipCount / 90);
+    const joistCount = supportPlan?.joistStockBoards.length;
+    return [
+      {
+        id: 'joists',
+        family: 'joists',
+        label: 'Lambourde bambou MOSO Thermo-Density 60 × 40 × 2440 mm',
+        productRef: 'BO-SB155',
+        quantity: joistCount && joistCount > 0 ? joistCount : undefined,
+        unit: 'pièce(s)',
+        status: 'pending',
+        required: true,
+        note: supportPlan?.joistLinearM
+          ? `${supportPlan.joistLinearM.toFixed(1)} ml calculés avec entraxe ≤ 462,5 mm. Référence fabricant connue ; prix IDEA Bois à confirmer.`
+          : 'Système préconisé MOSO ; référence fabricant connue, prix IDEA Bois à confirmer.',
+        sourceUrl: 'https://www.moso-bamboo.com/fr/produit/accessoires-exterieur/',
+      },
+      {
+        id: 'fixings',
+        family: 'fixings',
+        label: 'Clips + vis MOSO Bamboo X-treme',
+        productRef: 'CLIP-SCREW-BX08',
+        quantity: clipPacks,
+        unit: 'boîte(s) de 90',
+        status: 'pending',
+        required: true,
+        note: `${clipCount} clips estimés à 20 clips/m² selon la documentation MOSO. Prix commercial à confirmer.`,
+        sourceUrl: 'https://www.moso-bamboo.com/fr/produit/accessoires-exterieur/',
+      },
+      pending('supports', 'supports', 'Plots / appuis compatibles MOSO', supportPlan?.supportPoints.length
+        ? `${supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} appui(s) positionné(s) avec la règle fabricant ; référence commerciale du plot à confirmer.`
+        : 'La référence commerciale des appuis reste à confirmer.'),
+      pending('protection', 'protection', 'Protection / accessoires structure', 'À compléter selon le support réel et la notice MOSO.'),
+    ];
+  }
+
+  return [
+    {
+      id: 'joists',
+      family: 'joists',
+      label: 'Lambourde bambou DASSO XTR XJ30-48-UAC',
+      productRef: 'XJ30-48-UAC',
+      unit: 'pièce(s)',
+      status: 'pending',
+      required: true,
+      note: 'Système bambou préconisé DASSO identifié. Le plan d’appuis précis et le prix commercial restent à confirmer.',
+      sourceUrl: 'https://fr.dassogroup.com/index.php/structural-bamboo/dassoXTR-Bamboo-Joist.html',
+    },
+    {
+      id: 'fixings',
+      family: 'fixings',
+      label: 'Clips de fixation DASSO XTR',
+      quantity: Math.ceil(area * 20),
+      unit: 'clip(s)',
+      status: 'pending',
+      required: true,
+      note: 'Consommation documentée d’environ 20 clips/m² ; référence commerciale IDEA Bois et prix à confirmer.',
+      sourceUrl: 'https://fr.dassogroup.com/',
+    },
+    pending('supports', 'supports', 'Appuis structure DASSO', 'La règle exacte d’appuis de la lambourde doit être confirmée avant de produire un plan définitif.'),
+    pending('protection', 'protection', 'Protection / accessoires structure', 'À compléter selon le support réel et la notice DASSO.'),
+  ];
+}
+
 function silvadecLines(input: ProjectInput, geometry: GeometryResult, layout: LayoutResult | undefined, supportPlan?: SupportPlanResult): BasketLine[] {
   const area = geometry.areaM2;
+  const alternative = input.structureJoistChoice === 'other-compatible';
+
+  if (alternative) {
+    const compositeWarning = input.supportSystem === 'adjustable-pedestals'
+      ? ' Sur plots, une lambourde composite non structurelle n’est pas autorisée par SILVADEC.'
+      : '';
+    return [
+      pending('joists', 'joists', 'Autre structure compatible SILVADEC', `La solution alternative est conservée, mais sa famille, sa section, son entraxe et son prix doivent être confirmés.${compositeWarning}`),
+      pending('fixings', 'fixings', 'Fixations SILVADEC adaptées à la structure choisie', 'Le type de clips/vis dépend de la structure réellement retenue.'),
+      pending('supports', 'supports', 'Appuis de la structure alternative', 'Les appuis seront calculés après confirmation de la structure choisie.'),
+      pending('protection', 'protection', 'Protection / accessoires structure', 'À définir selon la structure alternative choisie.'),
+    ];
+  }
+
   const clips = Math.ceil(area * 18);
-  const packs = Math.ceil(clips / 30);
   const preciseJoists = Boolean(layout)
     && !supportPlan?.pendingCurvedPerimeter
     && supportPlan
     && supportPlan.status !== 'unavailable'
     && supportPlan.joistStockBoards.length > 0;
+
   return [
     {
       id: 'joists',
       family: 'joists',
       label: 'Lambourde aluminium Réversil SILVADEC 63 × 40 × 3600 mm',
       productRef: 'SILAMB2102',
-      quantity: preciseJoists ? supportPlan.joistStockBoards.length : round2(area * 3),
-      unit: preciseJoists ? 'pièce(s)' : 'ml',
+      quantity: preciseJoists ? supportPlan.joistStockBoards.length : undefined,
+      unit: 'pièce(s)',
       status: 'pending',
       required: true,
       note: preciseJoists
-        ? `${supportPlan.joistLinearM.toFixed(1)} ml implantés avec entraxe de lambourdes ≤ 400 mm et appuis ≤ 600 mm en résidentiel. Prix commercial de la Réversil à confirmer.`
-        : 'Quantité fabricant : environ 3 ml/m². Prix de la structure Réversil à confirmer.',
+        ? `${supportPlan.joistLinearM.toFixed(1)} ml implantés avec entraxe ≤ 400 mm et appuis ≤ 600 mm en résidentiel. Prix commercial de la Réversil à confirmer.`
+        : 'Système préconisé SILVADEC ; entraxe 400 mm maximum. Prix commercial de la Réversil à confirmer.',
       sourceUrl: 'https://fr.silvadec.com/wp-content/pdf/fr-PU39.pdf',
     },
     {
       id: 'fixings',
       family: 'fixings',
-      label: SILVADEC_CLIPS_30.label,
-      productRef: SILVADEC_CLIPS_30.productRef,
-      quantity: packs,
-      unit: 'sachet(s)',
-      unitPriceTtc: SILVADEC_CLIPS_30.unitPriceTtc,
-      totalTtc: round2(packs * SILVADEC_CLIPS_30.unitPriceTtc),
-      status: 'exact',
+      label: 'Clips + vis SILVADEC adaptés à Réversil',
+      productRef: 'SICLIP2102',
+      quantity: clips,
+      unit: 'clip(s)',
+      status: 'pending',
       required: true,
-      note: `${clips} clips requis à 18 clips/m² • sachets de 30.`,
-      sourceUrl: SILVADEC_CLIPS_30.sourceUrl,
+      note: `${clips} clips estimés à 18 clips/m². La notice SILVADEC impose les fixations adaptées à la structure aluminium ; prix commercial à confirmer.`,
+      sourceUrl: 'https://fr.silvadec.com/wp-content/pdf/fr-PU39.pdf',
     },
-    pending('supports', 'supports', 'Plots / appuis compatibles', supportPlan?.supportPoints.length
-      ? `${supportPlan.supportPoints.length} position(s) d’appui calculée(s) avec un entraxe maximal de 600 mm. Le modèle de plot commercial compatible reste à valider.`
-      : 'La référence de plot doit être validée avant chiffrage.'),
-    pending('protection', 'protection', 'Protection / accessoires structure', 'Dépend du matériau de lambourde retenu.'),
+    pending('supports', 'supports', 'Plots / appuis compatibles Réversil', supportPlan?.supportPoints.length
+      ? `${supportPlan.supportPoints.reduce((sum, point) => sum + point.multiplicity, 0)} appui(s) positionné(s) avec un entraxe maximal de 600 mm. La référence commerciale du plot reste à confirmer.`
+      : 'L’espacement fabricant est documenté ; la référence commerciale du plot reste à confirmer.'),
+    pending('protection', 'protection', 'Accessoires structure Réversil', 'À compléter selon le support réel et la notice SILVADEC.'),
   ];
 }
 
@@ -616,6 +708,8 @@ export function computeBasket(
 
   if (input.board.commercialRecipeId === 'silvadec-atmosphere-138x23') {
     lines.push(...silvadecLines(input, geometry, layout, supportPlan));
+  } else if (input.board.commercialRecipeId === 'idea-bamboo-137x20') {
+    lines.push(...bambooLines(input, geometry, supportPlan));
   } else if (['idea-pin-nord-145x27','idea-resineux-class4','idea-cumaru-145x21','idea-garapa-145x21','idea-padouk-120x21','idea-ipe-140x20'].includes(input.board.commercialRecipeId ?? '')) {
     lines.push(...woodCommercialLines(input, geometry, layout, supportPlan));
   } else {

@@ -70,14 +70,14 @@ export function LevelingEditor({
 
       <div className="leveling-heading">
         <div>
-          <h3>Niveaux du support</h3>
-          <p>Prenez le coin haut-gauche comme niveau 0, puis renseignez les écarts mesurés aux trois autres coins. Une valeur positive signifie que le support est plus haut que ce point de référence.</p>
+          <h3>Le support est-il parfaitement plat ?</h3>
+          <p>Si votre dalle est plane, laissez « Support plat ». Sinon, renseignez les écarts mesurés aux quatre coins pour que les hauteurs de plots soient recalculées.</p>
         </div>
       </div>
 
       <div className="segmented leveling-mode">
-        <button type="button" className={profile.mode === 'flat' ? 'active' : ''} onClick={() => patch({ mode: 'flat' })}>Support plan</button>
-        <button type="button" className={profile.mode === 'four-corners' ? 'active' : ''} onClick={() => patch({ mode: 'four-corners', topLeftDeltaMm: 0 })}>4 niveaux mesurés</button>
+        <button type="button" className={profile.mode === 'flat' ? 'active' : ''} onClick={() => patch({ mode: 'flat' })}>Support plat</button>
+        <button type="button" className={profile.mode === 'four-corners' ? 'active' : ''} onClick={() => patch({ mode: 'four-corners', topLeftDeltaMm: 0 })}>J’ai mesuré les 4 coins</button>
       </div>
 
       {profile.mode === 'four-corners' && (
@@ -111,17 +111,17 @@ export function LevelingEditor({
 
       <div className="leveling-slope">
         <div>
-          <h4>Pente volontaire du dessus fini</h4>
-          <p>0 % conserve un dessus fini horizontal. Aucune pente n’est imposée automatiquement.</p>
+          <h4>Pente souhaitée pour la terrasse finie</h4>
+          <p>Laissez 0 % pour une terrasse horizontale. Aucune pente n’est ajoutée automatiquement.</p>
         </div>
         <div className="level-corners two">
-          <label>Axe longueur (X)
+          <label>Sens de la longueur
             <div className="input-unit compact">
               <input type="number" step="0.1" value={profile.targetSlopeXPercent} onChange={(event) => patch({ targetSlopeXPercent: +event.target.value })} />
               <span>%</span>
             </div>
           </label>
-          <label>Axe largeur (Y)
+          <label>Sens de la largeur
             <div className="input-unit compact">
               <input type="number" step="0.1" value={profile.targetSlopeYPercent} onChange={(event) => patch({ targetSlopeYPercent: +event.target.value })} />
               <span>%</span>
@@ -133,16 +133,15 @@ export function LevelingEditor({
       <section className="terrain-platform-editor">
         <div className="terrain-platform-heading">
           <div>
-            <span className="cut-kicker">SPRINT H — TERRAIN AVANCÉ</span>
-            <h3>Plateformes et niveaux multiples</h3>
-            <p>Chaque plateforme reprend une zone réelle du calepinage. Un décalage de niveau recalcule les hauteurs de plots et la 3D, sans créer automatiquement de marche ou de raccord.</p>
+            <h3>Zones à des hauteurs différentes</h3>
+            <p>Utilisez cette partie uniquement si une zone de la terrasse doit être plus haute ou plus basse qu’une autre. Les plots et la 3D seront recalculés automatiquement.</p>
           </div>
           <strong>{terrain.platforms.length} niveau{terrain.platforms.length > 1 ? 'x' : ''}</strong>
         </div>
 
         {(project.layingZones ?? []).length === 0 ? (
           <div className="terrain-empty">
-            Créez d’abord une zone de pose à l’étape « Lames ». Elle pourra ensuite devenir une plateforme à un autre niveau sans faire traverser les lames entre deux hauteurs.
+            Pour créer plusieurs hauteurs, commencez par définir une zone de pose à l’étape « Lames ».
           </div>
         ) : (
           <div className="terrain-platform-list">
@@ -159,7 +158,7 @@ export function LevelingEditor({
                   </div>
 
                   <div className="terrain-level-grid">
-                    <label>Niveau fini relatif
+                    <label>Hauteur finie de cette zone
                       <div className="input-unit compact">
                         <input
                           type="number"
@@ -169,10 +168,10 @@ export function LevelingEditor({
                         />
                         <span>mm</span>
                       </div>
-                      <small>Écart par rapport à la plateforme principale.</small>
+                      <small>Écart par rapport à la zone principale.</small>
                     </label>
 
-                    <label>Niveau support relatif
+                    <label>Écart du support sous cette zone
                       <div className="input-unit compact">
                         <input
                           type="number"
@@ -182,10 +181,10 @@ export function LevelingEditor({
                         />
                         <span>mm</span>
                       </div>
-                      <small>Décalage mesuré du support sous cette plateforme.</small>
+                      <small>Différence de hauteur mesurée du support par rapport à la zone principale.</small>
                     </label>
 
-                    <label>Pente locale X
+                    <label>Pente dans le sens de la longueur
                       <div className="input-unit compact">
                         <input
                           type="number"
@@ -197,7 +196,7 @@ export function LevelingEditor({
                       </div>
                     </label>
 
-                    <label>Pente locale Y
+                    <label>Pente dans le sens de la largeur
                       <div className="input-unit compact">
                         <input
                           type="number"
@@ -216,7 +215,7 @@ export function LevelingEditor({
                       className="terrain-reset-slope"
                       onClick={() => patchZone(zone.id, { targetSlopeXPercent: undefined, targetSlopeYPercent: undefined })}
                     >
-                      Reprendre la pente globale
+                      Utiliser la pente générale
                     </button>
                   )}
                 </article>
@@ -227,7 +226,7 @@ export function LevelingEditor({
 
         {terrain.relations.length > 0 && (
           <div className="terrain-relations">
-            <h4>Relations entre plateformes</h4>
+            <h4>Différences de niveau détectées</h4>
             {terrain.relations.map((relation) => (
               <div className={relation.transitionRequired ? 'terrain-relation transition' : 'terrain-relation'} key={relation.id}>
                 <div>

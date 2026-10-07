@@ -14,11 +14,16 @@ export function computeTechnicalSizing(input: ProjectInput, layout?: LayoutResul
   const diagnostics: Diagnostic[] = [];
   const commercial = getCommercialConstructionRule(input);
 
-  if (commercial?.status === 'partial' && commercial.joistChoiceRequired) {
+  if (commercial?.status === 'partial') {
+    const alternativeSelected = input.structureJoistChoice === 'other-compatible';
     diagnostics.push({
       tag: RULE_TAGS.manufacturerRules,
       severity: 'blocking',
-      message: 'Choisissez le type de lambourde avant de valider la structure.',
+      message: alternativeSelected
+        ? 'La solution alternative est conservée, mais ses caractéristiques doivent être confirmées avant de figer la structure.'
+        : commercial.joistChoiceRequired
+          ? 'Choisissez le type de lambourde avant de valider la structure.'
+          : 'Le système recommandé est identifié, mais une donnée technique manque encore pour figer la structure.',
       technicalMessage: commercial.sourceNote,
       source: commercial.sourceUrl,
     });

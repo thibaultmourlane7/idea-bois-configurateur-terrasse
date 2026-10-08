@@ -10,6 +10,8 @@ const RealisticPreview3D = lazy(() =>
   import('./RealisticPreview3D').then((module) => ({ default: module.RealisticPreview3D })),
 );
 
+export type Preview3DMode = 'realistic' | 'technical';
+
 class Immersive3DErrorBoundary extends Component<
   { children: ReactNode; onFallback: () => void },
   { failed: boolean }
@@ -45,6 +47,8 @@ export function Preview3D({
   layout,
   layers = FINISHED_LAYERS,
   exploded = false,
+  mode,
+  onModeChange,
 }: {
   input: ProjectInput;
   basket?: BasketResult;
@@ -52,8 +56,15 @@ export function Preview3D({
   layout?: LayoutResult;
   layers?: ConstructionLayers;
   exploded?: boolean;
+  mode?: Preview3DMode;
+  onModeChange?: (mode: Preview3DMode) => void;
 }) {
-  const [mode, setMode] = useState<'realistic' | 'technical'>('realistic');
+  const [internalMode, setInternalMode] = useState<Preview3DMode>('realistic');
+  const activeMode = mode ?? internalMode;
+  const setMode = (next: Preview3DMode) => {
+    setInternalMode(next);
+    onModeChange?.(next);
+  };
   const [handActive, setHandActive] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scene = useMemo(
@@ -66,17 +77,17 @@ export function Preview3D({
     <div className="preview3d-mode-shell">
       <div className="preview3d-global-mode" aria-label="Mode de vue 3D">
         <div className="segmented small-segmented">
-          <button type="button" className={mode === 'realistic' ? 'active' : ''} onClick={() => setMode('realistic')}>
+          <button type="button" className={activeMode === 'realistic' ? 'active' : ''} onClick={() => setMode('realistic')}>
             Vue réaliste
           </button>
-          <button type="button" className={mode === 'technical' ? 'active' : ''} onClick={() => setMode('technical')}>
+          <button type="button" className={activeMode === 'technical' ? 'active' : ''} onClick={() => setMode('technical')}>
             Vue technique
           </button>
         </div>
         <span>La géométrie et les quantités restent identiques dans les deux vues.</span>
       </div>
 
-      {mode === 'technical' ? (
+      {activeMode === 'technical' ? (
         <TechnicalPreview3D
           input={input}
           supportPlan={supportPlan}

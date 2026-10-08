@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { demoJoist, ideaBoisBoards } from './catalog/catalogue';
 import { Diagnostics } from './components/Diagnostics';
 import { Plan2D } from './components/Plan2D';
-import { Preview3D } from './components/Preview3D';
+import { Preview3D, type Preview3DMode } from './components/Preview3D';
 import { Results } from './components/Results';
 import { CommercialActions } from './components/CommercialActions';
 import { VariantComparator } from './components/VariantComparator';
@@ -145,6 +145,7 @@ export default function App() {
   const [project, setProject] = useState<ProjectInput>(() => restoreProjectFromUrl(initialProject, window.location.href));
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState<'2d' | '3d' | 'side'>('3d');
+  const [preview3dMode, setPreview3dMode] = useState<Preview3DMode>('realistic');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [readinessFilter, setReadinessFilter] = useState<ProductReadinessFilter>('all');
@@ -168,8 +169,14 @@ export default function App() {
   const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board, project.supportSystem]);
   const progressiveLayers = useMemo(() => layersForStep(step), [step]);
   const geometryDiagnostics = result.diagnostics.filter((item) =>
-    item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001')
+    item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001' || item.tag === 'SA-TERR-HEIGHT-STRUCTURE-001')
   );
+  const firstBlockingDiagnostic = result.diagnostics.find((item) => item.severity === 'blocking');
+  const resultHeadingText = result.valid
+    ? 'Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.'
+    : firstBlockingDiagnostic
+      ? `Calcul à corriger : ${firstBlockingDiagnostic.message}`
+      : 'Le projet est conservé, mais certaines vérifications restent nécessaires avant de finaliser le panier.';
 
   const filteredBoards = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
@@ -177,8 +184,16 @@ export default function App() {
       const filterOk = productFilter === 'all' || boardFilter(board) === productFilter;
       const readiness = getProductReadiness(board).level;
       const readinessOk = readinessFilter === 'all' || readiness === readinessFilter;
-      const haystack = [board.label, board.subtitle, board.catalog?.material, board.catalog?.range, board.catalog?.color, board.catalog?.profile]
-        .filter(Boolean).join(' ').toLowerCase();
+      const haystack = [
+        board.id,
+        board.label,
+        board.subtitle,
+        board.catalog?.material,
+        board.catalog?.range,
+        board.catalog?.color,
+        board.catalog?.profile,
+        ...(board.catalog?.internalCodes ?? []),
+      ].filter(Boolean).join(' ').toLowerCase();
       return filterOk && readinessOk && (!query || haystack.includes(query));
     });
 
@@ -298,7 +313,7 @@ export default function App() {
             {presentationMode ? '⚙ Mode technique' : '✨ Présentation Idea Bois'}
           </button>
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          {!presentationMode && <div className="header-note">V1.8.2 • Données fabricant</div>}
+          {!presentationMode && <div className="header-note">V1.8.3 • Parcours utilisateur</div>}
         </div>
       </header>
 
@@ -318,8 +333,8 @@ export default function App() {
             <div className="step-content">
               {!presentationMode && (
                 <div className="stabilisation-banner">
-                  <strong>Version V1.8.2 — données fabricant consolidées</strong>
-                  <span>MOSO, DASSO et SILVADEC proposent désormais leur système préconisé, avec alternative compatible à confirmer si nécessaire.</span>
+                  <strong>Version V1.8.3 — parcours utilisateur fiabilisé</strong>
+                  <span>Réservations chevauchantes, hauteur minimale, options avancées et vues 3D ont été fiabilisées sans inventer de données techniques.</span>
                 </div>
               )}
               <GeometryEditor project={project} onChange={setProject} />
@@ -333,10 +348,10 @@ export default function App() {
 
           {step === 2 && (
             <div className="step-content">
-              <div className="section-heading"><span className="section-number">2</span><div><h2>Choisissez le style de vos lames</h2><p>Les longueurs commerciales sont regroupées : le client choisit le produit, le moteur choisira les longueurs.</p></div></div>
+              <div className="section-heading"><span className="section-number">2</span><div><h2>Choisissez le style de vos lames</h2><p>Choisissez votre produit : les longueurs disponibles seront ensuite combinées automatiquement pour préparer le projet.</p></div></div>
 
               <div className="catalog-toolbar">
-                <input className="catalog-search" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Rechercher : Ipé, Pin, Padouk, Cumaru, Silvadec…" />
+                <input className="catalog-search" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Rechercher : G027, MOSO, DASSO, Ipé, Pin, Padouk…" />
                 <div className="catalog-filters">
                   {([['all','Toutes'],['resineux','Résineux'],['exotique','Exotiques'],['bambou','Bambou'],['composite','Composite']] as const).map(([value,label]) => (
                     <button type="button" key={value} className={productFilter === value ? 'active' : ''} onClick={() => setProductFilter(value)}>{label}</button>
@@ -490,7 +505,7 @@ export default function App() {
 
               <details className="advanced-option">
                 <summary>
-                  <span><strong>Renfort aux jonctions de lames</strong><small>Choix du lambourdage sur les raccords.</small></span>
+                  <span><strong>Renfort aux jonctions de lames</strong><small>Choisissez si les raccords reposent sur une ou deux lambourdes.</small></span>
                   <em>Optionnel</em>
                 </summary>
                 <div className="advanced-option-body">
@@ -501,7 +516,7 @@ export default function App() {
                         <p className="finish-help">
                           {result.layout?.hasButtJoints
                             ? `${result.layout.buttJoints.length} raccord${result.layout.buttJoints.length > 1 ? 's' : ''} de lames détecté${result.layout.buttJoints.length > 1 ? 's' : ''}. Le choix ci-dessous recalcule la structure, les plots et le panier.`
-                            : 'Aucun raccord de lames détecté avec le calepinage actuel. Le réglage reste disponible et s’appliquera automatiquement si un raccord apparaît.'}
+                            : 'Aucun raccord de lames détecté avec l’organisation actuelle. Le réglage restera prêt si un raccord apparaît.'}
                         </p>
                       </div>
                       <span className={result.layout?.hasButtJoints ? 'joint-status detected' : 'joint-status none'}>
@@ -511,13 +526,13 @@ export default function App() {
                     <div className="choice-grid two-choice">
                       <ChoiceCard
                         active={!project.doubleJoistsAtButtJoints}
-                        title="Lambourdage simple"
-                        subtitle="Une seule lambourde sur chaque axe de jonction"
+                        title="Structure simple aux raccords"
+                        subtitle="Une lambourde sous chaque ligne de raccord"
                         onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: false })}
                       />
                       <ChoiceCard
                         active={Boolean(project.doubleJoistsAtButtJoints)}
-                        title="Double lambourdage"
+                        title="Double lambourde aux raccords"
                         subtitle="Ajoute une seconde lambourde sur les jonctions et recalcule les plots et le panier"
                         onClick={() => setProject({ ...project, doubleJoistsAtButtJoints: true })}
                       />
@@ -574,7 +589,7 @@ export default function App() {
                   <ChoiceCard
                     active={project.edgeFinishMode === 'full-perimeter'}
                     title="Habiller tout le pourtour"
-                    subtitle="Conserve le fonctionnement historique sur toutes les rives"
+                    subtitle="Ajoute le même habillage sur toutes les rives visibles"
                     onClick={() => setProject({ ...project, edgeFinishMode: 'full-perimeter' as EdgeFinishMode })}
                   />
                   <ChoiceCard
@@ -658,7 +673,7 @@ export default function App() {
             <div className="step-content result-step">
               <div className="section-heading result-heading">
                 <span className="section-number done">✓</span>
-                <div><h2>Votre projet terrasse</h2><p>Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.</p></div>
+                <div><h2>Votre projet terrasse</h2><p>{resultHeadingText}</p></div>
                 <div className="result-actions">
                   <button type="button" className="ghost-button" onClick={saveLocal}>Enregistrer</button>
                   {!presentationMode && (
@@ -691,7 +706,7 @@ export default function App() {
                 />
               )}
               {preview === '2d' && <Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
-              {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layout={result.layout} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
+              {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layout={result.layout} layers={visualLayers} exploded={visualPreset === 'exploded'} mode={preview3dMode} onModeChange={setPreview3dMode} />}
               {preview === 'side' && <SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} />}
               {!presentationMode && (
                 <>

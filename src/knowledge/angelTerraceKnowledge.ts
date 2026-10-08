@@ -1,6 +1,6 @@
 /**
  * Base de connaissance Ángel — Configurateur Terrasse IDEA Bois
- * Version métier : V1.8.2 — 2026-10-07
+ * Version métier : V1.8.3 — 2026-10-08
  *
  * Règles absolues :
  * - Ne jamais inventer une donnée technique, un prix, une référence ou une compatibilité.
@@ -34,8 +34,8 @@ export interface AngelKnowledgeEntry {
   sources: AngelKnowledgeSource[];
 }
 
-export const ANGEL_TERRACE_KNOWLEDGE_VERSION = 'IB-TERR-ANGEL-KB-1.0.0';
-export const ANGEL_TERRACE_BUSINESS_VERSION = 'IB-TERR-VERSION-1.8.2';
+export const ANGEL_TERRACE_KNOWLEDGE_VERSION = 'IB-TERR-ANGEL-KB-1.1.0';
+export const ANGEL_TERRACE_BUSINESS_VERSION = 'IB-TERR-VERSION-1.8.3';
 
 export const ANGEL_TERRACE_GLOBAL_RULES = [
   'Ne jamais inventer une donnée technique, un prix, une référence produit, un entraxe, un jeu de pose ou une compatibilité.',
@@ -44,6 +44,8 @@ export const ANGEL_TERRACE_GLOBAL_RULES = [
   'Pour les systèmes fabricant, utiliser en priorité le système préconisé par le fabricant et proposer les alternatives compatibles uniquement si elles sont autorisées.',
   'Ne jamais appliquer une règle bois générique à un système fabricant propriétaire si la notice fabricant impose une règle spécifique.',
   'La hauteur saisie dans le configurateur est la hauteur totale de la terrasse : distance entre le support existant et le dessus des lames finies au point de référence. Ce n’est pas la hauteur du plot.',
+  'Si la hauteur totale disponible est inférieure ou égale à l’épaisseur de lame + la hauteur de lambourde documentée, le projet doit être signalé comme impossible avant même de calculer les appuis.',
+  'Les réservations peuvent se chevaucher : la zone commune est autorisée et doit être déduite une seule fois de la surface, sans double comptage.',
   'Les niveaux, pentes et plateformes modifient réellement les hauteurs d’appuis ; aucune pente ne doit être ignorée dans le calcul structurel.',
   'Le champ drainage global n’alimente actuellement aucun calcul métier : ne pas prétendre qu’il modifie le dimensionnement ou le prix.',
 ] as const;
@@ -64,7 +66,25 @@ export const ANGEL_TERRACE_KNOWLEDGE: AngelKnowledgeEntry[] = [
     status: 'validated',
     answer: 'La hauteur saisie est la distance entre le support existant et le dessus des lames finies, au point de référence. Elle ne correspond pas directement à la hauteur du plot.',
     details: ['Le moteur retranche notamment l’épaisseur de lame et la hauteur de lambourde pour obtenir la hauteur nécessaire de l’appui.'],
-    sources: [{ label: 'Moteur supportPlan.ts — V1.8.2', kind: 'code', date: '2026-10-07' }],
+    sources: [{ label: 'Moteur supportPlan.ts — V1.8.3', kind: 'code', date: '2026-10-07' }],
+  },
+  {
+    id: 'minimum-structure-height',
+    title: 'Hauteur minimale de structure',
+    tags: ['hauteur', 'impossible', 'lame', 'lambourde', 'appui', 'plots'],
+    status: 'validated',
+    answer: 'Quand la hauteur totale disponible est inférieure ou égale à l’épaisseur de la lame + la hauteur de la lambourde documentée, le configurateur doit bloquer le calcul et expliquer que la structure seule dépasse déjà la hauteur disponible.',
+    details: ['Exemple G027 : lame 27 mm + lambourde 40 mm = 67 mm avant tout appui. Une hauteur totale de 50 mm est donc impossible.'],
+    sources: [{ label: 'validation.ts — V1.8.3', kind: 'code', date: '2026-10-08' }],
+  },
+  {
+    id: 'overlapping-reservations',
+    title: 'Réservations qui se chevauchent',
+    tags: ['réservation', 'piscine', 'arbre', 'chevauchement', 'surface', 'union'],
+    status: 'validated',
+    answer: 'Les réservations peuvent se chevaucher. La zone commune est déduite une seule fois de la surface nette et ne doit pas bloquer le projet.',
+    details: ['Le calepinage et la structure utilisent l’union réelle des zones exclues.', 'Une réservation entièrement contenue dans une autre ne retire pas une deuxième fois la même surface.'],
+    sources: [{ label: 'geometry.ts + validation.ts — V1.8.3', kind: 'code', date: '2026-10-08' }],
   },
   {
     id: 'garapa-gap',
@@ -160,9 +180,9 @@ export const ANGEL_TERRACE_KNOWLEDGE: AngelKnowledgeEntry[] = [
     title: 'Pin du Nord G026 / G029',
     tags: ['pin du nord', 'G026', 'G029', 'lambourde', 'classe 4'],
     status: 'project-decision',
-    answer: 'Les références G026 et G029 sont rattachées à la recette standard Pin du Nord 145 × 27 mm dans la V1.8.2.',
+    answer: 'Les références G026 et G029 sont rattachées à la recette standard Pin du Nord 145 × 27 mm dans la V1.8.3.',
     details: ['Jeu de pose : 5 mm.', 'Structure standard : lambourde Pin Classe 4 60 × 40 mm selon la recette actuelle.'],
-    sources: [{ label: 'Code catalogue V1.8.2', kind: 'code', date: '2026-10-07' }],
+    sources: [{ label: 'Code catalogue V1.8.3', kind: 'code', date: '2026-10-07' }],
   },
   {
     id: 'pin-g025-prolin',
@@ -179,7 +199,7 @@ export const ANGEL_TERRACE_KNOWLEDGE: AngelKnowledgeEntry[] = [
     tags: ['drainage', 'évacuation eau', 'support'],
     status: 'partial',
     answer: 'Le champ drainage global est actuellement une information de projet sans effet métier dans le moteur. Ángel ne doit jamais dire qu’il modifie le calcul, les quantités ou le prix.',
-    sources: [{ label: 'Audit moteur V1.8.2', kind: 'code', date: '2026-10-07' }],
+    sources: [{ label: 'Audit moteur V1.8.3', kind: 'code', date: '2026-10-07' }],
   },
   {
     id: 'levels-slopes',
@@ -188,7 +208,7 @@ export const ANGEL_TERRACE_KNOWLEDGE: AngelKnowledgeEntry[] = [
     status: 'validated',
     answer: 'Les niveaux, les quatre coins du support, les pentes finies et les plateformes multiples sont réellement pris en compte dans le calcul des hauteurs d’appuis.',
     warnings: ['Ne pas présenter cette fonction comme purement visuelle : elle modifie les hauteurs de plots/appuis.'],
-    sources: [{ label: 'terrain.ts + supportPlan.ts — V1.8.2', kind: 'code', date: '2026-10-07' }],
+    sources: [{ label: 'terrain.ts + supportPlan.ts — V1.8.3', kind: 'code', date: '2026-10-07' }],
   },
 ];
 

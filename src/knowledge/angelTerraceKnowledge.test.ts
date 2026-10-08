@@ -6,8 +6,8 @@ import {
 } from './angelTerraceKnowledge';
 
 describe('Base de connaissance Ángel — Terrasse IDEA Bois', () => {
-  it('est synchronisée avec la V1.8.3', () => {
-    expect(ANGEL_TERRACE_BUSINESS_VERSION).toBe('IB-TERR-VERSION-1.8.3');
+  it('est synchronisée avec la V1.9.0', () => {
+    expect(ANGEL_TERRACE_BUSINESS_VERSION).toBe('IB-TERR-VERSION-1.9.0');
   });
 
   it('contient les décisions produit critiques', () => {

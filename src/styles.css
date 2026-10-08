@@ -2252,3 +2252,119 @@
   }
   .advanced-option-body { padding:11px; }
 }
+
+
+/* V1.9 — corrections Guillaume */
+.structure-early-panel {
+  margin:18px 0;
+  padding:16px;
+  border:1px solid #d8e4ec;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fbfdff,#f6fafc);
+}
+.structure-early-heading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.structure-early-heading span {
+  color:#2d7bb0;
+  font-size:9px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.structure-early-heading h3 {
+  margin:4px 0 5px;
+  color:#173d59;
+}
+.structure-early-heading p {
+  margin:0;
+  color:#6f8190;
+  font-size:10px;
+  line-height:1.45;
+}
+.structure-status {
+  flex:0 0 auto;
+  padding:6px 9px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+}
+.structure-status.ready { background:#e7f5eb;color:#287246; }
+.structure-status.pending { background:#fff2d9;color:#855f1a; }
+.structure-choice-options,
+.joist-entry-choice {
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #e0e8ed;
+}
+.structure-choice-options h4,
+.joist-entry-choice h4 {
+  margin:0 0 5px;
+  color:#294f69;
+  font-size:11px;
+}
+.structure-choice-warning,
+.joist-entry-choice p {
+  margin:5px 0 0;
+  color:#7a8995;
+  font-size:9px;
+  line-height:1.4;
+}
+.joist-entry-choice {
+  display:grid;
+  gap:10px;
+}
+.joist-entry-buttons {
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.joist-entry-buttons button {
+  border:1px solid #cfdce5;
+  border-radius:9px;
+  background:#fff;
+  color:#496b80;
+  padding:8px 10px;
+  font-size:9px;
+  font-weight:850;
+}
+.joist-entry-buttons button.active {
+  background:#eaf5fd;
+  border-color:#93c2e2;
+  color:#176598;
+}
+.board-selection-note {
+  margin:14px 0;
+}
+.joist-entry-marker circle {
+  fill:#e26f2f;
+  stroke:#fff;
+  stroke-width:2;
+}
+.joist-entry-marker path {
+  stroke:#e26f2f;
+  stroke-width:3;
+  stroke-linecap:round;
+}
+.joist-entry-marker text {
+  fill:#9a4b20;
+  font-size:8px;
+  font-weight:900;
+  paint-order:stroke;
+  stroke:#fff;
+  stroke-width:3px;
+}
+.primary-button:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
+.presentation-mode .layer-panel {
+  margin-top:12px;
+}
+@media(max-width:700px){
+  .structure-early-heading { flex-direction:column; }
+  .joist-entry-buttons { display:grid;grid-template-columns:1fr; }
+}

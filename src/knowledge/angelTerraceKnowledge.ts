@@ -1,6 +1,6 @@
 /**
  * Base de connaissance Ángel — Configurateur Terrasse IDEA Bois
- * Version métier : V1.8.3 — 2026-10-08
+ * Version métier : V1.9.0 — 2026-10-08
  *
  * Règles absolues :
  * - Ne jamais inventer une donnée technique, un prix, une référence ou une compatibilité.
@@ -34,8 +34,8 @@ export interface AngelKnowledgeEntry {
   sources: AngelKnowledgeSource[];
 }
 
-export const ANGEL_TERRACE_KNOWLEDGE_VERSION = 'IB-TERR-ANGEL-KB-1.1.0';
-export const ANGEL_TERRACE_BUSINESS_VERSION = 'IB-TERR-VERSION-1.8.3';
+export const ANGEL_TERRACE_KNOWLEDGE_VERSION = 'IB-TERR-ANGEL-KB-1.2.0';
+export const ANGEL_TERRACE_BUSINESS_VERSION = 'IB-TERR-VERSION-1.9.0';
 
 export const ANGEL_TERRACE_GLOBAL_RULES = [
   'Ne jamais inventer une donnée technique, un prix, une référence produit, un entraxe, un jeu de pose ou une compatibilité.',
@@ -48,6 +48,10 @@ export const ANGEL_TERRACE_GLOBAL_RULES = [
   'Les réservations peuvent se chevaucher : la zone commune est autorisée et doit être déduite une seule fois de la surface, sans double comptage.',
   'Les niveaux, pentes et plateformes modifient réellement les hauteurs d’appuis ; aucune pente ne doit être ignorée dans le calcul structurel.',
   'Le champ drainage global n’alimente actuellement aucun calcul métier : ne pas prétendre qu’il modifie le dimensionnement ou le prix.',
+  'Une lame explicitement désélectionnée bloque le calcul : ne jamais continuer silencieusement avec la dernière lame en mémoire.',
+  'Le choix de lambourde doit être présenté dès l’étape Lames lorsque le produit impose ou permet plusieurs structures.',
+  'Une portion de rive courbe non résolue ne doit pas annuler les prix des éléments droits déjà calculés : conserver le sous-total exact et isoler uniquement le complément courbe à confirmer.',
+  'Le côté d’entrée des lambourdes oriente le départ sur le plan chantier mais ne doit pas modifier artificiellement les quantités.',
 ] as const;
 
 export const ANGEL_TERRACE_KNOWLEDGE: AngelKnowledgeEntry[] = [
@@ -192,6 +196,39 @@ export const ANGEL_TERRACE_KNOWLEDGE: AngelKnowledgeEntry[] = [
     answer: 'G025 PROLIN est volontairement séparé de la recette Pin standard car son système de pose est spécifique, avec clips invisibles sur lambourdes bois autoclave.',
     warnings: ['Le jeu exact, la référence précise du clip et les entraxes nécessaires au calcul définitif doivent rester à confirmer tant qu’ils ne sont pas suffisamment documentés.'],
     sources: [{ label: 'IDEA Bois — PROLIN', url: 'https://www.idea-bois.com/art-lame-terrasse-en-pin-du-nord-cl4-huil-4200x120x28-mm-profil-bomb-prolin-3055.htm', kind: 'supplier' }],
+  },
+  {
+    id: 'board-selection-v190',
+    title: 'Sélection / désélection d’une lame',
+    tags: ['lame', 'sélection', 'désélection', 'calcul', 'blocage'],
+    status: 'validated',
+    answer: 'En V1.9, cliquer à nouveau sur la lame sélectionnée retire explicitement la sélection. Le moteur bloque alors le calcul jusqu’à ce qu’une nouvelle lame soit choisie ; il ne continue jamais avec le Pin ou une ancienne lame en arrière-plan.',
+    sources: [{ label: 'validation.ts + App.tsx — V1.9.0', kind: 'code', date: '2026-10-08' }],
+  },
+  {
+    id: 'joist-choice-early-v190',
+    title: 'Lambourdes visibles dès le choix de lame',
+    tags: ['lambourde', 'structure', 'étape 2', 'lame', 'fabricant'],
+    status: 'validated',
+    answer: 'La structure associée à la lame est présentée dès l’étape Lames. Si plusieurs familles sont documentées, le choix est demandé à cet endroit ; si la structure est connue, son libellé et son entraxe documenté sont affichés immédiatement.',
+    sources: [{ label: 'StructureChoicePanel.tsx — V1.9.0', kind: 'code', date: '2026-10-08' }],
+  },
+  {
+    id: 'curved-structure-partial-v190',
+    title: 'Rive courbe et panier partiel',
+    tags: ['rive courbe', 'lambourde', 'plots', 'bande bitumineuse', 'panier', 'prix'],
+    status: 'validated',
+    answer: 'Une rive courbe restant à valider ne met plus toute la structure à zéro. Les lambourdes droites, la bande bitumineuse et les plots réellement calculés restent chiffrés ; seuls les compléments propres à la rive courbe restent à confirmer.',
+    warnings: ['Le panier reste partiel tant que le complément courbe n’est pas validé.'],
+    sources: [{ label: 'basket.ts — V1.9.0', kind: 'code', date: '2026-10-08' }],
+  },
+  {
+    id: 'joist-entry-v190',
+    title: 'Côté d’entrée des lambourdes',
+    tags: ['lambourde', 'entrée chantier', 'départ', 'plan 2d', 'orientation'],
+    status: 'project-decision',
+    answer: 'Le client peut choisir le côté d’entrée des lambourdes lorsque le plan structurel est calculable. Ce choix inverse si nécessaire le point de départ des segments sur le plan et affiche un repère « Départ lambourdes » sans modifier artificiellement les quantités.',
+    sources: [{ label: 'Décision projet + supportPlan.ts / Plan2D.tsx — V1.9.0', kind: 'project', date: '2026-10-08' }],
   },
   {
     id: 'drainage-field',

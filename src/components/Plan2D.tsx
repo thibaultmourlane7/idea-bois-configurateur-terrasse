@@ -66,6 +66,9 @@ export function Plan2D({
   const edgeCladdingRequested = claddingEdges.length > 0;
   const stairs = computeStairs(input).filter((stair) => stair.status === 'ready');
   const guardrails = computeGuardrails(input).filter((guardrail) => guardrail.status === 'ready');
+  const entryJoist = input.joistEntrySide
+    ? construction.joists.find((joist) => joist.role === 'field' || joist.role === 'butt-joint')
+    : undefined;
 
   const viewport = (() => {
     let minX = 0;
@@ -271,6 +274,25 @@ export function Plan2D({
             })}
           </g>
         )}
+
+        {layers.joists && entryJoist && (
+          <g className="joist-entry-marker">
+            <circle
+              cx={x + entryJoist.x1M * scale}
+              cy={y + entryJoist.y1M * scale}
+              r="7"
+            />
+            <path
+              d={`M ${x + entryJoist.x1M * scale - 12} ${y + entryJoist.y1M * scale} L ${x + entryJoist.x1M * scale - 3} ${y + entryJoist.y1M * scale}`}
+            />
+            <text
+              x={x + entryJoist.x1M * scale + 10}
+              y={y + entryJoist.y1M * scale - 9}
+            >
+              Départ lambourdes
+            </text>
+          </g>
+        ))}
 
         {layers.verticalJoists && construction.verticalJoists.map((support) => (
           <rect key={support.id} x={x + support.xM * scale - 3.5} y={y + support.yM * scale - 3.5} width="7" height="7" rx="1" fill="#4f3826" stroke="#fff" strokeWidth="1" />

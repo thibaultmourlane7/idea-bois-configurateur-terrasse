@@ -7,6 +7,7 @@ export type Severity = 'info' | 'warning' | 'blocking';
 export type SupportType = 'new-concrete-slab' | 'existing-concrete-slab' | 'stabilized-ground';
 export type SupportSystem = 'adjustable-pedestals' | 'pads' | 'unknown';
 export type StructureJoistChoice = 'pin-class4' | 'exotic' | 'manufacturer-recommended' | 'other-compatible';
+export type JoistEntrySide = 'top' | 'bottom' | 'left' | 'right';
 export type EdgeFinishMode = 'none' | 'full-perimeter' | 'per-edge';
 export type DrainageAnswer = 'yes' | 'no' | 'unknown';
 export type MaterialFamily = 'solid-wood' | 'composite';
@@ -307,12 +308,16 @@ export interface ProjectInput {
   referencePlan?: ReferencePlanTransform;
   heightCm: number;
   supportLevelProfile?: SupportLevelProfile;
+  /** Faux uniquement quand l’utilisateur a explicitement retiré sa sélection de lame. */
+  boardSelectionConfirmed?: boolean;
   /** Option client : doubler la lambourde sur les axes de jonction de lames. Désactivé par défaut. */
   doubleJoistsAtButtJoints?: boolean;
   supportType: SupportType;
   supportSystem: SupportSystem;
   /** Choix explicite quand plusieurs familles de lambourdes sont documentées pour la lame. */
   structureJoistChoice?: StructureJoistChoice;
+  /** Côté depuis lequel les lambourdes sont orientées / introduites sur le plan chantier. */
+  joistEntrySide?: JoistEntrySide;
   edgeFinishMode: EdgeFinishMode;
   /** Configuration métier rive par rive. Les anciens projets peuvent ne pas avoir ce champ. */
   edgeConfigs?: TerraceEdgeConfig[];

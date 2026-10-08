@@ -29,6 +29,23 @@ function uniqueSorted(values: number[]): number[] {
   return [...new Set(values.map((value) => Math.round(value * 1000) / 1000))].sort((a, b) => a - b);
 }
 
+function orientJoistEndpoints(
+  input: ProjectInput,
+  a: { xM: number; yM: number },
+  b: { xM: number; yM: number },
+): [{ xM: number; yM: number }, { xM: number; yM: number }] {
+  const side = input.joistEntrySide;
+  if (!side) return [a, b];
+
+  const shouldSwap =
+    side === 'top' ? a.yM > b.yM :
+    side === 'bottom' ? a.yM < b.yM :
+    side === 'left' ? a.xM > b.xM :
+    a.xM < b.xM;
+
+  return shouldSwap ? [b, a] : [a, b];
+}
+
 function choosePlot(heightMm: number): PlotMaterial | undefined {
   const candidates = PLOT_OPTIONS
     .filter((item) => heightMm >= item.minHeightMm - 0.001 && heightMm <= item.maxHeightMm + 0.001)
@@ -138,13 +155,14 @@ function fieldJoistSegments(input: ProjectInput, layout: LayoutResult): {
           xM: (axis.axisPositionMm * zoneLayout.dirX + endMm * zoneLayout.normalX) / 1000,
           yM: (axis.axisPositionMm * zoneLayout.dirY + endMm * zoneLayout.normalY) / 1000,
         };
+        const [entry, exit] = orientJoistEndpoints(input, a, b);
         segments.push({
           id: `CJ${id++}`,
           axisPositionMm: axis.axisPositionMm,
-          x1M: a.xM,
-          y1M: a.yM,
-          x2M: b.xM,
-          y2M: b.yM,
+          x1M: entry.xM,
+          y1M: entry.yM,
+          x2M: exit.xM,
+          y2M: exit.yM,
           lengthMm,
           multiplicity: axis.multiplicity,
           buttJointSupport: axis.buttJointSupport,

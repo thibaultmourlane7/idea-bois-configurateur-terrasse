@@ -132,12 +132,8 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
   const rule = getCommercialConstructionRule(input);
   const unresolvedStructureReason = rule?.status === 'partial'
     ? rule.sourceNote
-    : input.supportSystem === 'adjustable-pedestals'
-      ? !layout
-        ? 'Calepinage des lames indisponible : les raccords et leurs appuis ne peuvent pas être validés.'
-        : supportPlan?.pendingCurvedPerimeter
-          ? 'Une portion de lambourdage périphérique courbe reste à valider avant de figer les quantités.'
-          : undefined
+    : input.supportSystem === 'adjustable-pedestals' && !layout
+      ? 'Calepinage des lames indisponible : les raccords et leurs appuis ne peuvent pas être validés.'
       : undefined;
   const hasPrecisePlan = input.supportSystem === 'adjustable-pedestals'
     && !unresolvedStructureReason
@@ -317,6 +313,29 @@ function woodCommercialLines(input: ProjectInput, geometry: GeometryResult, layo
     lines.push(pending('supports', 'supports', 'Cales / appuis fixes', 'Le type et l’épaisseur des cales doivent être choisis selon le support réel.'));
   } else {
     lines.push(pending('supports', 'supports', 'Plots / cales / appuis', 'Choisissez le système de support pour obtenir son prix.'));
+  }
+
+  if (!unresolvedStructureReason && supportPlan?.pendingCurvedPerimeter) {
+    lines.push(
+      pending(
+        'joists-curved-perimeter',
+        'joists',
+        'Complément de lambourdage sur rive courbe',
+        'Les lambourdes droites déjà calculées restent chiffrées. Seule la portion périphérique courbe nécessite encore une validation avant commande.',
+      ),
+      pending(
+        'protection-curved-perimeter',
+        'protection',
+        'Protection du complément de rive courbe',
+        'La bande bitumineuse des lambourdes déjà calculées reste chiffrée. Le complément dépend de la solution retenue pour la rive courbe.',
+      ),
+      pending(
+        'supports-curved-perimeter',
+        'supports',
+        'Appuis du complément de rive courbe',
+        'Les plots déjà implantés restent chiffrés. Les éventuels appuis supplémentaires de la rive courbe restent à confirmer avec sa structure.',
+      ),
+    );
   }
 
   return lines;

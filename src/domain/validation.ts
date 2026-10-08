@@ -37,6 +37,15 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const { dimensions: g, board } = input;
 
+  if (input.boardSelectionConfirmed === false) {
+    diagnostics.push({
+      tag: 'SA-TERR-BOARD-SELECT-001',
+      severity: 'blocking',
+      message: 'Choisissez une lame de terrasse avant de poursuivre le calcul.',
+      field: 'board',
+    });
+  }
+
   const positive: Array<[string, number, string]> = [
     ['hauteur de la terrasse', input.heightCm, 'heightCm'],
     ['largeur de lame', board.widthMm, 'board.widthMm'],

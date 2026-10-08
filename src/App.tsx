@@ -17,12 +17,12 @@ import { CutOptimizationView } from './components/CutOptimizationView';
 import { EdgeSetupEditor } from './components/EdgeSetupEditor';
 import { GuardrailEditor } from './components/GuardrailEditor';
 import { ProductCompatibilityPanel } from './components/ProductCompatibilityPanel';
+import { StructureChoicePanel } from './components/StructureChoicePanel';
 import { hasEdgeTreatment } from './engine/edges';
 import { canUseBoardInZone, findBoard } from './catalog/compatibility';
 import { getProductReadiness, readinessRank, type ProductReadiness } from './catalog/readiness';
-import type { EdgeFinishMode, ProjectInput, StructureJoistChoice, SupportSystem, SupportType } from './domain/types';
+import type { EdgeFinishMode, ProjectInput, SupportSystem, SupportType } from './domain/types';
 import { runConfigurator, VERSION_TAG } from './engine/configurator';
-import { getCommercialJoistOptions } from './engine/constructionRules';
 import { restoreProjectFromUrl } from './commercial/share';
 import { hasSavedProject, loadProjectLocally, saveProjectLocally } from './commercial/persistence';
 import { FINISHED_LAYERS, layersForStep, type ConstructionLayers, type VisualPreset } from './visual/layers';
@@ -47,6 +47,7 @@ const initialProject: ProjectInput = {
   },
   obstacles: [],
   heightCm: 20,
+  boardSelectionConfirmed: true,
   supportLevelProfile: {
     mode: 'flat',
     topLeftDeltaMm: 0,
@@ -144,7 +145,7 @@ function productLengths(board: ProjectInput['board']): string | undefined {
 export default function App() {
   const [project, setProject] = useState<ProjectInput>(() => restoreProjectFromUrl(initialProject, window.location.href));
   const [step, setStep] = useState(1);
-  const [preview, setPreview] = useState<'2d' | '3d' | 'side'>('3d');
+  const [preview, setPreview] = useState<'2d' | '3d' | 'side'>('2d');
   const [preview3dMode, setPreview3dMode] = useState<Preview3DMode>('realistic');
   const [productSearch, setProductSearch] = useState('');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
@@ -166,7 +167,6 @@ export default function App() {
   }, [step]);
 
   const result = useMemo(() => runConfigurator(project), [project]);
-  const joistOptions = useMemo(() => getCommercialJoistOptions(project), [project.board, project.supportSystem]);
   const progressiveLayers = useMemo(() => layersForStep(step), [step]);
   const geometryDiagnostics = result.diagnostics.filter((item) =>
     item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001' || item.tag === 'SA-TERR-HEIGHT-STRUCTURE-001')
@@ -212,6 +212,17 @@ export default function App() {
   );
 
   const chooseBoard = (board: ProjectInput['board']) => {
+    const alreadySelected = project.boardSelectionConfirmed !== false && project.board.id === board.id;
+    if (alreadySelected) {
+      setProject({
+        ...project,
+        boardSelectionConfirmed: false,
+        structureJoistChoice: undefined,
+        joistEntrySide: undefined,
+      });
+      return;
+    }
+
     const sameRecipe = board.commercialRecipeId === project.board.commercialRecipeId;
     const layingZones = (project.layingZones ?? []).map((zone) => {
       if (!sameRecipe || !zone.boardId) return sameRecipe ? zone : { ...zone, boardId: undefined };
@@ -221,8 +232,10 @@ export default function App() {
     setProject({
       ...project,
       board,
+      boardSelectionConfirmed: true,
       layingZones,
       structureJoistChoice: sameRecipe ? project.structureJoistChoice : undefined,
+      joistEntrySide: sameRecipe ? project.joistEntrySide : undefined,
     });
   };
 
@@ -280,6 +293,10 @@ export default function App() {
   };
 
   const next = () => {
+    if (step === 2 && project.boardSelectionConfirmed === false) {
+      alert('Choisissez une lame de terrasse avant de continuer.');
+      return;
+    }
     setStep((current) => Math.min(5, current + 1));
   };
   const previous = () => setStep((current) => Math.max(1, current - 1));
@@ -314,7 +331,7 @@ export default function App() {
             {presentationMode ? '⚙ Mode technique' : '✨ Présentation Idea Bois'}
           </button>
           {savedAvailable && <button type="button" className="resume-button" onClick={resumeLocal}>Reprendre mon projet</button>}
-          {!presentationMode && <div className="header-note">V1.8.3 • Parcours utilisateur</div>}
+          {!presentationMode && <div className="header-note">V1.9 • Corrections Guillaume</div>}
         </div>
       </header>
 
@@ -334,8 +351,8 @@ export default function App() {
             <div className="step-content">
               {!presentationMode && (
                 <div className="stabilisation-banner">
-                  <strong>Version V1.8.3 — parcours utilisateur fiabilisé</strong>
-                  <span>Réservations chevauchantes, hauteur minimale, options avancées et vues 3D ont été fiabilisées sans inventer de données techniques.</span>
+                  <strong>Version V1.9 — Corrections Guillaume</strong>
+                  <span>Sélection des lames, structure visible plus tôt, panier partiel utile et départ des lambourdes ont été fiabilisés.</span>
                 </div>
               )}
               <GeometryEditor project={project} onChange={setProject} />
@@ -382,7 +399,7 @@ export default function App() {
                   const materialProfile = resolveMaterialProfile(board);
                   const comparing = compareIds.includes(board.id);
                   return (
-                    <article key={board.id} className={`product-card ${project.board.id === board.id ? 'active' : ''}`}>
+                    <article key={board.id} className={`product-card ${project.boardSelectionConfirmed !== false && project.board.id === board.id ? 'active' : ''}`}>
                       <button type="button" className="product-select" onClick={() => chooseBoard(board)}>
                         <div
                           className={`product-swatch ${board.technical.materialFamily} texture-${texture.status} ${materialProfile ? 'pin-strie-b1' : texture.grooveCount ? 'has-grooves' : ''}`}
@@ -402,12 +419,12 @@ export default function App() {
                           )}
                         </div>
                         <div className="product-copy">
-                          <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>
+                          {!presentationMode && <span className={`readiness-badge ${readiness.level}`}>{readiness.label}</span>}
                           <strong>{board.label}</strong>
                           <span>{board.subtitle}</span>
                           {productDescriptor(board) && <small className="product-variant-detail">{productDescriptor(board)}</small>}
                           {productLengths(board) && <small className="product-lengths">Longueurs disponibles : {productLengths(board)} m</small>}
-                          {(readiness.level === 'partial' || readiness.level === 'price-only') && (
+                          {!presentationMode && (readiness.level === 'partial' || readiness.level === 'price-only') && (
                             <small className={`product-readiness-detail ${readiness.level}`}>{readiness.detail}</small>
                           )}
                           {!presentationMode && (
@@ -421,7 +438,7 @@ export default function App() {
                             {!presentationMode && <em>{board.catalog?.availabilitySnapshot ?? 'Disponibilité à confirmer'}</em>}
                           </div>
                         </div>
-                        <i>{project.board.id === board.id ? '✓' : ''}</i>
+                        <i>{project.boardSelectionConfirmed !== false && project.board.id === board.id ? '✓' : ''}</i>
                       </button>
                       <button type="button" className={`compare-toggle ${comparing ? 'active' : ''}`} onClick={() => toggleCompare(board.id)}>
                         {comparing ? 'Retirer du comparateur' : 'Comparer'}
@@ -431,6 +448,17 @@ export default function App() {
                 })}
               </div>
 
+              {project.boardSelectionConfirmed === false && (
+                <div className="customer-check-note board-selection-note">
+                  <span>i</span>
+                  <div><strong>Aucune lame sélectionnée</strong><p>Vous avez retiré la sélection. Choisissez une lame pour relancer le calepinage, la structure et le panier.</p></div>
+                </div>
+              )}
+
+              {project.boardSelectionConfirmed !== false && (
+                <StructureChoicePanel project={project} supportPlan={result.supportPlan} onChange={setProject} />
+              )}
+
               <VariantComparator
                 project={project}
                 boards={compareBoards}
@@ -438,8 +466,8 @@ export default function App() {
                 onRemove={(id) => setCompareIds((current) => current.filter((value) => value !== id))}
               />
 
-              <LayingSetupEditor project={project} onChange={setProject} />
-              {!presentationMode && <ProductCompatibilityPanel board={project.board} />}
+              {project.boardSelectionConfirmed !== false && <LayingSetupEditor project={project} onChange={setProject} />}
+              {!presentationMode && project.boardSelectionConfirmed !== false && <ProductCompatibilityPanel board={project.board} />}
             </div>
           )}
 
@@ -469,40 +497,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
-              {joistOptions.length > 0 && (
-                <div className="question-block">
-                  <h3>Quel type de lambourde souhaitez-vous ?</h3>
-                  <p className="finish-help">
-                    {joistOptions.some((option) => option.recommended)
-                      ? 'Le système préconisé par le fabricant est proposé par défaut. Vous pouvez choisir une autre solution compatible ; si elle n’est pas assez documentée, elle restera à confirmer sans être inventée.'
-                      : 'IDEA Bois documente plusieurs solutions compatibles pour cette lame. Le configurateur ne choisit pas à votre place.'}
-                  </p>
-                  <div className="choice-grid two-choice">
-                    {joistOptions.map((option) => (
-                      <ChoiceCard
-                        key={option.id}
-                        active={project.structureJoistChoice === option.id || (!project.structureJoistChoice && option.recommended === true)}
-                        title={option.recommended ? `${option.label} — Recommandé fabricant` : option.label}
-                        subtitle={option.subtitle}
-                        onClick={() => setProject({ ...project, structureJoistChoice: option.id as StructureJoistChoice })}
-                      />
-                    ))}
-                  </div>
-                  {!project.structureJoistChoice && !joistOptions.some((option) => option.recommended) && (
-                    <div className="customer-check-note">
-                      <span>i</span>
-                      <div><strong>Choix nécessaire</strong><p>La structure et son prix resteront à confirmer tant que vous n’avez pas choisi la famille de lambourde.</p></div>
-                    </div>
-                  )}
-                  {!project.structureJoistChoice && joistOptions.some((option) => option.recommended) && (
-                    <div className="customer-check-note">
-                      <span>i</span>
-                      <div><strong>Système recommandé sélectionné par défaut</strong><p>Vous pouvez conserver cette préconisation fabricant ou choisir une autre solution compatible.</p></div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               <details className="advanced-option">
                 <summary>
@@ -702,16 +696,14 @@ export default function App() {
                   <button type="button" className={preview === '3d' ? 'active' : ''} onClick={() => setPreview('3d')}>Vue 3D</button>
                   <button type="button" className={preview === 'side' ? 'active' : ''} onClick={() => setPreview('side')}>Vue de côté</button>
                 </div>
-                <span>Produit : <strong>{project.board.label}</strong></span>
+                <span>Produit : <strong>{project.boardSelectionConfirmed === false ? 'Aucune lame sélectionnée' : project.board.label}</strong></span>
               </div>
-              {!presentationMode && (
-                <LayerControls
-                  preset={visualPreset}
-                  layers={visualLayers}
-                  onPreset={(preset, layers) => { setVisualPreset(preset); setVisualLayers(layers); }}
-                  onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
-                />
-              )}
+              <LayerControls
+                preset={visualPreset}
+                layers={visualLayers}
+                onPreset={(preset, layers) => { setVisualPreset(preset); setVisualLayers(layers); }}
+                onLayers={(layers) => { setVisualPreset('custom'); setVisualLayers(layers); }}
+              />
               {preview === '2d' && <Plan2D input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} exploded={visualPreset === 'exploded'} />}
               {preview === '3d' && <Preview3D input={project} basket={result.basket} supportPlan={result.supportPlan} layout={result.layout} layers={visualLayers} exploded={visualPreset === 'exploded'} mode={preview3dMode} onModeChange={setPreview3dMode} />}
               {preview === 'side' && <SideView input={project} basket={result.basket} supportPlan={result.supportPlan} layers={visualLayers} />}
@@ -724,7 +716,7 @@ export default function App() {
             </div>
           )}
 
-          <footer className="wizard-actions"><button type="button" className="back-button" onClick={previous} disabled={step === 1}>Retour</button>{step < 5 ? <button type="button" className="primary-button" onClick={next}>Continuer <span>→</span></button> : <button type="button" className="primary-button" onClick={() => setStep(1)}>Modifier mon projet</button>}</footer>
+          <footer className="wizard-actions"><button type="button" className="back-button" onClick={previous} disabled={step === 1}>Retour</button>{step < 5 ? <button type="button" className="primary-button" onClick={next} disabled={step === 2 && project.boardSelectionConfirmed === false}>Continuer <span>→</span></button> : <button type="button" className="primary-button" onClick={() => setStep(1)}>Modifier mon projet</button>}</footer>
         </section>
 
         <aside className="live-summary">

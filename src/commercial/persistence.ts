@@ -26,10 +26,12 @@ export function saveProjectLocally(project: ProjectInput): void {
     referencePlan: project.referencePlan,
     heightCm: project.heightCm,
     supportLevelProfile: project.supportLevelProfile,
+    boardSelectionConfirmed: project.boardSelectionConfirmed !== false,
     doubleJoistsAtButtJoints: Boolean(project.doubleJoistsAtButtJoints),
     supportType: project.supportType,
     supportSystem: project.supportSystem,
     structureJoistChoice: project.structureJoistChoice,
+    joistEntrySide: project.joistEntrySide,
     edgeFinishMode: project.edgeFinishMode,
     edgeConfigs: project.edgeConfigs,
     edgeCladdingHeightCm: project.edgeCladdingHeightCm,
@@ -64,12 +66,19 @@ function parseSnapshot(raw: string, fallback: ProjectInput): ProjectInput | null
     referencePlan: sanitizeReferencePlanTransform(snapshot.referencePlan) ?? fallback.referencePlan,
     heightCm: Number(snapshot.heightCm) || fallback.heightCm,
     supportLevelProfile: (snapshot.supportLevelProfile as SupportLevelProfile | undefined) ?? fallback.supportLevelProfile,
+    boardSelectionConfirmed: snapshot.boardSelectionConfirmed === false ? false : true,
     doubleJoistsAtButtJoints: Boolean(snapshot.doubleJoistsAtButtJoints),
     supportType: (snapshot.supportType as ProjectInput['supportType']) ?? fallback.supportType,
     supportSystem: (snapshot.supportSystem as ProjectInput['supportSystem']) ?? fallback.supportSystem,
-    structureJoistChoice: snapshot.structureJoistChoice === 'pin-class4' || snapshot.structureJoistChoice === 'exotic'
+    structureJoistChoice: snapshot.structureJoistChoice === 'pin-class4'
+      || snapshot.structureJoistChoice === 'exotic'
+      || snapshot.structureJoistChoice === 'manufacturer-recommended'
+      || snapshot.structureJoistChoice === 'other-compatible'
       ? snapshot.structureJoistChoice
       : fallback.structureJoistChoice,
+    joistEntrySide: snapshot.joistEntrySide === 'top' || snapshot.joistEntrySide === 'bottom' || snapshot.joistEntrySide === 'left' || snapshot.joistEntrySide === 'right'
+      ? snapshot.joistEntrySide
+      : fallback.joistEntrySide,
     edgeFinishMode: snapshot.edgeFinishMode === 'full-perimeter' || snapshot.edgeFinishMode === 'per-edge' ? snapshot.edgeFinishMode : 'none',
     edgeConfigs: Array.isArray(snapshot.edgeConfigs) ? snapshot.edgeConfigs as ProjectInput['edgeConfigs'] : fallback.edgeConfigs,
     edgeCladdingHeightCm: Number(snapshot.edgeCladdingHeightCm) || fallback.edgeCladdingHeightCm,

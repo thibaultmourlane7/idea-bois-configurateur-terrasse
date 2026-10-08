@@ -42,11 +42,16 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
   if (!result.geometry) return null;
 
   const basket = result.basket;
+  const surfaceEstimateOnly = basket?.status === 'partial'
+    && (basket.knownSubtotalTtc ?? 0) === 0
+    && result.pricing?.surfaceNetTtc != null;
   const headline = basket?.status === 'complete'
     ? { label: 'TOTAL MATÉRIEL TTC', value: euro(basket.totalTtc ?? 0), tone: 'complete' }
     : basket?.status === 'range'
       ? { label: 'BUDGET MATÉRIEL TTC', value: `${euro(basket.totalMinTtc ?? 0)} – ${euro(basket.totalMaxTtc ?? 0)}`, tone: 'range' }
-      : { label: 'SOUS-TOTAL DÉJÀ CHIFFRÉ', value: euro(basket?.knownSubtotalTtc ?? 0), tone: 'partial' };
+      : surfaceEstimateOnly
+        ? { label: 'ESTIMATION DES LAMES TTC', value: euro(result.pricing?.surfaceNetTtc ?? 0), tone: 'partial' }
+        : { label: 'SOUS-TOTAL DÉJÀ CHIFFRÉ', value: euro(basket?.knownSubtotalTtc ?? 0), tone: 'partial' };
 
   return (
     <section className="material-result">
@@ -87,7 +92,11 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
         <article className={`result-card total-card ${headline.tone}`}>
           <span>{headline.label}</span>
           <strong>{headline.value}</strong>
-          <small>{basket?.status === 'complete' ? 'panier de base calculé' : 'aucun montant manquant n’est inventé'}</small>
+          <small>{basket?.status === 'complete'
+            ? 'panier de base calculé'
+            : surfaceEstimateOnly
+              ? 'estimation des lames uniquement — ce montant n’est pas un panier commandable'
+              : 'aucun montant manquant n’est inventé'}</small>
         </article>
       </div>
 
@@ -137,7 +146,9 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
         <div className={`basket-total ${basket?.status ?? 'partial'}`}>
           <div>
             <span>{headline.label}</span>
-            {basket?.status === 'partial' && <small>Les lignes « À confirmer » ne sont pas ajoutées au montant.</small>}
+            {basket?.status === 'partial' && <small>{surfaceEstimateOnly
+              ? 'Estimation des lames sur la surface nette. Structure, appuis et fixations restent à confirmer avant commande.'
+              : 'Les lignes « À confirmer » ne sont pas ajoutées au montant.'}</small>}
             {basket?.status === 'range' && <small>La fourchette provient d’une consommation fabricant publiée sous forme de plage.</small>}
           </div>
           <strong>{headline.value}</strong>
@@ -147,7 +158,9 @@ export function Results({ input, result }: { input: ProjectInput; result: Config
       {!result.valid && (
         <div className="customer-check-note">
           <span>i</span>
-          <div><strong>Votre panier est préparé.</strong><p>Certaines vérifications techniques restent nécessaires avant de permettre la commande en ligne. Elles sont détaillées plus bas pour le conseiller.</p></div>
+          <div><strong>{result.basket ? 'Votre projet est conservé.' : 'Votre projet doit être corrigé.'}</strong><p>{result.basket
+            ? 'Certaines vérifications techniques restent nécessaires avant de permettre la commande en ligne.'
+            : result.diagnostics.find((item) => item.severity === 'blocking')?.message ?? 'Une donnée empêche encore le calcul du panier.'}</p></div>
         </div>
       )}
     </section>

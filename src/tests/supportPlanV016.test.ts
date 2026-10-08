@@ -200,7 +200,7 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     expect(restored.layingPattern).toBe('half');
   });
 
-  it('marque un contour circulaire comme partiel et empêche un panier faussement complet', () => {
+  it('marque un contour circulaire comme partiel sans effacer les prix déjà calculés', () => {
     const project: ProjectInput = {
       ...base,
       shape: 'circle',
@@ -210,8 +210,11 @@ describe('Structure technique avancée V0.16 — stabilisée', () => {
     expect(result.supportPlan?.status).toBe('partial');
     expect(result.supportPlan?.pendingCurvedPerimeter).toBe(true);
     expect(result.basket?.status).toBe('partial');
-    expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('pending');
-    expect(result.basket?.lines.find((line) => line.id === 'supports')?.status).toBe('pending');
+    expect(result.basket?.lines.find((line) => line.id === 'joists')?.status).toBe('exact');
+    expect(result.basket?.lines.find((line) => line.id === 'protection')?.status).toBe('exact');
+    expect(result.basket?.lines.some((line) => line.family === 'supports' && line.status === 'exact')).toBe(true);
+    expect(result.basket?.lines.find((line) => line.id === 'joists-curved-perimeter')?.status).toBe('pending');
+    expect(result.basket?.lines.find((line) => line.id === 'supports-curved-perimeter')?.status).toBe('pending');
   });
 
   it('marque une réservation circulaire comme partielle tant que sa lambourde périphérique courbe n’est pas validée', () => {

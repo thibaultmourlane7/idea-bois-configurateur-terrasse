@@ -2077,9 +2077,13 @@
 .presentation-mode .construction-legend,
 .presentation-mode .edge-editor-note,
 .presentation-mode .guardrail-rule-note,
-.presentation-mode .terrain-platform-card-heading small,
-.presentation-mode .double-joist-visible-setting {
+.presentation-mode .terrain-platform-card-heading small {
   display:none !important;
+}
+
+.presentation-mode .double-joist-visible-setting,
+.presentation-mode .laying-zones-block {
+  display:block !important;
 }
 
 .presentation-mode .preview3d-global-mode > span {

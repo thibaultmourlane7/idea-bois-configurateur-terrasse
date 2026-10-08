@@ -292,7 +292,7 @@ export function Plan2D({
               Départ lambourdes
             </text>
           </g>
-        ))}
+        )}
 
         {layers.verticalJoists && construction.verticalJoists.map((support) => (
           <rect key={support.id} x={x + support.xM * scale - 3.5} y={y + support.yM * scale - 3.5} width="7" height="7" rx="1" fill="#4f3826" stroke="#fff" strokeWidth="1" />

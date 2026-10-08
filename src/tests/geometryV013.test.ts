@@ -102,10 +102,36 @@ describe('Géométrie avancée V0.13', () => {
     expect(computeGeometry(project).excludedAreaM2).toBeLessThan(2);
   });
 
-  it('bloque deux réservations qui se chevauchent', () => {
+  it('autorise deux réservations qui se chevauchent et déduit la zone commune une seule fois', () => {
     const second: TerraceObstacle = { ...pool, id: 'POOL-2', label: 'Spa', xM: 3, yM: 1.4, widthM: 1.5, heightM: 1 };
-    const diagnostics = validateProject({ ...base, obstacles: [pool, second] });
-    expect(diagnostics.some((item) => item.tag === 'SA-TERR-GEO-OBS-003')).toBe(true);
+    const project = { ...base, obstacles: [pool, second] };
+    const diagnostics = validateProject(project);
+    const geometry = computeGeometry(project);
+
+    expect(diagnostics.some((item) => item.tag === 'SA-TERR-GEO-OBS-003' && item.severity === 'blocking')).toBe(false);
+    expect(diagnostics.some((item) => item.tag === 'SA-TERR-GEO-OBS-003' && item.severity === 'info')).toBe(true);
+    // 2 m² + 1,5 m² - 0,6 m² de zone commune.
+    expect(geometry.excludedAreaM2).toBeCloseTo(2.9, 3);
+    expect(geometry.areaM2).toBeCloseTo(21.1, 3);
+  });
+
+  it('ne double-compte pas une petite réservation entièrement contenue dans une autre', () => {
+    const inside: TerraceObstacle = {
+      id: 'TREE-IN-POOL',
+      kind: 'tree',
+      label: 'Arbre',
+      shape: 'circle',
+      xM: 2.4,
+      yM: 1.2,
+      diameterM: 0.5,
+    };
+    const project = { ...base, obstacles: [pool, inside] };
+    const result = runConfigurator(project);
+
+    expect(result.valid).toBe(true);
+    expect(result.geometry?.excludedAreaM2).toBeCloseTo(2, 3);
+    expect(result.geometry?.areaM2).toBeCloseTo(22, 3);
+    expect(result.basket).toBeDefined();
   });
 
   it('répercute les réservations sur le panier matériel', () => {

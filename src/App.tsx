@@ -172,6 +172,7 @@ export default function App() {
     item.severity === 'blocking' && (item.tag.startsWith('SA-TERR-GEO') || item.tag === 'SA-TERR-VALID-001' || item.tag === 'SA-TERR-HEIGHT-STRUCTURE-001')
   );
   const firstBlockingDiagnostic = result.diagnostics.find((item) => item.severity === 'blocking');
+  const heightDiagnostic = result.diagnostics.find((item) => item.tag === 'SA-TERR-HEIGHT-STRUCTURE-001');
   const resultHeadingText = result.valid
     ? 'Votre panier matériaux est calculé avec les références et règles disponibles. Aucun montant manquant n’est inventé.'
     : firstBlockingDiagnostic
@@ -542,6 +543,12 @@ export default function App() {
               </details>
 
               <label className="single-field">Hauteur totale de la terrasse<div className="input-unit compact"><input type="number" min="1" step="1" value={project.heightCm} onChange={(e) => setProject({ ...project, heightCm: +e.target.value })} /><span>cm</span></div><small>Distance entre le support existant et le dessus des lames finies, au point de référence.</small></label>
+              {heightDiagnostic && (
+                <div className="customer-check-note">
+                  <span>!</span>
+                  <div><strong>Hauteur insuffisante</strong><p>{heightDiagnostic.message}</p></div>
+                </div>
+              )}
               <details className="advanced-option">
                 <summary>
                   <span><strong>Niveaux et pente du support</strong><small>À utiliser seulement si la dalle présente une pente, des écarts de niveau ou plusieurs hauteurs de terrasse.</small></span>

@@ -16,13 +16,13 @@ import { computeTerrainModel, TERRAIN_TAG } from './terrain';
 import { computeStairs, STAIR_TAG } from './stairs';
 import { computeGuardrails, GUARDRAIL_TAG } from './guardrails';
 
-export const VERSION_TAG = 'IB-TERR-VERSION-1.8.2';
+export const VERSION_TAG = 'IB-TERR-VERSION-1.8.3';
 export const CATALOG_TAG = 'SA-TERR-CATALOG-002';
 export const GAP_TAG = 'SA-TERR-GAP-001';
 
 export function runConfigurator(input: ProjectInput): ConfiguratorResult {
   const diagnostics: Diagnostic[] = [...validateProject(input)];
-  const trace: string[] = [`[${VERSION_TAG}] V1.8.2 : données fabricant consolidées — Garapa/Padouk 5 mm, Cumaru G003 94,50 €/m², systèmes MOSO/DASSO/SILVADEC recommandés avec alternatives à confirmer.`];
+  const trace: string[] = [`[${VERSION_TAG}] V1.8.3 : parcours utilisateur fiabilisé — réservations chevauchantes autorisées, hauteur minimale contrôlée, options particulier visibles et sous-mode 3D conservé.`];
 
   if (diagnostics.some((d) => d.severity === 'blocking')) {
     return { valid: false, diagnostics, trace: [...trace, 'Calcul bloqué : géométrie ou données de base invalides.'] };

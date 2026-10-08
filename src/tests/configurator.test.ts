@@ -241,6 +241,29 @@ describe('Configurateur terrasse V0.9', () => {
     expect(result.diagnostics.some((d) => d.tag === 'SA-TERR-SYSTEM-001' && d.severity === 'blocking')).toBe(true);
   });
 
+  it('bloque clairement une hauteur totale inférieure à lame + lambourde', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G027')!;
+    const result = runConfigurator({ ...base, board, heightCm: 5 });
+    const diagnostic = result.diagnostics.find((item) => item.tag === 'SA-TERR-HEIGHT-STRUCTURE-001');
+
+    expect(result.valid).toBe(false);
+    expect(result.geometry).toBeUndefined();
+    expect(diagnostic?.severity).toBe('blocking');
+    expect(diagnostic?.message).toContain('50 mm');
+    expect(diagnostic?.message).toContain('67 mm');
+  });
+
+  it('garde PROLIN non commandable tant que sa structure spécifique reste incomplète', () => {
+    const board = ideaBoisBoards.find((item) => item.id === 'IDEA-TERR-G025')!;
+    const result = runConfigurator({ ...base, board });
+    const decking = result.basket?.lines.find((line) => line.family === 'decking');
+
+    expect(result.basket?.status).toBe('partial');
+    expect(result.basket?.knownSubtotalTtc).toBe(0);
+    expect(result.pricing?.surfaceNetTtc).toBeGreaterThan(0);
+    expect(decking?.status).toBe('informative');
+  });
+
   it('n’expose aucun calcul de main-d’œuvre', () => {
     const result = runConfigurator(base) as unknown as Record<string, unknown>;
     expect('labor' in result).toBe(false);

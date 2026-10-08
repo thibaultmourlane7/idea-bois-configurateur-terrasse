@@ -7,6 +7,7 @@ import { canUseBoardInZone, findBoard } from '../catalog/compatibility';
 import { computeTerrainModel } from '../engine/terrain';
 import { computeStairs } from '../engine/stairs';
 import { computeGuardrails, guardrailTargetKey } from '../engine/guardrails';
+import { getCommercialConstructionRule } from '../engine/constructionRules';
 
 export const VALIDATION_TAG = 'SA-TERR-VALID-001';
 
@@ -57,6 +58,22 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
         severity: 'blocking',
         message: `La ${label} doit être renseignée avec une valeur positive.`,
         field,
+      });
+    }
+  }
+
+  const constructionRule = getCommercialConstructionRule(input);
+  if (constructionRule?.status === 'validated' && constructionRule.joistHeightMm > 0) {
+    const availableHeightMm = input.heightCm * 10;
+    const minimumStructureHeightMm = board.thicknessMm + constructionRule.joistHeightMm;
+    if (Number.isFinite(availableHeightMm) && availableHeightMm <= minimumStructureHeightMm) {
+      diagnostics.push({
+        tag: 'SA-TERR-HEIGHT-STRUCTURE-001',
+        severity: 'blocking',
+        message: `Hauteur totale insuffisante : ${availableHeightMm.toFixed(0)} mm disponibles, alors que la lame (${board.thicknessMm} mm) + la lambourde (${constructionRule.joistHeightMm} mm) occupent déjà ${minimumStructureHeightMm.toFixed(0)} mm avant les appuis.`,
+        technicalMessage: 'Augmentez la hauteur totale de la terrasse ou choisissez une structure compatible plus basse si le fabricant l’autorise.',
+        field: 'heightCm',
+        source: constructionRule.sourceUrl,
       });
     }
   }
@@ -406,8 +423,9 @@ export function validateProject(input: ProjectInput): Diagnostic[] {
         if (obstaclesOverlap(input.obstacles[i], input.obstacles[j])) {
           diagnostics.push({
             tag: 'SA-TERR-GEO-OBS-003',
-            severity: 'blocking',
-            message: `${input.obstacles[i].label} et ${input.obstacles[j].label} se chevauchent. Les réservations doivent être distinctes.`,
+            severity: 'info',
+            message: `${input.obstacles[i].label} et ${input.obstacles[j].label} se chevauchent : la zone commune est automatiquement déduite une seule fois.`,
+            technicalMessage: 'Le chevauchement des réservations est autorisé. Le moteur calcule l’union géométrique des zones exclues.',
           });
         }
       }

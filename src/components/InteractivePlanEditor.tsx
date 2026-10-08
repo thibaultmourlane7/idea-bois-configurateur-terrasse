@@ -805,7 +805,8 @@ export function InteractivePlanEditor({
             const h = height * baseScale;
 
             return (
-              <g key={obstacle.id} className={selected ? 'interactive-obstacle selected' : 'interactive-obstacle'} onPointerDown={(event) => startObstacleMove(event, obstacle)}>
+              <g key={obstacle.id}>
+                <g className={selected ? 'interactive-obstacle selected' : 'interactive-obstacle'} onPointerDown={(event) => startObstacleMove(event, obstacle)}>
                 {obstacle.shape === 'circle' ? (
                   <circle cx={x + w / 2} cy={y + h / 2} r={w / 2} fill={obstacleFill(obstacle.kind)} />
                 ) : (
@@ -816,16 +817,18 @@ export function InteractivePlanEditor({
                   {obstacle.shape === 'circle' ? `Ø ${width.toFixed(2)} m` : `${width.toFixed(2)} × ${height.toFixed(2)} m`}
                 </text>
 
-                {selected && tool === 'select' && (
-                  <circle
-                    cx={x + w}
-                    cy={obstacle.shape === 'circle' ? y + h / 2 : y + h}
-                    r={7 / zoom}
-                    className="resize-handle"
-                    onPointerDown={(event) => startResize(event, obstacle)}
-                  />
-                )}
               </g>
+              {selected && tool === 'select' && (
+                <circle
+                  cx={x + w}
+                  cy={obstacle.shape === 'circle' ? y + h / 2 : y + h}
+                  r={9 / zoom}
+                  className="resize-handle"
+                  pointerEvents="all"
+                  onPointerDown={(event) => startResize(event, obstacle)}
+                />
+              )}
+            </g>
             );
           })}
 

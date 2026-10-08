@@ -1,8 +1,8 @@
 # Ángel — Base de connaissance Terrasse IDEA Bois
 
-Version initiale : `IB-TERR-ANGEL-KB-1.0.0`  
-Version métier liée : `IB-TERR-VERSION-1.8.2`  
-Date : 2026-10-07
+Version actuelle : `IB-TERR-ANGEL-KB-1.1.0`  
+Version métier liée : `IB-TERR-VERSION-1.8.3`  
+Date : 2026-10-08
 
 ## But
 
@@ -20,3 +20,10 @@ Cette base donne à Ángel une source structurée pour répondre aux questions m
 ## Règle de prudence
 
 Si une information manque ou n’est pas suffisamment documentée, Ángel doit répondre qu’elle est « à confirmer » et ne jamais extrapoler une quantité, un prix ou une règle technique.
+
+
+## Ajout V1.8.3
+
+- réservations chevauchantes autorisées avec déduction unique de la zone commune ;
+- contrôle explicite de la hauteur minimale lame + lambourde ;
+- cohérence du parcours particulier avec les options avancées et la présentation des résultats.

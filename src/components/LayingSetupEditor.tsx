@@ -161,8 +161,8 @@ export function LayingSetupEditor({ project, onChange }: Props) {
       </div>
 
       <div className="laying-pattern-block">
-        <h3>Quel calepinage souhaitez-vous ?</h3>
-        <p>Les raccords restent sur des axes globaux cohérents dans chaque zone.</p>
+        <h3>Comment souhaitez-vous décaler les lames ?</h3>
+        <p>Ce réglage organise la répétition et le décalage des lames d’une rangée à l’autre.</p>
         <div className="laying-pattern-grid">
           {patternOptions.map((option) => (
             <button
@@ -313,7 +313,7 @@ export function LayingSetupEditor({ project, onChange }: Props) {
                       </div>
                     ))}
                   </div>
-                  <small>Les zones peuvent être polygonales. Le moteur bloque les contours croisés, hors terrasse ou qui chevauchent une autre zone.</small>
+                  <small>Les zones peuvent être polygonales. Les contours croisés, hors terrasse ou superposés à une autre zone de pose restent refusés.</small>
                 </details>
               </article>
             );

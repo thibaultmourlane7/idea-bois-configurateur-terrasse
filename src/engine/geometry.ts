@@ -187,6 +187,20 @@ export function isPointInsideObstacle(obstacle: TerraceObstacle, xM: number, yM:
     && yM <= obstacle.yM + height + EPS;
 }
 
+function isPointStrictlyInsideObstacle(obstacle: TerraceObstacle, xM: number, yM: number): boolean {
+  if (obstacle.shape === 'circle') {
+    const d = obstacle.diameterM ?? 0;
+    const r = d / 2;
+    return Math.hypot(xM - (obstacle.xM + r), yM - (obstacle.yM + r)) < Math.max(0, r - EPS);
+  }
+  const width = obstacle.widthM ?? 0;
+  const height = obstacle.heightM ?? 0;
+  return xM > obstacle.xM + EPS
+    && xM < obstacle.xM + width - EPS
+    && yM > obstacle.yM + EPS
+    && yM < obstacle.yM + height - EPS;
+}
+
 export function getObstacleSamplePointsM(obstacle: TerraceObstacle): PointM[] {
   if (obstacle.shape === 'circle') {
     const d = obstacle.diameterM ?? 0;
@@ -462,6 +476,77 @@ export function obstacleIntersectsBaseDeck(input: ProjectInput, obstacle: Terrac
   return obstacleIntersectionAreaM2(input, obstacle) > 1e-8;
 }
 
+function hasObstacleOverlap(obstacles: TerraceObstacle[]): boolean {
+  for (let i = 0; i < obstacles.length; i += 1) {
+    for (let j = i + 1; j < obstacles.length; j += 1) {
+      if (obstaclesOverlap(obstacles[i], obstacles[j])) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Surface nette lorsque plusieurs réservations se chevauchent.
+ * On intègre les intervalles réellement disponibles rangée par rangée : une zone commune
+ * entre deux réservations n'est donc retirée qu'une seule fois.
+ *
+ * Les cas sans chevauchement conservent le calcul analytique historique.
+ */
+function availableDeckAreaWithObstacleUnionM2(input: ProjectInput): number {
+  const bounds = getDeckBoundingSizeM(input);
+  const maxY = Math.max(0, bounds.widthM);
+  if (maxY <= EPS) return 0;
+
+  const breaks = new Set<number>([0, maxY]);
+  if (input.shape === 'circle') {
+    breaks.add(maxY / 2);
+  } else {
+    for (const point of getDeckOutlinePointsM(input)) {
+      if (point.y >= 0 && point.y <= maxY) breaks.add(point.y);
+    }
+  }
+  for (const obstacle of input.obstacles) {
+    const height = obstacle.shape === 'circle' ? (obstacle.diameterM ?? 0) : (obstacle.heightM ?? 0);
+    const start = Math.max(0, obstacle.yM);
+    const end = Math.min(maxY, obstacle.yM + height);
+    if (start < end) {
+      breaks.add(start);
+      breaks.add(end);
+      if (obstacle.shape === 'circle') breaks.add(Math.max(start, Math.min(end, obstacle.yM + height / 2)));
+    }
+  }
+
+  const sorted = [...breaks].sort((a, b) => a - b);
+  const nodes = [-0.906179845938664, -0.538469310105683, 0, 0.538469310105683, 0.906179845938664];
+  const weights = [0.236926885056189, 0.478628670499366, 0.568888888888889, 0.478628670499366, 0.236926885056189];
+
+  const widthAt = (yM: number) => getDeckIntervalsAtMm(input, yM * 1000, 'length', 0)
+    .reduce((sum, [start, end]) => sum + Math.max(0, end - start), 0) / 1000;
+
+  let areaM2 = 0;
+  for (let i = 0; i + 1 < sorted.length; i += 1) {
+    const start = sorted[i];
+    const end = sorted[i + 1];
+    const span = end - start;
+    if (span <= EPS) continue;
+
+    // Les sous-intervalles limitent l'erreur autour des intersections cercle/rectangle.
+    const slices = Math.max(1, Math.ceil(span / 0.05));
+    for (let slice = 0; slice < slices; slice += 1) {
+      const a = start + span * slice / slices;
+      const b = start + span * (slice + 1) / slices;
+      const mid = (a + b) / 2;
+      const half = (b - a) / 2;
+      let weightedWidth = 0;
+      for (let n = 0; n < nodes.length; n += 1) {
+        weightedWidth += weights[n] * widthAt(mid + half * nodes[n]);
+      }
+      areaM2 += half * weightedWidth;
+    }
+  }
+  return areaM2;
+}
+
 export function computeGeometry(input: ProjectInput): GeometryResult {
   let grossAreaM2 = 0;
   let outerPerimeterM = 0;
@@ -476,11 +561,14 @@ export function computeGeometry(input: ProjectInput): GeometryResult {
     outerPerimeterM = polygonPerimeter(polygon);
   }
 
-  const excludedAreaM2 = input.obstacles.reduce((sum, obstacle) => sum + obstacleIntersectionAreaM2(input, obstacle), 0);
+  const overlaps = hasObstacleOverlap(input.obstacles);
+  const analyticalExcludedAreaM2 = input.obstacles.reduce((sum, obstacle) => sum + obstacleIntersectionAreaM2(input, obstacle), 0);
+  const areaM2 = overlaps ? Math.max(0, availableDeckAreaWithObstacleUnionM2(input)) : Math.max(0, grossAreaM2 - analyticalExcludedAreaM2);
+  const excludedAreaM2 = Math.max(0, grossAreaM2 - areaM2);
   const totalObstaclePerimeterM = input.obstacles.reduce((sum, obstacle) => sum + obstaclePerimeterM(obstacle), 0);
 
   return {
-    areaM2: Math.max(0, grossAreaM2 - excludedAreaM2),
+    areaM2,
     perimeterM: outerPerimeterM,
     grossAreaM2,
     excludedAreaM2,
@@ -712,7 +800,8 @@ export function getEffectiveBoundarySegmentsM(input: ProjectInput): BoundarySegm
           a,
           b,
           segmentDeckBoundaryTs(input, a, b),
-          (mid) => isPointInsideBaseDeck(input, mid.x, mid.y),
+          (mid) => isPointInsideBaseDeck(input, mid.x, mid.y)
+            && !input.obstacles.some((other) => other.id !== obstacle.id && isPointStrictlyInsideObstacle(other, mid.x, mid.y)),
           'obstacle',
         ));
       }
@@ -733,7 +822,8 @@ export function getEffectiveBoundarySegmentsM(input: ProjectInput): BoundarySegm
         a,
         b,
         segmentDeckBoundaryTs(input, a, b),
-        (mid) => isPointInsideBaseDeck(input, mid.x, mid.y),
+        (mid) => isPointInsideBaseDeck(input, mid.x, mid.y)
+          && !input.obstacles.some((other) => other.id !== obstacle.id && isPointStrictlyInsideObstacle(other, mid.x, mid.y)),
         'obstacle',
         true,
       ));

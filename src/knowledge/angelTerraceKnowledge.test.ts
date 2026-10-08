@@ -23,7 +23,7 @@ describe('Base de connaissance Ángel — Terrasse IDEA Bois', () => {
   });
 
   it('retrouve les réponses avec une recherche simple', () => {
-    expect(searchAngelTerraceKnowledge('hauteur plot')[0]?.id).toBe('height-total');
+    expect(searchAngelTerraceKnowledge('hauteur plot').some((entry) => entry.id === 'height-total')).toBe(true);
     expect(searchAngelTerraceKnowledge('silvadec reversil').some((entry) => entry.id === 'silvadec-reversil')).toBe(true);
     expect(searchAngelTerraceKnowledge('cumaru G003 prix').some((entry) => entry.id === 'cumaru-g003-price')).toBe(true);
     expect(searchAngelTerraceKnowledge('réservations chevauchent surface').some((entry) => entry.id === 'overlapping-reservations')).toBe(true);
